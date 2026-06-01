@@ -1859,13 +1859,13 @@ def salvar_extras():
     # Salva multa/juros no dimob_historico para uso na DIMOB
     mes_ref = (request.json or {}).get("mes", "")  # ex: "Junho/2026"
     if mes_ref:
-        MESES_PT = ["janeiro","fevereiro","março","marco","abril","maio","junho",
-                    "julho","agosto","setembro","outubro","novembro","dezembro"]
+        MESES_PT = {"jan":1,"fev":2,"mar":3,"abr":4,"mai":5,"jun":6,
+                    "jul":7,"ago":8,"set":9,"out":10,"nov":11,"dez":12}
         partes = mes_ref.replace("/", " ").split()
         try:
             ano_ref  = int(partes[-1])
-            mes_nome = partes[0].lower()
-            mes_num  = next((i+1 for i,m in enumerate(MESES_PT) if mes_nome.startswith(m[:3])), None)
+            mes_nome = partes[0].lower()[:3]
+            mes_num  = MESES_PT.get(mes_nome)
         except Exception:
             ano_ref = mes_num = None
 

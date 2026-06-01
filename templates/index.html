@@ -1117,9 +1117,10 @@ function atualizarRodape() {
     const taxaImobEf = paAtivo ? 0 : taxaImob;
     const _dsR = n => (row[`ded${n}_subtrair`]!==false?1:-1)*(parseFloat(row[`ded${n}_val`])||0);
     const dedMan = _dsR(1)+_dsR(2)+_dsR(3)+_dsR(4)+_dsR(5)+_dsR(6)+_dsR(7)+_dsR(8)+_dsR(9)+_dsR(10);
+    const percImobR = parseFloat(row.percentual_imob)||0;
     const multaR = parseFloat(row.multa_atraso_val)||0;
     const jurosR = parseFloat(row.juros_mora_val)||0;
-    const taxaSobRecR = paAtivo ? 0 : (multaR + jurosR) * percImob / 100;
+    const taxaSobRecR = paAtivo ? 0 : (multaR + jurosR) * percImobR / 100;
     totRepasse += (row.aluguel||0) - taxaImobEf - dedProp - dedMan - paVal + multaR + jurosR - taxaSobRecR;
     totComissao += taxaImobEf + taxaSobRecR;
   });
@@ -1203,7 +1204,7 @@ async function salvarApi() {
   btn.disabled=false; btn.textContent='Salvar e Testar';
   if (j.ok) {
     const b=document.getElementById('apiStatusBadge');
-    b.className='api-status api-ok'; b.textContent='API configurada';
+    if (b) { b.className='api-status api-ok'; b.textContent='API configurada'; }
     fecharModal(); checkReady();
   } else {
     document.getElementById('apiErro').textContent=j.erro;
@@ -1604,8 +1605,7 @@ async function salvarSmtp() {
       document.getElementById('smtpOk').textContent = '✓ Conexão testada com sucesso! E-mail configurado.';
       document.getElementById('smtpOk').style.display = 'block';
       const b = document.getElementById('smtpStatusBadge');
-      b.className = 'api-status smtp-ok';
-      b.textContent = '📧 E-mail configurado';
+      if (b) { b.className = 'api-status smtp-ok'; b.textContent = '📧 E-mail configurado'; }
       setTimeout(fecharModalSmtp, 1800);
     } else {
       document.getElementById('smtpErro').textContent = j.erro || 'Erro ao testar conexão.';
