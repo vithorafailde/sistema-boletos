@@ -1657,7 +1657,7 @@ def configurar_smtp():
         try:
             _enviar_via_resend(
                 smtp["resend_key"],
-                "Funchal Imoveis <onboarding@resend.dev>",
+                "Funchal Imoveis <noreply@funchalimoveis.com.br>",
                 smtp["user"] or "vithor.a.failde@gmail.com",
                 "Teste de conexão — Sistema de Boletos",
                 "<p>Conexão com Resend configurada com sucesso!</p>"
@@ -1771,7 +1771,7 @@ def enviar_informe():
 
     # Usa Resend se tiver chave
     if smtp["resend_key"]:
-        remetente = "Funchal Imoveis <onboarding@resend.dev>"
+        remetente = "Funchal Imoveis <noreply@funchalimoveis.com.br>"
         reply_to  = smtp["user"] or None
         try:
             _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body, reply_to=reply_to)
