@@ -1164,7 +1164,8 @@ function filtrar(tipo, btn) {
 
 // ─── Salvar e Exportar ────────────────────────────────────────────────────────
 async function salvarExtras() {
-  const r = await fetch('/salvar_extras',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(dados)});
+  const payload = Object.assign({}, dados, {mes: document.getElementById('inMes').value || ''});
+  const r = await fetch('/salvar_extras',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   const j = await r.json();
   if (j.ok) {
     try { localStorage.setItem('boletos_dados', JSON.stringify(dados)); } catch(e) {}

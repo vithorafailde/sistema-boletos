@@ -657,12 +657,18 @@ def calcular_meses_dimob(contrato, ano, historico_dimob):
     aluguel_antigo = hist_c.get('aluguel_antigo')
     tem_historico  = aluguel_antigo is not None and mes_aplicacao is not None
 
+    multa_juros_hist = hist_c.get("multa_juros", {})
+
     meses = []
     for mes in range(1, 13):
         if tem_historico and mes < mes_aplicacao:
-            meses.append(aluguel_antigo)
+            base = aluguel_antigo
         else:
-            meses.append(aluguel_atual)
+            base = aluguel_atual
+        # Soma multa+juros do mês se houver
+        mj = multa_juros_hist.get(str(mes), {})
+        extra = float(mj.get("multa", 0) or 0) + float(mj.get("juros", 0) or 0)
+        meses.append(round(base + extra, 2))
 
     return meses, tem_historico
 
@@ -1823,6 +1829,41 @@ def salvar_extras():
                for n in range(1, 11)},
         }
     salvar_historico(historico)
+
+    # Salva multa/juros no dimob_historico para uso na DIMOB
+    mes_ref = (request.json or {}).get("mes", "")  # ex: "Junho/2026"
+    if mes_ref:
+        MESES_PT = ["janeiro","fevereiro","março","marco","abril","maio","junho",
+                    "julho","agosto","setembro","outubro","novembro","dezembro"]
+        partes = mes_ref.replace("/", " ").split()
+        try:
+            ano_ref  = int(partes[-1])
+            mes_nome = partes[0].lower()
+            mes_num  = next((i+1 for i,m in enumerate(MESES_PT) if mes_nome.startswith(m[:3])), None)
+        except Exception:
+            ano_ref = mes_num = None
+
+        if ano_ref and mes_num:
+            hist_dimob = ler_dimob_historico()
+            ano_str = str(ano_ref)
+            if ano_str not in hist_dimob:
+                hist_dimob[ano_str] = {}
+            for row in (request.json or {}).get("locatarios", []):
+                chave = row.get("chave") or norm(row.get("locatario", ""))
+                if not chave:
+                    continue
+                multa = float(row.get("multa_atraso_val") or 0)
+                juros = float(row.get("juros_mora_val") or 0)
+                if multa or juros:
+                    if chave not in hist_dimob[ano_str]:
+                        hist_dimob[ano_str][chave] = {}
+                    if "multa_juros" not in hist_dimob[ano_str][chave]:
+                        hist_dimob[ano_str][chave]["multa_juros"] = {}
+                    hist_dimob[ano_str][chave]["multa_juros"][str(mes_num)] = {
+                        "multa": multa, "juros": juros
+                    }
+            salvar_dimob_historico(hist_dimob)
+
     return jsonify({"ok": True})
 
 
