@@ -883,6 +883,21 @@ function renderTabela(lista) {
                 oninput="dados.locatarios[${idx}].primeiro_aluguel_val=parseFloat(this.value)||0;recalcRepasse(${idx})">
             </div>
           </div>
+          <div style="border-top:1px dashed #A0D4A0;margin:5px 0 4px;padding-top:4px">
+            <div style="font-size:9px;color:var(--green);font-weight:600;margin-bottom:4px">(+) MULTA / JUROS POR ATRASO:</div>
+            <div style="display:flex;gap:3px;margin-bottom:2px;align-items:center">
+              <span style="font-size:9px;color:var(--muted);width:70px;flex-shrink:0">Multa (10%)</span>
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                style="width:80px" value="${row.multa_atraso_val||''}"
+                oninput="dados.locatarios[${idx}].multa_atraso_val=parseFloat(this.value)||0;renderRepasse(${idx});atualizarRodape()">
+            </div>
+            <div style="display:flex;gap:3px;margin-bottom:2px;align-items:center">
+              <span style="font-size:9px;color:var(--muted);width:70px;flex-shrink:0">Juros mora</span>
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                style="width:80px" value="${row.juros_mora_val||''}"
+                oninput="dados.locatarios[${idx}].juros_mora_val=parseFloat(this.value)||0;renderRepasse(${idx});atualizarRodape()">
+            </div>
+          </div>
           <div style="border-top:1px dashed #bbf7d0;margin:5px 0 4px;padding-top:4px">
             <div style="font-size:9px;color:var(--muted);font-weight:600;margin-bottom:3px">(-) DEDUÇÕES MANUAIS:</div>
             ${dedInputs}
@@ -978,7 +993,10 @@ function renderRepasse(idx) {
   const dedProp = Object.entries(itensNRep).reduce((s,[k,v])=>s+((nrepAtivo[k]!==false)?(parseFloat(v)||0):0),0);
   const _ds = n => (row[`ded${n}_subtrair`] !== false ? 1 : -1) * (parseFloat(row[`ded${n}_val`])||0);
   const ded1=_ds(1),ded2=_ds(2),ded3=_ds(3),ded4=_ds(4),ded5=_ds(5),ded6=_ds(6),ded7=_ds(7),ded8=_ds(8),ded9=_ds(9),ded10=_ds(10);
-  const repProp = (row.aluguel||0) - taxaImob - dedProp - ded1 - ded2 - ded3 - ded4 - ded5 - ded6 - ded7 - ded8 - ded9 - ded10 - paVal;
+  const multaBruta = parseFloat(row.multa_atraso_val)||0;
+  const jurosBruto = parseFloat(row.juros_mora_val)||0;
+  const taxaSobRec = paAtivo ? 0 : (multaBruta + jurosBruto) * percImob / 100;
+  const repProp = (row.aluguel||0) - taxaImob - dedProp - ded1 - ded2 - ded3 - ded4 - ded5 - ded6 - ded7 - ded8 - ded9 - ded10 - paVal + multaBruta + jurosBruto - taxaSobRec;
 
   let info = '';
   info += `<div class="charge-row"><span class="charge-name">Aluguel</span><span class="charge-val">${brl(row.aluguel)}</span></div>`;
@@ -1014,6 +1032,10 @@ function renderRepasse(idx) {
     const sinalVal = sub ? '-' : '+';
     info += `<div class="charge-row"><span class="charge-name" style="color:${cor}">${sinal} ${desc}</span><span class="charge-val" style="color:${cor}">${sinalVal} ${brl(rawVal)}</span></div>`;
   });
+
+  if (multaBruta) info += `<div class="charge-row"><span class="charge-name" style="color:var(--green)">(+) Multa por atraso</span><span class="charge-val" style="color:var(--green)">+ ${brl(multaBruta)}</span></div>`;
+  if (jurosBruto) info += `<div class="charge-row"><span class="charge-name" style="color:var(--green)">(+) Juros de mora</span><span class="charge-val" style="color:var(--green)">+ ${brl(jurosBruto)}</span></div>`;
+  if (taxaSobRec) info += `<div class="charge-row"><span class="charge-name" style="color:var(--red)">(-) Taxa ${percImob}% s/ multa+juros</span><span class="charge-val" style="color:var(--red)">- ${brl(taxaSobRec)}</span></div>`;
 
   const infoEl = document.getElementById('repaseinfo_'+idx);
   if (infoEl) infoEl.innerHTML = info;
@@ -1093,8 +1115,11 @@ function atualizarRodape() {
     const taxaImobEf = paAtivo ? 0 : taxaImob;
     const _dsR = n => (row[`ded${n}_subtrair`]!==false?1:-1)*(parseFloat(row[`ded${n}_val`])||0);
     const dedMan = _dsR(1)+_dsR(2)+_dsR(3)+_dsR(4)+_dsR(5)+_dsR(6)+_dsR(7)+_dsR(8)+_dsR(9)+_dsR(10);
-    totRepasse += (row.aluguel||0) - taxaImobEf - dedProp - dedMan - paVal;
-    totComissao += taxaImobEf;
+    const multaR = parseFloat(row.multa_atraso_val)||0;
+    const jurosR = parseFloat(row.juros_mora_val)||0;
+    const taxaSobRecR = paAtivo ? 0 : (multaR + jurosR) * percImob / 100;
+    totRepasse += (row.aluguel||0) - taxaImobEf - dedProp - dedMan - paVal + multaR + jurosR - taxaSobRecR;
+    totComissao += taxaImobEf + taxaSobRecR;
   });
   document.getElementById('footCond').innerHTML = `<span style="font-size:11px">Aluguel: ${brl(totAl)}<br>Cond: ${brl(totCo)}</span>`;
   document.getElementById('footExtras').innerHTML = `<span style="font-size:11px">IPTU+Seguros+Extras: ${brl(totEx)}</span>`;
@@ -1252,8 +1277,11 @@ function calcRepasseData(row) {
     deds.push({ desc: row[`ded${n}_desc`]||'Dedução', val: rawVal, sub: row[`ded${n}_subtrair`]!==false });
   }
   const dedsManual = deds.reduce((s,d) => s + (d.sub ? d.val : -d.val), 0);
-  const repasse = (row.aluguel||0) - taxaImob - dedPropTotal - dedsManual - paVal;
-  return { aluguel: row.aluguel||0, taxaImob, percImob, paAtivo, paVal, dedPropItens, deds, repasse };
+  const multaBruta = parseFloat(row.multa_atraso_val)||0;
+  const jurosBruto = parseFloat(row.juros_mora_val)||0;
+  const taxaSobRec = paAtivo ? 0 : (multaBruta + jurosBruto) * percImob / 100;
+  const repasse = (row.aluguel||0) - taxaImob - dedPropTotal - dedsManual - paVal + multaBruta + jurosBruto - taxaSobRec;
+  return { aluguel: row.aluguel||0, taxaImob, percImob, paAtivo, paVal, dedPropItens, deds, multaBruta, jurosBruto, taxaSobRec, repasse };
 }
 
 // Grupos de proprietários (populado em abrirInformes)
@@ -1323,6 +1351,9 @@ function filtrarInforme(propKey) {
       if (d.sub) linhas += `<div class="inf-linha ded"><span>(-) ${escHtml(d.desc)}</span><span>- ${brl(d.val)}</span></div>`;
       else       linhas += `<div class="inf-linha add"><span>(+) ${escHtml(d.desc)}</span><span>+ ${brl(d.val)}</span></div>`;
     });
+    if (rd.multaBruta) linhas += `<div class="inf-linha add"><span>(+) Multa por atraso</span><span>+ ${brl(rd.multaBruta)}</span></div>`;
+    if (rd.jurosBruto) linhas += `<div class="inf-linha add"><span>(+) Juros de mora</span><span>+ ${brl(rd.jurosBruto)}</span></div>`;
+    if (rd.taxaSobRec) linhas += `<div class="inf-linha ded"><span>(-) Taxa ${rd.percImob}% s/ multa+juros</span><span>- ${brl(rd.taxaSobRec)}</span></div>`;
     linhas += `<div class="inf-linha rep"><span>Repasse Líquido</span><span>${brl(rd.repasse)}</span></div>`;
 
     unidadesHtml += `
@@ -1404,6 +1435,9 @@ function gerarPdfProprietario(propKey) {
       if (d.sub) trs += `<tr class="ded"><td class="desc">(-) ${e(d.desc)}</td><td class="val">(R$ ${nr(d.val)})</td></tr>`;
       else       trs += `<tr class="add"><td class="desc">(+) ${e(d.desc)}</td><td class="val">R$ ${nr(d.val)}</td></tr>`;
     });
+    if (rd.multaBruta) trs += `<tr class="add"><td class="desc">(+) Multa por atraso</td><td class="val">R$ ${nr(rd.multaBruta)}</td></tr>`;
+    if (rd.jurosBruto) trs += `<tr class="add"><td class="desc">(+) Juros de mora</td><td class="val">R$ ${nr(rd.jurosBruto)}</td></tr>`;
+    if (rd.taxaSobRec) trs += `<tr class="ded"><td class="desc">(-) Taxa ${rd.percImob}% s/ multa+juros</td><td class="val">(R$ ${nr(rd.taxaSobRec)})</td></tr>`;
     trs += `<tr class="sep"><td colspan="2"></td></tr>`;
     trs += `<tr class="rep"><td class="desc">Valor líquido a repassar</td><td class="val">R$ ${nr(rd.repasse)}</td></tr>`;
 
