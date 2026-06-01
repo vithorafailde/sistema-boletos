@@ -456,7 +456,7 @@ setupDrop('dropBol','inBol','chipsBol',true);
 // ─── Processar ────────────────────────────────────────────────────────────────
 async function processar() {
   const badge = document.getElementById('apiStatusBadge');
-  if (badge.classList.contains('api-nok')) { abrirModal(); return; }
+  if (badge && badge.classList.contains('api-nok')) { abrirModal(); return; }
 
   const fd = new FormData();
   fd.append('excel', document.getElementById('inExcel').files[0]);
@@ -1403,14 +1403,20 @@ function voltarParaResultados() {
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
-function gerarPdfProprietario(propKey) {
+async function gerarPdfProprietario(propKey) {
   if (!dados) return;
   const g = _infGrupos[propKey];
   if (!g) return;
 
   const mes    = document.getElementById('inMes').value || '';
   const hoje   = new Date().toLocaleDateString('pt-BR');
-  const logoUrl = window.location.origin + '/static/logo.png';
+  // Embutir logo em base64 para garantir carregamento no PDF
+  let logoUrl = '';
+  try {
+    const resp = await fetch(window.location.origin + '/static/logo.png');
+    const blob = await resp.blob();
+    logoUrl = await new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(blob); });
+  } catch(e) { logoUrl = ''; }
   const e  = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const nr = v => parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
@@ -1705,27 +1711,31 @@ document.getElementById('inMes').value=`${M[now.getMonth()]}/${now.getFullYear()
 // Roda por último, depois de todo o setup, para garantir que todas as funções
 // e elementos estão prontos antes de tentar restaurar.
 (function restaurarSeDisponivel() {
-  const anoMesAtual = new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0');
-  const salvoEm = localStorage.getItem('boletos_salvo_em');
-  if (!salvoEm) { return; }
-  const raw = localStorage.getItem('boletos_dados');
-  if (salvoEm !== anoMesAtual) {
-    localStorage.removeItem('boletos_dados');
-    localStorage.removeItem('boletos_mes');
-    localStorage.removeItem('boletos_salvo_em');
-    return;
-  }
-  if (!raw) { return; }
-  let d;
-  try { d = JSON.parse(raw); } catch(e) { alert('Erro ao ler dados salvos: ' + e.message); return; }
-  const mes = localStorage.getItem('boletos_mes') || '';
-  document.getElementById('secaoUpload').style.display = 'none';
-  if (mes) document.getElementById('inMes').value = mes;
   try {
+    const anoMesAtual = new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0');
+    const salvoEm = localStorage.getItem('boletos_salvo_em');
+    if (!salvoEm) return;
+    const raw = localStorage.getItem('boletos_dados');
+    if (!raw) return;
+    // Aceita dados do mês atual OU do mês anterior (permite usar depois da virada)
+    const [anoS, mesS] = salvoEm.split('-').map(Number);
+    const [anoA, mesA] = anoMesAtual.split('-').map(Number);
+    const diffMeses = (anoA - anoS) * 12 + (mesA - mesS);
+    if (diffMeses > 1) {
+      localStorage.removeItem('boletos_dados');
+      localStorage.removeItem('boletos_mes');
+      localStorage.removeItem('boletos_salvo_em');
+      return;
+    }
+    let d;
+    try { d = JSON.parse(raw); } catch(e) { return; }
+    const mes = localStorage.getItem('boletos_mes') || '';
+    document.getElementById('secaoUpload').style.display = 'none';
+    if (mes) document.getElementById('inMes').value = mes;
     mostrar(d, mes);
   } catch(e) {
-    alert('Erro ao restaurar tabela: ' + e.message + '\n\n' + e.stack);
-    document.getElementById('secaoUpload').style.display = 'block';
+    // Falha silenciosa — mostra tela de upload normalmente
+    try { document.getElementById('secaoUpload').style.display = 'block'; } catch(_) {}
   }
 })();
 </script>
