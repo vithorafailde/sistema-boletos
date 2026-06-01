@@ -74,7 +74,7 @@ def no_cache(response):
 LOGIN_USUARIO = os.environ.get("LOGIN_USUARIO", "vitho")
 LOGIN_SENHA   = os.environ.get("LOGIN_SENHA",   "vi28041305")
 LOGIN_USUARIO_2 = os.environ.get("LOGIN_USUARIO_2", "lourdes")
-LOGIN_SENHA_2   = os.environ.get("LOGIN_SENHA_2",   "lourdes123")
+LOGIN_SENHA_2   = os.environ.get("LOGIN_SENHA_2",   "vi280407")
 
 USUARIOS = {
     LOGIN_USUARIO:   "admin",
