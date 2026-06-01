@@ -209,8 +209,19 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       <label class="form-label">E-mail de envio (From) — deixe em branco para usar o usuário</label>
       <input type="email" id="smtpFrom" class="form-input" placeholder="Funchal Imóveis &lt;noreply@dominio.com&gt;">
     </div>
+    <div style="border:1px solid #A8D4A8;border-radius:8px;padding:12px 14px;background:#F0FAF0;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#2A6A2A;margin-bottom:6px">✅ Recomendado: Resend (grátis, funciona no Railway)</div>
+      <div class="form-group">
+        <label class="form-label">Chave API do Resend (re_...)</label>
+        <input type="password" id="smtpResendKey" class="form-input" placeholder="re_xxxxxxxxxxxxxxxxxxxx">
+      </div>
+      <div style="font-size:10px;color:#2A6A2A;margin-top:6px">
+        Crie sua conta grátis em <strong>resend.com</strong> → API Keys → Create API Key.<br>
+        Preencha apenas essa chave — os campos acima não são necessários com Resend.
+      </div>
+    </div>
     <p style="font-size:10px;color:var(--muted);margin-bottom:12px">
-      💡 Gmail: ative "Acesso a app menos seguro" ou use uma <strong>App Password</strong> em myaccount.google.com → Segurança → Senhas de app.
+      💡 Ou use SMTP: Gmail requer <strong>App Password</strong> em myaccount.google.com → Segurança → Senhas de app.
     </p>
     <div id="smtpErro" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
     <div id="smtpOk" style="color:green;font-size:12px;margin-bottom:10px;display:none"></div>
@@ -1520,14 +1531,15 @@ document.getElementById('modalSmtp').addEventListener('click', function(e) {
 });
 
 async function salvarSmtp() {
-  const host  = document.getElementById('smtpHost').value.trim();
-  const port  = parseInt(document.getElementById('smtpPort').value) || 587;
-  const user  = document.getElementById('smtpUser').value.trim();
-  const pass  = document.getElementById('smtpPass').value;
-  const from_ = document.getElementById('smtpFrom').value.trim();
+  const host       = document.getElementById('smtpHost').value.trim();
+  const port       = parseInt(document.getElementById('smtpPort').value) || 587;
+  const user       = document.getElementById('smtpUser').value.trim();
+  const pass       = document.getElementById('smtpPass').value;
+  const from_      = document.getElementById('smtpFrom').value.trim();
+  const resendKey  = document.getElementById('smtpResendKey').value.trim();
 
-  if (!host || !user || !pass) {
-    document.getElementById('smtpErro').textContent = 'Preencha servidor, usuário e senha.';
+  if (!resendKey && (!host || !user || !pass)) {
+    document.getElementById('smtpErro').textContent = 'Preencha a chave Resend ou os campos de SMTP (servidor, usuário e senha).';
     document.getElementById('smtpErro').style.display = 'block';
     document.getElementById('smtpOk').style.display   = 'none';
     return;
@@ -1542,7 +1554,7 @@ async function salvarSmtp() {
     const r = await fetch('/configurar_smtp', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ host, port, user, passw:pass, from_addr:from_ })
+      body: JSON.stringify({ host, port, user, passw:pass, from_addr:from_, resend_api_key:resendKey })
     });
     const j = await r.json();
     if (j.ok) {

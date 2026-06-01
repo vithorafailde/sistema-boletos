@@ -3,6 +3,8 @@ import urllib.request
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import urllib.request
+import json as _json
 from pathlib import Path
 from functools import wraps
 from datetime import datetime, date, timedelta
@@ -1591,12 +1593,33 @@ def montar_resultado(contratos, condos_lidos, boletos_extras):
 def ler_smtp():
     cfg = ler_config()
     return {
-        "host":  os.environ.get("SMTP_HOST",  cfg.get("smtp_host", "smtp.gmail.com")),
-        "port":  int(os.environ.get("SMTP_PORT", cfg.get("smtp_port", 587))),
-        "user":  os.environ.get("SMTP_USER",  cfg.get("smtp_user", "")),
-        "passw": os.environ.get("SMTP_PASS",  cfg.get("smtp_pass", "")),
-        "from":  os.environ.get("SMTP_FROM",  cfg.get("smtp_from", "")),
+        "host":       os.environ.get("SMTP_HOST",    cfg.get("smtp_host", "smtp.gmail.com")),
+        "port":       int(os.environ.get("SMTP_PORT", cfg.get("smtp_port", 587))),
+        "user":       os.environ.get("SMTP_USER",    cfg.get("smtp_user", "")),
+        "passw":      os.environ.get("SMTP_PASS",    cfg.get("smtp_pass", "")),
+        "from":       os.environ.get("SMTP_FROM",    cfg.get("smtp_from", "")),
+        "resend_key": os.environ.get("RESEND_API_KEY", cfg.get("resend_api_key", "")),
     }
+
+def _enviar_via_resend(api_key, de, para, assunto, html_body):
+    """Envia email usando a API HTTP do Resend (sem SMTP)."""
+    payload = _json.dumps({
+        "from": de,
+        "to": [para],
+        "subject": assunto,
+        "html": html_body
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return resp.status == 200
 
 def _smtp_connect(smtp, timeout=15):
     """Conecta ao servidor SMTP usando SSL (porta 465) ou STARTTLS (demais portas)."""
@@ -1613,15 +1636,29 @@ def _smtp_connect(smtp, timeout=15):
 def configurar_smtp():
     d = request.get_json() or {}
     cfg = ler_config()
-    cfg["smtp_host"] = d.get("host", "smtp.gmail.com")
-    cfg["smtp_port"] = int(d.get("port", 587))
-    cfg["smtp_user"] = d.get("user", "")
-    cfg["smtp_pass"] = d.get("passw", "")
-    cfg["smtp_from"] = d.get("from_addr", "")
+    cfg["smtp_host"]      = d.get("host", "smtp.gmail.com")
+    cfg["smtp_port"]      = int(d.get("port", 587))
+    cfg["smtp_user"]      = d.get("user", "")
+    cfg["smtp_pass"]      = d.get("passw", "")
+    cfg["smtp_from"]      = d.get("from_addr", "")
+    cfg["resend_api_key"] = d.get("resend_api_key", "")
     salvar_config(cfg)
-    # Testa conexão
+    smtp = ler_smtp()
+    # Se tiver chave Resend, testa via API
+    if smtp["resend_key"]:
+        try:
+            _enviar_via_resend(
+                smtp["resend_key"],
+                smtp["from"] or "onboarding@resend.dev",
+                smtp["user"],
+                "Teste de conexão — Sistema de Boletos",
+                "<p>Conexão com Resend configurada com sucesso!</p>"
+            )
+            return jsonify({"ok": True})
+        except Exception as ex:
+            return jsonify({"ok": False, "erro": str(ex)})
+    # Senão testa SMTP
     try:
-        smtp = ler_smtp()
         _smtp_connect(smtp, timeout=10)
         return jsonify({"ok": True})
     except Exception as ex:
@@ -1631,8 +1668,10 @@ def configurar_smtp():
 @login_required
 def get_smtp():
     s = ler_smtp()
+    configurado = bool(s["resend_key"]) or bool(s["user"] and s["passw"])
     return jsonify({"host": s["host"], "port": s["port"], "user": s["user"],
-                    "from_addr": s["from"], "configurado": bool(s["user"] and s["passw"])})
+                    "from_addr": s["from"], "resend_key": "***" if s["resend_key"] else "",
+                    "configurado": configurado})
 
 def _gerar_html_email(proprietario, mes, rows, total, hoje):
     """Gera o corpo HTML do email do demonstrativo de repasse."""
@@ -1715,19 +1754,29 @@ def enviar_informe():
         return jsonify({"ok": False, "erro": "Email do destinatário não informado."})
 
     smtp = ler_smtp()
-    if not smtp["user"] or not smtp["passw"]:
-        return jsonify({"ok": False, "erro": "SMTP não configurado. Configure em Configurações."})
+    if not smtp["resend_key"] and (not smtp["user"] or not smtp["passw"]):
+        return jsonify({"ok": False, "erro": "Email não configurado. Configure em 'Configurar Email'."})
 
     hoje = __import__("datetime").date.today().strftime("%d/%m/%Y")
     html_body = _gerar_html_email(proprietario, mes, rows, total, hoje)
+    assunto = f"Demonstrativo de Repasse — {proprietario} — {mes}"
 
+    # Usa Resend se tiver chave
+    if smtp["resend_key"]:
+        remetente = smtp["from"] or "Funchal Imóveis <onboarding@resend.dev>"
+        try:
+            _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body)
+            return jsonify({"ok": True})
+        except Exception as ex:
+            return jsonify({"ok": False, "erro": str(ex)})
+
+    # Senão usa SMTP
     remetente = smtp["from"] or smtp["user"]
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Demonstrativo de Repasse — {proprietario} — {mes}"
+    msg["Subject"] = assunto
     msg["From"]    = remetente
     msg["To"]      = email_dest
     msg.attach(MIMEText(html_body, "html", "utf-8"))
-
     try:
         with _smtp_connect(smtp, timeout=15) as s:
             s.sendmail(remetente, [email_dest], msg.as_string())
