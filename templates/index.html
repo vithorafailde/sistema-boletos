@@ -150,12 +150,14 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
   </div>
   <div class="header-actions">
     <a href="/reajustes" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">📈 Reajustes</a>
+    {% if is_admin %}
     <span id="apiStatusBadge" class="api-status {% if tem_api_key %}api-ok{% else %}api-nok{% endif %}">
       {% if tem_api_key %}API configurada{% else %}Sem API{% endif %}
     </span>
     <button class="btn btn-outline btn-sm" onclick="abrirModal()" style="color:#fff;border-color:#fff8">Configurar API</button>
     <span id="smtpStatusBadge" class="api-status smtp-nok">📧 Email não config.</span>
     <button class="btn btn-outline btn-sm" onclick="abrirModalSmtp()" style="color:#fff;border-color:#fff8">Configurar Email</button>
+    {% endif %}
     <a href="/logout" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">Sair</a>
   </div>
 </div>
@@ -1680,13 +1682,14 @@ async function enviarInforme(propKey) {
   if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = textoOriginal; }
 }
 
-// ─── Verifica status SMTP ao carregar ────────────────────────────────────────
+// ─── Verifica status SMTP ao carregar (só admin) ─────────────────────────────
 (async function verificarSmtp() {
+  const b = document.getElementById('smtpStatusBadge');
+  if (!b) return;
   try {
     const r = await fetch('/get_smtp');
     const j = await r.json();
     if (j.configurado) {
-      const b = document.getElementById('smtpStatusBadge');
       b.className = 'api-status smtp-ok';
       b.textContent = '📧 E-mail configurado';
     }

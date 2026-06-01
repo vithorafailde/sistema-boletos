@@ -73,6 +73,17 @@ def no_cache(response):
 # ─── Credenciais de acesso ────────────────────────────────────────────────────
 LOGIN_USUARIO = os.environ.get("LOGIN_USUARIO", "vitho")
 LOGIN_SENHA   = os.environ.get("LOGIN_SENHA",   "vi28041305")
+LOGIN_USUARIO_2 = os.environ.get("LOGIN_USUARIO_2", "lourdes")
+LOGIN_SENHA_2   = os.environ.get("LOGIN_SENHA_2",   "lourdes123")
+
+USUARIOS = {
+    LOGIN_USUARIO:   "admin",
+    LOGIN_USUARIO_2: "user",
+}
+SENHAS = {
+    LOGIN_USUARIO:   LOGIN_SENHA,
+    LOGIN_USUARIO_2: LOGIN_SENHA_2,
+}
 
 def login_required(f):
     @wraps(f)
@@ -81,6 +92,19 @@ def login_required(f):
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("logado"):
+            return redirect(url_for("login"))
+        if session.get("role") != "admin":
+            return jsonify({"ok": False, "erro": "Acesso restrito ao administrador."}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+def is_admin():
+    return session.get("role") == "admin"
 
 
 # ─── Normalização ──────────────────────────────────────────────────────────────
@@ -1150,8 +1174,10 @@ def login():
     if request.method == "POST":
         usuario = request.form.get("usuario", "").strip()
         senha   = request.form.get("senha", "").strip()
-        if usuario == LOGIN_USUARIO and senha == LOGIN_SENHA:
+        if usuario in SENHAS and senha == SENHAS[usuario]:
             session["logado"] = True
+            session["role"]   = USUARIOS[usuario]
+            session["usuario"] = usuario
             return redirect(url_for("home"))
         erro = "Usuário ou senha incorretos."
     return render_template("login.html", erro=erro)
@@ -1170,10 +1196,10 @@ def home():
 @login_required
 def index():
     config = ler_config()
-    return render_template("index.html", tem_api_key=bool(config.get("api_key")))
+    return render_template("index.html", tem_api_key=bool(config.get("api_key")), is_admin=is_admin())
 
 @app.route("/config", methods=["POST"])
-@login_required
+@admin_required
 def config_save():
     api_key = (request.json or {}).get("api_key", "").strip()
     if not api_key:
@@ -1646,7 +1672,7 @@ def _smtp_connect(smtp, timeout=15):
     return s
 
 @app.route("/configurar_smtp", methods=["POST"])
-@login_required
+@admin_required
 def configurar_smtp():
     d = request.get_json() or {}
     cfg = ler_config()
