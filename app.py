@@ -1649,8 +1649,8 @@ def configurar_smtp():
         try:
             _enviar_via_resend(
                 smtp["resend_key"],
-                smtp["from"] or "onboarding@resend.dev",
-                smtp["user"],
+                "Funchal Imoveis <onboarding@resend.dev>",
+                smtp["user"] or "vithor.a.failde@gmail.com",
                 "Teste de conexão — Sistema de Boletos",
                 "<p>Conexão com Resend configurada com sucesso!</p>"
             )
@@ -1763,7 +1763,7 @@ def enviar_informe():
 
     # Usa Resend se tiver chave
     if smtp["resend_key"]:
-        remetente = smtp["from"] or "Funchal Imóveis <onboarding@resend.dev>"
+        remetente = "Funchal Imoveis <onboarding@resend.dev>"
         try:
             _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body)
             return jsonify({"ok": True})
