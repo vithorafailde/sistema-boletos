@@ -1601,14 +1601,17 @@ def ler_smtp():
         "resend_key": os.environ.get("RESEND_API_KEY", cfg.get("resend_api_key", "")),
     }
 
-def _enviar_via_resend(api_key, de, para, assunto, html_body):
+def _enviar_via_resend(api_key, de, para, assunto, html_body, reply_to=None):
     """Envia email usando a API HTTP do Resend (sem SMTP)."""
-    payload = _json.dumps({
+    data = {
         "from": de,
         "to": [para],
         "subject": assunto,
         "html": html_body
-    }).encode("utf-8")
+    }
+    if reply_to:
+        data["reply_to"] = [reply_to]
+    payload = _json.dumps(data).encode("utf-8")
     req = urllib.request.Request(
         "https://api.resend.com/emails",
         data=payload,
@@ -1764,8 +1767,9 @@ def enviar_informe():
     # Usa Resend se tiver chave
     if smtp["resend_key"]:
         remetente = "Funchal Imoveis <onboarding@resend.dev>"
+        reply_to  = smtp["user"] or None
         try:
-            _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body)
+            _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body, reply_to=reply_to)
             return jsonify({"ok": True})
         except Exception as ex:
             return jsonify({"ok": False, "erro": str(ex)})
