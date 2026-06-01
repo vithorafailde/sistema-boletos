@@ -1598,6 +1598,16 @@ def ler_smtp():
         "from":  os.environ.get("SMTP_FROM",  cfg.get("smtp_from", "")),
     }
 
+def _smtp_connect(smtp, timeout=15):
+    """Conecta ao servidor SMTP usando SSL (porta 465) ou STARTTLS (demais portas)."""
+    if smtp["port"] == 465:
+        s = smtplib.SMTP_SSL(smtp["host"], smtp["port"], timeout=timeout)
+    else:
+        s = smtplib.SMTP(smtp["host"], smtp["port"], timeout=timeout)
+        s.starttls()
+    s.login(smtp["user"], smtp["passw"])
+    return s
+
 @app.route("/configurar_smtp", methods=["POST"])
 @login_required
 def configurar_smtp():
@@ -1612,9 +1622,7 @@ def configurar_smtp():
     # Testa conexão
     try:
         smtp = ler_smtp()
-        with smtplib.SMTP(smtp["host"], smtp["port"], timeout=10) as s:
-            s.starttls()
-            s.login(smtp["user"], smtp["passw"])
+        _smtp_connect(smtp, timeout=10)
         return jsonify({"ok": True})
     except Exception as ex:
         return jsonify({"ok": False, "erro": str(ex)})
@@ -1721,9 +1729,7 @@ def enviar_informe():
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     try:
-        with smtplib.SMTP(smtp["host"], smtp["port"], timeout=15) as s:
-            s.starttls()
-            s.login(smtp["user"], smtp["passw"])
+        with _smtp_connect(smtp, timeout=15) as s:
             s.sendmail(remetente, [email_dest], msg.as_string())
         return jsonify({"ok": True})
     except Exception as ex:
