@@ -6,6 +6,7 @@ Sistema Flask que roda **tanto localmente (localhost:5000) quanto no Railway** (
 2. Cruza os dados via Claude AI (`claude-haiku-4-5-20251001`) e gera resumo de cobranças por locatário
 3. Tem uma página separada (`/reajustes`) que calcula reajuste de aluguel usando índices do BACEN
 4. Tem uma página separada (`/dimob`) que gera informes anuais de pagamento por locatário (DIMOB)
+5. Tem seção de **Informes Mensais ao Proprietário** (PDF + envio por email via Resend)
 
 ## Executar localmente
 ```
@@ -15,13 +16,33 @@ python app.py
 ```
 Ou clicar em **`iniciar.bat`** (abre janela de terminal) /  **`iniciar_silencioso.vbs`** (sem janela — inicia automaticamente com o Windows, aguarda 10 s para OneDrive carregar).
 
-Credenciais padrão locais: usuário `vitho` / senha `vi28041305` (substituíveis pelas env vars `LOGIN_USUARIO` / `LOGIN_SENHA`).
+Credenciais padrão locais:
+- Admin: usuário `vitho` / senha `vi28041305`
+- Usuário: usuário `lourdes` / senha `vi280407`
 
 ## Deploy Railway
 ```
-railway up --detach
+git add .
+git commit -m "descrição"
+git push
 ```
-Sempre usar `--detach`.
+Railway detecta o push no GitHub (`vithorafailde/sistema-boletos`) e faz deploy automático. **Não usar `railway up`** — o deploy é via GitHub.
+
+---
+
+## Perfis de usuário
+
+### Admin (`vitho`)
+Acesso total — vê e configura API Anthropic, email SMTP/Resend, e todas as funcionalidades.
+
+### Usuário (`lourdes`)
+Acesso total **exceto** configurações de API e Email (badges e botões ocultos no header via `{% if is_admin %}`). Rotas `/config` e `/configurar_smtp` protegidas pelo decorator `@admin_required` → retorna 403 se não-admin tentar acessar.
+
+**Variáveis de ambiente:**
+- `LOGIN_USUARIO` / `LOGIN_SENHA` → admin (padrão: vitho/vi28041305)
+- `LOGIN_USUARIO_2` / `LOGIN_SENHA_2` → usuário (padrão: lourdes/vi280407)
+
+A sessão guarda `session["role"]` = `"admin"` ou `"user"`. A função `is_admin()` verifica `session.get("role") == "admin"`. O template recebe `is_admin=is_admin()` via `render_template`.
 
 ---
 
@@ -40,9 +61,9 @@ Sempre usar `--detach`.
 | I | 8 | data_inicio |
 | J | 9 | data_fim |
 | K | 10 | índice (IPCA / IGPM / INPC) |
-
 | L | 11 | CPF do proprietário (pode ser float no Excel — usar `_cpf()` para limpar) |
 | M | 12 | CPF do locatário (mesmo tratamento) |
+| N | 13 | Email do proprietário (`email_proprietario`) — usado para envio dos informes |
 
 A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).  
 `ler_excel()` → sistema de boletos  
@@ -102,7 +123,80 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 
 ---
 
+## Informes Mensais ao Proprietário
+
+### Como funciona
+- Botão **"📄 Informes ao Proprietário"** na tela de resultados abre a seção de informes
+- Select dropdown filtra por proprietário (ordem alfabética)
+- Card mostra todas as unidades do proprietário com discriminação completa do repasse
+- Botão **"📄 Gerar PDF"** → abre janela com PDF profissional (Times New Roman, P&B, logo Funchal)
+- Botão **"📧 Enviar por E-mail"** → envia via Resend para o email da coluna N do Excel
+
+### Cálculo do repasse (`calcRepasseData(row)`)
+```
+repasse = aluguel
+        - taxaImob (% sobre aluguel, zero se paAtivo)
+        - dedPropTotal (itens cond. marcados como encargo do prop.)
+        - dedsManual (ded1..ded10, podem ser + ou -)
+        - paVal (primeiro aluguel, se ativo)
+        + multaBruta (multa por atraso — bruto)
+        + jurosBruto (juros de mora — bruto)
+        - taxaSobRec (% imob. sobre multa+juros, zero se paAtivo)
+```
+
+### Multa por atraso e juros de mora
+- Campos editáveis na coluna **Repasse ao Proprietário** de cada unidade
+- A taxa da imobiliária (% do contrato) é aplicada sobre multa+juros: `taxaSobRec = (multa + juros) * percImob / 100`
+- Valores brutos somam ao repasse; a taxa da imob. é deduzida separadamente
+- Aparecem discriminados no card de informe, no PDF e no email
+- **Integração DIMOB:** ao clicar "Salvar para próximo mês", multa+juros são gravados em `dimob_historico.json` por locatário/mês. Na DIMOB, o valor do mês correspondente já inclui multa+juros automaticamente.
+
+### Logo nos PDFs
+- A logo (`static/logo.png`) é convertida para **base64 via fetch** antes de abrir a janela do PDF
+- Isso garante o carregamento mesmo no Railway (evita problema de timing com `window.print()`)
+- Mesmo approach na DIMOB (`gerarInformeHTML()`)
+
+### Envio por email (Resend)
+- Serviço: **Resend** (resend.com) — API HTTP, não SMTP (Railway bloqueia SMTP)
+- Remetente: `Funchal Imoveis <noreply@funchalimoveis.com.br>` (domínio verificado via DNS)
+- Reply-To: email configurado em "Configurar Email" → campo Usuário
+- Chave API: guardada em `config.json` como `resend_api_key`
+- Rota `/enviar_informe` (POST): recebe `{proprietario, email_dest, mes, rows, total}`
+- Rota `/configurar_smtp` (POST, admin): salva config e testa conexão
+- Rota `/get_smtp` (GET): retorna config atual + flag `configurado`
+- **Railway bloqueia SMTP (465/587)** — usar sempre Resend via HTTPS
+
+### Variáveis SMTP/Resend em config.json
+```json
+{
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": 587,
+  "smtp_user": "vithor.a.failde@gmail.com",
+  "smtp_pass": "",
+  "smtp_from": "",
+  "resend_api_key": "re_..."
+}
+```
+
+---
+
+## Banner de cota condominial divergente
+
+- Se o valor da cota condominial no boleto do mês for diferente do histórico, exibe banner amarelo
+- Campos: `row.cond_alerta`, `row.cond_cota_atual`, `row.cond_cota_hist`
+- Banner tem botão fechar (X) e lista todas as unidades afetadas
+
+---
+
 ## Bugs já corrigidos — não regredir
+
+### 10. percImob indefinido em atualizarRodape
+**Problema:** A variável `percImob` era usada em `atualizarRodape()` para calcular taxa sobre multa/juros, mas não estava definida nesse escopo (estava definida apenas em `renderRepasse()`).  
+**Fix:** Adicionado `const percImobR = parseFloat(row.percentual_imob)||0` dentro do loop de `atualizarRodape()`.
+
+### 11. MESES_PT com 13 elementos
+**Problema:** A lista `MESES_PT` em `salvar_extras` tinha "março" E "marco", totalizando 13 elementos. Isso fazia todos os meses a partir de abril serem gravados com número errado (+1) no `dimob_historico.json`.  
+**Fix:** Substituída por dict `{"jan":1,"fev":2,...,"dez":12}` usando os 3 primeiros caracteres do mês.
 
 ### 5. IPCA divergindo do BACEN Cidadão
 **Problema:** `calcular_por_numero_indice` usava `Index(aniv_atual) / Index(aniv_ano_anterior) − 1` = 12 variações mensais, enquanto o BACEN Cidadão inclui o próprio mês de aniversário = 13 variações.  
@@ -112,38 +206,19 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 **Decisão:** `outros` foi movido de `REPASSE_ITENS` para `NAO_REPASSE`. Qualquer item classificado como "outros" no boleto de condomínio é absorvido pelo proprietário, não repassado ao locatário. **Não reverter.**
 
 ### 8. Demonstrativo com Recibo do Pagador
-**Problema:** Boletos que vêm com balancete demonstrativo do prédio inteiro + seção "Composição da Arrecadação" / "Discriminação das Verbas" com valores individuais da unidade eram ignorados pelo sistema. Três sub-problemas corrigidos:
-
-**8a. Classificação errada:** Claude classificava como `demonstrativo_geral` mesmo havendo seção individual.  
-**Fix:** Bloco `ATENCAO` adicionado ao `PROMPT_CONDO`: se o texto tiver dados do prédio inteiro E uma seção "Discriminação das Verbas" / "Recibo do Pagador" com valores individuais, classificar como `demonstrativo_com_recibo`. Nunca classificar como `demonstrativo_geral` só por ter demonstrativo geral junto.
-
 **8b. Match errado (proprietário vs locatário):** PDFs no formato `condominio altavilla - joao - denis apto 37` casavam com o João (proprietário) em vez do Denis (locatário).  
-**Fix:** `extrair_nome_arquivo()` reescrita — extrai o último segmento antes de "apto NNN" como nome principal (= locatário). O step `ac_palavras` usa `score_nome_arquivo` com s\*98 para aceitar nomes parciais do campo A/C. O step `nome_arquivo_prop` mantém s\*87 para não sobrepor o match de locatário.
+**Fix:** `extrair_nome_arquivo()` reescrita — extrai o último segmento antes de "apto NNN" como nome principal (= locatário).
 
-**8c–8e. REVERTIDO:** As tentativas de ler e lançar valores de boletos com demonstrativo (Denis/Altavilla e similares) foram completamente revertidas. O sistema volta a rejeitar qualquer PDF sem cv/vm no nome do arquivo (`sem_consumos`). Demonstrativos continuam sendo ignorados como antes. A única alteração mantida é a 8b (fix do match locatário/proprietário no nome do arquivo).
+**8c–8e. REVERTIDO:** As tentativas de ler e lançar valores de boletos com demonstrativo foram completamente revertidas. O sistema rejeita qualquer PDF sem cv/vm no nome do arquivo (`sem_consumos`). Não tentar de novo.
 
 ### 9. "Primeiro Aluguel" no repasse ao proprietário
-**Feature:** Checkbox "Primeiro Aluguel" na coluna de Repasse ao Proprietário de cada unidade. Quando marcado e preenchido com valor: a taxa de administração vai a zero e o valor informado é deduzido do repasse. Não é salvo no histórico (evento único). Também corrigido bug em `atualizarRodape()` que não somava ded5 e ded6.
+**Feature:** Checkbox "Primeiro Aluguel" — quando ativo, taxa de administração vai a zero e o valor informado é deduzido do repasse. Não salvo no histórico.
 
 ### 6. Filtros de endereço na página de boletos
-**Decisão:** Os botões "Com Cond." e "Sem Cond." foram **removidos** e substituídos por filtros de endereço: **Itaúna**, **Mandaqui**, **Outros endereços**. Não reintroduzir os filtros de condomínio.  
-A classificação usa `row.endereco.toLowerCase()` com `includes('itauna'/'itaúna'/'mandaqui')`. Todo endereço que não for nenhum dos dois vai para "Outros endereços".
+**Decisão:** Filtros **Itaúna**, **Mandaqui**, **Ester Margareta**, **Henrique Felipe**, **Outros endereços**. Não reintroduzir filtros "Com Cond." / "Sem Cond.".
 
-### 1. File overwrite após aplicar
-**Problema:** Após aplicar reajustes, o código chamava `calcular()` que re-enviava o arquivo original (ainda em `arquivoSelecionado`), sobrescrevendo a planilha atualizada.  
-**Fix:** Após aplicar, zerar `arquivoSelecionado = null` e **não** chamar `calcular()`. Atualizar estado local do `todosContratos` diretamente.
-
-### 2. painelDownload sumindo
-**Problema:** `painelDownload` estava dentro de `painelAplicar`. Quando `calcular()` ocultava `painelAplicar` (porque `aplicaveis == 0`), o botão de download sumia junto.  
-**Fix:** `painelDownload` fica **fora** de `painelAplicar` no HTML.
-
-### 3. IPCA não calculando no Railway
-**Problema:** Timeout de 15s era insuficiente no Railway, IPCA falhava silenciosamente.  
-**Fix:** Timeout de 30s + 3 tentativas com retry.
-
-### 4. Double-apply
-**Problema:** Após aplicar, recalcular mostrava o novo aluguel como base para outro reajuste.  
-**Fix:** Contratos aplicados são marcados como `status: 'OK'` localmente, sem nova chamada ao BACEN.
+### 1–4. Bugs de reajuste
+Ver versões anteriores do CLAUDE.md.
 
 ---
 
@@ -152,47 +227,39 @@ A classificação usa `row.endereco.toLowerCase()` com `includes('itauna'/'itaú
 Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar sem pedido explícito.**
 
 ```css
---bg:      #D6E3E8   /* fundo geral — cinza-teal com vida */
+--bg:      #D6E3E8
 --card:    #ffffff
 --border:  #B8CECE
---text:    #1A2C30   /* texto principal — escuro, boa legibilidade */
+--text:    #1A2C30
 --muted:   #4A6668
---accent:  #3B7A8E   /* teal-azul — botões, links, foco */
---green:   #4A6E9A   /* slate-índigo — sem verde intencional */
+--accent:  #3B7A8E
+--green:   #4A6E9A
 --red:     #B84545
 --yellow:  #8C6C1F
 --orange:  #B86030
---header:  #2A4A52   /* header das páginas */
+--header:  #2A4A52
 --purple:  #6A4F8A
 ```
 
 ### Coluna "Repasse ao Proprietário"
-- Cabeçalho (`<th>`): `background: #9B4343` (laranja-avermelhado saturado)
-- Box de cada linha: `background: #F2DADA; border-color: #D4A0A0` (tom mais fraco do mesmo vermelho)
-
-### Stats (página de boletos)
-- Todos os números usam a cor padrão `--text` — **sem cores individuais por stat**
-- Exceção: "PDFs sem match" usa `--red` quando há ocorrências (é um alerta)
-- A caixa "Comissão Imob." usa o mesmo estilo dos outros stats (sem borda/fundo especial)
-
-### Botões de filtro
-- Todos usam `btn-outline` sem `style` inline — **sem cores individuais por botão**
-- Ativo: fundo `--accent`
+- Cabeçalho (`<th>`): `background: #9B4343`
+- Box de cada linha: `background: #F2DADA; border-color: #D4A0A0`
 
 ---
 
 ## O que NÃO adicionar sem pedido explícito
 
-- ❌ Ler/processar boletos com demonstrativo (sem cv/vm no nome do arquivo) — foi tentado e revertido. Claude não consegue extrair valores individuais com confiança dessas páginas. Esses boletos são rejeitados com `rejeitado: "sem_consumos"`. Não tentar de novo.
-- ❌ Mover `outros` de volta para `REPASSE_ITENS` — é encargo do proprietário. Não reverter.
-- ❌ Filtros "Com Cond." / "Sem Cond." na página de boletos — foram substituídos pelos filtros de endereço (Itaúna / Mandaqui / Outros endereços). Não restaurar.
-- ❌ Mensagem "Planilha encontrada" na página `/reajustes` — foi removida intencionalmente. Não reintroduzir via Jinja2 (`tem_excel`), JavaScript, ou qualquer outro meio. A rota `reajustes_page()` passa `tem_excel=False` fixo e o template não deve ter bloco `{% if tem_excel %}`.
-- ❌ Botão "Exportar CSV" na página de reajustes (foi removido intencionalmente — confundia o usuário)
-- ❌ Verificação de "vigência mínima de 12 meses" (não foi pedida e quebra contratos válidos)
+- ❌ Ler/processar boletos com demonstrativo (sem cv/vm no nome do arquivo)
+- ❌ Mover `outros` de volta para `REPASSE_ITENS`
+- ❌ Filtros "Com Cond." / "Sem Cond." na página de boletos
+- ❌ Mensagem "Planilha encontrada" na página `/reajustes`
+- ❌ Botão "Exportar CSV" na página de reajustes
+- ❌ Verificação de "vigência mínima de 12 meses"
 - ❌ Fonte alternativa de dados (IPEA, FGV) para qualquer índice
 - ❌ Janela de 12 meses (decisão: 13 meses — BACEN Cidadão)
-- ❌ Coluna "VENCIDO X dias" ou qualquer conceito de atraso — só ESTE_MES / FUTURO / OK
+- ❌ Coluna "VENCIDO X dias" ou qualquer conceito de atraso
 - ❌ Alterar a coluna H (data de aniversário) ao aplicar reajuste
+- ❌ SMTP direto no Railway (portas 465/587 bloqueadas) — usar sempre Resend via HTTPS
 
 ---
 
@@ -201,43 +268,88 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 ```
 app.py                        — servidor Flask, toda a lógica backend
 templates/home.html           — landing page com cards: Boletos / Reajustes / DIMOB
-templates/index.html          — página de boletos
+templates/index.html          — página de boletos + informes mensais
 templates/reajustes.html      — página de reajuste de aluguel
 templates/dimob.html          — página DIMOB (informes anuais)
 templates/login.html          — login
+static/logo.png               — logo Funchal Imóveis (usada nos PDFs em base64)
 .railwayignore                — exclui uploads/ e data/config.json do deploy
 Procfile                      — gunicorn, 1 worker, timeout 300s
 iniciar.bat                   — inicia o servidor local (janela visível)
 iniciar_silencioso.vbs        — inicia o servidor local sem janela (auto-start Windows)
-gerar_relatorio.py            — script standalone (não Flask) para gerar relatório HTML de conferência
-test_dimob.py                 — testes standalone do módulo DIMOB (rodar fora do Flask)
-data/config.json              — armazena a API key localmente (criado pela UI em /config)
+data/config.json              — API key + config SMTP/Resend (criado pela UI)
 data/historico.json           — histórico de IPTU, seguros e extras por locatário
-data/dimob_historico.json     — histórico de reajustes para o DIMOB (criado automaticamente)
+data/dimob_historico.json     — histórico de reajustes + multa/juros para o DIMOB
 ```
 
 ## Variáveis de ambiente no Railway
 - `SECRET_KEY` — chave Flask
-- `LOGIN_USUARIO` / `LOGIN_SENHA` — credenciais de acesso
+- `LOGIN_USUARIO` / `LOGIN_SENHA` — credenciais admin
+- `LOGIN_USUARIO_2` / `LOGIN_SENHA_2` — credenciais usuário (Lourdes)
 - `ANTHROPIC_API_KEY` — chave da API Claude (sobrepõe data/config.json)
+- `SMTP_HOST/PORT/USER/PASS/FROM` — config SMTP (sobrepõe config.json)
+- `RESEND_API_KEY` — chave Resend (sobrepõe config.json)
 
-## API key — duas fontes
-- **Local**: salva em `data/config.json` via rota `/config` da UI
-- **Railway**: `ANTHROPIC_API_KEY` env var (tem prioridade sobre config.json)
-- `ler_config()` retorna a env var se existir; caso contrário usa config.json
-
-## UPLOAD_DIR
-- Fica em `uploads/` (relativo ao app.py)
-- A rota `/processar` apaga todos os arquivos de `uploads/` **exceto `.xlsx`** — preserva o `contratos.xlsx` para a página de reajustes
-- `contratos.xlsx` é o nome fixo da planilha dentro de `uploads/`
-- `_excel_path_contratos()` busca `contratos.xlsx` primeiro, depois qualquer `.xlsx`
+## Rotas Flask completas
+| Rota | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `/login` | GET/POST | público | Autenticação |
+| `/logout` | GET | logado | Encerra sessão |
+| `/` | GET | logado | Landing page |
+| `/boletos` | GET | logado | Página de boletos |
+| `/config` | POST | **admin** | Salva API key |
+| `/processar` | POST | logado | Processa planilha + PDFs |
+| `/salvar_extras` | POST | logado | Salva histórico + multa/juros no DIMOB |
+| `/baixar_historico` | GET | logado | Download historico.json |
+| `/restaurar_historico` | POST | logado | Restaura historico.json |
+| `/exportar` | POST | logado | Exporta Excel |
+| `/configurar_smtp` | POST | **admin** | Salva e testa config email |
+| `/get_smtp` | GET | logado | Retorna config email atual |
+| `/enviar_informe` | POST | logado | Envia informe por email (Resend) |
+| `/reajustes` | GET | logado | Página de reajuste |
+| `/api/calcular_reajustes` | POST | logado | Calcula reajustes via BACEN |
+| `/api/aplicar_reajustes` | POST | logado | Grava novos aluguéis na planilha |
+| `/api/baixar_contratos` | GET | logado | Download planilha atualizada |
+| `/dimob` | GET | logado | Página DIMOB |
+| `/api/dimob_calcular` | POST | logado | Calcula informes anuais |
+| `/api/dimob_salvar_historico` | POST | logado | Salva aluguéis anteriores |
+| `/api/dimob_exportar` | POST | logado | Exporta Excel DIMOB |
 
 ---
 
-## aviso12 na tabela de reajustes
-- `12/12m` em cinza → todos os 12 meses encontrados (dados completos)
-- `⚠ X/12m` em laranja → dados parciais (meses futuros sem dado no BACEN ainda)
-- nada → contrato OK (não calculado)
+## Módulo DIMOB — Regras que NÃO podem mudar
+
+### Lógica de divisão de meses (regra central)
+```
+mes_aplicacao = data_rej.month % 12 + 1   ← mês SEGUINTE ao aniversário
+```
+- Meses **antes** de `mes_aplicacao` → `aluguel_antigo`
+- Mês `mes_aplicacao` **em diante** → `aluguel_atual`
+- Contrato inativo → `None`
+
+### Multa/juros no DIMOB
+- Gravados em `dimob_historico.json` quando usuário clica "Salvar para próximo mês"
+- Estrutura: `hist[ano][chave_locatario]["multa_juros"][str(mes_num)] = {"multa": X, "juros": Y}`
+- `calcular_meses_dimob()` soma multa+juros ao valor base de cada mês automaticamente
+- Mês extraído do campo `mes` do payload (ex: "Junho/2026" → 6) via dict `{"jan":1,...,"dez":12}`
+
+### Estrutura do dimob_historico.json
+```json
+{
+  "2026": {
+    "LOCATARIONORM": {
+      "aluguel_antigo": 1800.00,
+      "mes_aplicacao": 2,
+      "multa_juros": {
+        "6": {"multa": 150.0, "juros": 15.0}
+      }
+    }
+  }
+}
+```
+
+### PDF por unidade
+Gerado no cliente (JavaScript): `window.open()` + `window.print()`. Logo carregada via fetch→base64.
 
 ---
 
@@ -245,94 +357,12 @@ data/dimob_historico.json     — histórico de reajustes para o DIMOB (criado a
 
 ```python
 REPASSE_ITENS   = ["agua", "gas", "energia", "tx_leitura", "vaga_moto", "tag"]
-NAO_REPASSE     = ["fundo_reserva", "correio", "melhorias", "outros"]   # encargos do proprietário
-EDIFICIOS_EXCLUIDOS = ["lamelas", "paisagem", "victoria"]     # só aluguel, sem repasse cond
-EDIFICIOS_CONSUMO_KEYWORDS = ["casa verde", "mandaqui", ...]  # têm água/gás medidos por unidade
+NAO_REPASSE     = ["fundo_reserva", "correio", "melhorias", "outros"]
+EDIFICIOS_EXCLUIDOS = ["lamelas", "paisagem", "victoria"]
 ```
 
-- `EDIFICIOS_EXCLUIDOS`: imóveis onde o locatário paga **só aluguel** — nenhum custo de condomínio é repassado
-- `REPASSE_ITENS` / `NAO_REPASSE`: controlam quais itens do boleto de condomínio aparecem na cobrança do locatário
-
-## vigencia_ok
-- Calculado em `ler_excel_reajustes()`: `(aniv - data_inicio).days >= 365`
-- Se `data_inicio` ausente, assume vigência OK
-- O campo existe no dict do contrato, mas a UI pode exibir aviso — **não bloqueia** o reajuste automaticamente, apenas informa
-
-## Rotas Flask completas
-| Rota | Método | Descrição |
-|------|--------|-----------|
-| `/login` | GET/POST | Autenticação |
-| `/logout` | GET | Encerra sessão |
-| `/` | GET | Landing page (cards: Boletos / Reajustes / DIMOB) |
-| `/boletos` | GET | Página de boletos (era `/`) |
-| `/config` | POST | Salva API key |
-| `/processar` | POST | Processa planilha + PDFs via Claude |
-| `/salvar_extras` | POST | Salva IPTU/seguros/extras no histórico |
-| `/baixar_historico` | GET | Download de historico.json |
-| `/restaurar_historico` | POST | Restaura historico.json |
-| `/exportar` | POST | Exporta resultado como .xlsx |
-| `/reajustes` | GET | Página de reajuste de aluguel |
-| `/api/calcular_reajustes` | POST | Calcula reajustes via BACEN/IPEA |
-| `/api/aplicar_reajustes` | POST | Grava novos aluguéis na planilha |
-| `/api/debug_igpm` | GET | Debug: busca bruta do IGPM no IPEA |
-| `/api/baixar_contratos` | GET | Download da planilha atualizada |
-| `/dimob` | GET | Página DIMOB |
-| `/api/dimob_calcular` | POST | Calcula informes anuais por unidade |
-| `/api/dimob_salvar_historico` | POST | Salva aluguéis anteriores manualmente |
-| `/api/dimob_exportar` | POST | Exporta Excel com um sheet por proprietário |
-
----
-
-## Módulo DIMOB — Regras que NÃO podem mudar
-
-### O que é
-Declaração de Informações sobre Atividades Imobiliárias. Para cada contrato, exibe o valor pago mês a mês durante o ano, dividindo corretamente o período antes e depois do reajuste.
-
-### Lógica de divisão de meses (regra central)
-```
-mes_aplicacao = data_rej.month % 12 + 1   ← mês SEGUINTE ao aniversário
-```
-- Meses **antes** de `mes_aplicacao` → `aluguel_antigo` (valor antes do reajuste)
-- Mês `mes_aplicacao` **em diante** → `aluguel_atual` (valor atual na coluna F)
-- Contrato inativo em determinado mês (antes de `data_inicio` ou após `data_fim`) → `None` (não contabilizado)
-- **NÃO alterar esta lógica** — é a mesma fórmula usada em `/reajustes`
-
-Exemplo: aniversário setembro (col H = `01/09`), aluguel antigo R$ 1.800, atual R$ 2.000:
-
-| Jan–Set | Out–Dez |
-|---------|---------|
-| 1.800   | 2.000   |
-
-### Fonte do aluguel_antigo — duas origens
-1. **Automática:** quando reajuste é aplicado em `/reajustes`, `aplicar_reajustes_excel()` salva o valor anterior em `data/dimob_historico.json` ANTES de sobrescrever a coluna F.
-2. **Manual:** usuário digita na coluna "Alug. Anterior" na tabela DIMOB para contratos sem histórico. O sistema usa o `mes_aplicacao` da planilha (col H) para saber onde dividir.
-
-**Requisito:** para que a divisão manual funcione, o contrato PRECISA ter a data de reajuste preenchida na coluna H. Sem ela, `mes_aplicacao = None` e o sistema exibe todos os meses com o aluguel atual (sem divisão).
-
-### Estrutura do dimob_historico.json
-```json
-{
-  "2025": {
-    "nome_locatario_normalizado": {
-      "aluguel_antigo": 1800.00,
-      "aluguel_novo":   2000.00,
-      "locatario":      "NOME ORIGINAL",
-      "mes_aplicacao":  10,
-      "num_linha":      5
-    }
-  }
-}
-```
-- Chave: `norm(locatario)` — minúsculas, sem acentos, sem espaços duplos
-- **Não está no `.railwayignore`** — é enviado ao Railway no deploy (diferente de `historico.json` que está excluído)
-
-### PDF por unidade
-Gerado inteiramente no cliente (JavaScript): `window.open()` + `window.print()`. Sem dependências Python novas (sem reportlab/weasyprint). A função `gerarInformeHTML()` usa `escHtml()` para escapar todos os campos de dados do usuário.
-
-### Excel exportado
-- Um sheet por proprietário (nome truncado a 31 chars, sufixo `_1`/`_2` se duplicado)
-- Formato "INFORME DE PAGAMENTOS" com cabeçalho, grid de meses, total anual e comissão
-- `PatternFill("solid", start_color="FFFFFF")` — necessário para compatibilidade com todas as versões do openpyxl
-
-### CPF como float no Excel
-openpyxl lê CPF numérico como `12345678900.0`. Usar sempre a função auxiliar `_cpf(v)` definida dentro de `ler_excel_dimob()` para converter corretamente (remove `.0` final se o restante for só dígitos).
+## localStorage (persistência no browser)
+- `boletos_dados` — JSON dos locatários processados
+- `boletos_mes` — mês de referência
+- `boletos_salvo_em` — "AAAA-MM" do momento do processamento
+- Restore automático ao carregar a página; aceita dados do mês atual ou anterior (diff ≤ 1 mês)
