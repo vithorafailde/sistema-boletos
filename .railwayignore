@@ -1,0 +1,7 @@
+uploads/
+data/config.json
+data/historico.json
+__pycache__/
+*.pyc
+*.tmp
+.env

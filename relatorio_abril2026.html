@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Conferência de Boletos - Abril 2026</title>
+<style>
+  :root {
+    --bg: #f4f6f9; --card: #fff; --border: #e2e8f0;
+    --text: #1e293b; --muted: #64748b; --accent: #3b82f6;
+    --green: #16a34a; --yellow: #ca8a04; --red: #dc2626; --orange: #ea580c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+  .header { background: #1e3a5f; color: #fff; padding: 18px 28px; }
+  .header h1 { font-size: 20px; }
+  .header p { color: #94a3b8; margin-top: 4px; font-size: 12px; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  .stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; min-width: 140px; }
+  .stat .num { font-size: 22px; font-weight: 700; }
+  .stat .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-btn { padding: 5px 14px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; background: var(--card); font-size: 12px; transition: all .15s; }
+  .filter-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .table-wrap { overflow-x: auto; }
+  table.table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.07); }
+  th { background: #1e3a5f; color: #fff; padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; position: sticky; top: 0; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+  .tenant-name { font-weight: 600; font-size: 13px; }
+  .tenant-sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .val-col { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .source-tag { font-size: 10px; color: var(--muted); font-weight: normal; }
+  .cond-name { font-size: 11px; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+  .item-tag { display: inline-block; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; padding: 1px 6px; font-size: 11px; margin: 1px 2px 1px 0; color: #1d4ed8; }
+  .cond-total { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 4px; }
+  .no-data { color: #94a3b8; font-size: 11px; font-style: italic; }
+  .nota { font-size: 10px; color: var(--orange); margin-top: 3px; font-style: italic; }
+  .ref-items { font-size: 10px; color: var(--muted); margin-top: 4px; max-width: 280px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-green { background: #dcfce7; color: var(--green); }
+  .badge-yellow { background: #fef9c3; color: var(--yellow); }
+  .badge-red { background: #fee2e2; color: var(--red); }
+  .badge-orange { background: #ffedd5; color: var(--orange); }
+  .badge-gray { background: #f1f5f9; color: var(--muted); }
+  .diff-ok td { }
+  .diff-small { color: var(--yellow); font-weight: 600; }
+  .diff-large { color: var(--red); font-weight: 600; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; font-size: 11px; color: var(--muted); }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  h2 { font-size: 16px; margin: 28px 0 12px; }
+  .info-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; font-size: 12px; }
+  .info-box h3 { font-size: 13px; margin-bottom: 6px; color: #92400e; }
+  .info-box ul { padding-left: 16px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📋 Conferência de Boletos — Abril 2026</h1>
+  <p>Sistema gerado automaticamente · Dados: Excel de contratos + PDFs de condomínio + Boletos de referência</p>
+</div>
+<div class="container">
+
+  <div class="info-box">
+    <h3>⚙️ Como os valores são compostos</h3>
+    <ul>
+      <li><strong>Aluguel</strong> → planilha <em>contratos_locacao_editado.xlsx</em></li>
+      <li><strong>Cota Cond. / Água / Gás / Energia / Vagas</strong> → PDFs da pasta <em>CONDOMINIOS</em> (excluindo Fundo de Reserva e Correio, que são de responsabilidade do proprietário)</li>
+      <li><strong>IPTU, Seguros, Abonos, Controle de Acesso, Retenção IR</strong> → <em>não extraíveis automaticamente</em> dos PDFs disponíveis (aparecem como diferença entre "Calculável" e "Referência")</li>
+      <li><strong>Total de referência</strong> → boletos da pasta <em>BOLETOS Conferir</em></li>
+    </ul>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="num">59</div><div class="lbl">Locatários</div></div>
+    <div class="stat"><div class="num" style="color:var(--green)">3</div><div class="lbl">✓ Bateu (diff &lt; R$0,10)</div></div>
+    <div class="stat"><div class="num" style="color:var(--yellow)">0</div><div class="lbl">≈ Dif. pequena (&lt;R$10)</div></div>
+    <div class="stat"><div class="num" style="color:var(--red)">16</div><div class="lbl">✗ Diferença relevante</div></div>
+    <div class="stat"><div class="num" style="color:var(--muted)">40</div><div class="lbl">Sem boleto de ref.</div></div>
+    <div class="stat"><div class="num">R$ 167.736,36</div><div class="lbl">Total aluguéis (Excel)</div></div>
+    <div class="stat"><div class="num">R$ 55.664,17</div><div class="lbl">Total cobrado (refs)</div></div>
+  </div>
+
+  <div class="filters"><button class="filter-btn active" onclick="filtrar('todos', this)">Todos</button><button class="filter-btn" onclick="filtrar('sem_cond', this)">Sem Cond.</button><button class="filter-btn" onclick="filtrar('sem_ref', this)">Sem Ref.</button><button class="filter-btn" onclick="filtrar('diff', this)">Com Diferença</button><button class="filter-btn" onclick="filtrar('Clube Jardim (VM)', this)">Clube Jardim (VM)</button><button class="filter-btn" onclick="filtrar('Cond. Way Vila Guilherme', this)">Cond. Way Vila Guilherme</button><button class="filter-btn" onclick="filtrar('Ed. Crist Lamelas', this)">Ed. Crist Lamelas</button><button class="filter-btn" onclick="filtrar('Ed. Parque Jardim (VG)', this)">Ed. Parque Jardim (VG)</button><button class="filter-btn" onclick="filtrar('Ed. Victoria', this)">Ed. Victoria</button><button class="filter-btn" onclick="filtrar('Vila Jardim Casa Verde (CV)', this)">Vila Jardim Casa Verde (CV)</button></div>
+
+  <div class="table-wrap">
+  <table class="table" id="mainTable">
+    <tr>
+      <th style="min-width:220px">Locatário</th>
+      <th style="min-width:110px">Aluguel</th>
+      <th style="min-width:320px">Condomínio (itens repassados)</th>
+      <th style="min-width:110px">Calculável</th>
+      <th style="min-width:200px">Referência</th>
+      <th style="min-width:120px">Status</th>
+    </tr>
+    
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">ACYR FERREIRA COSTA JUNIOR</div>
+            <div class="tenant-sub">Manoel do Nascimento Failde · Residencial</div>
+            <div class="tenant-sub">Travessa Ester Margareta Bergsten, 14</div>
+          </td>
+          <td class="val-col">R$ 1.854,07<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.854,07<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 2.201,67
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL REAJUSTADO 1854,07 -COND. ABRIL26 -100,00 | CONSUMO ÁGUA 73,12 - IPTU 03 DE 10 - 114,48 | CONTROLE ACESSO 60,00</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-orange">Diff: R$ 347,60</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">ADRIANA DOS SANTOS REIS COCCETRONE</div>
+            <div class="tenant-sub">Raphael Felipe de Levi Moraes · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui</div>
+          </td>
+          <td class="val-col">R$ 2.200,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.200,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Aguia Tubos Comercio Importação e Exportação</div>
+            <div class="tenant-sub">MÚLTIPLOS (3) · Comercial</div>
+            <div class="tenant-sub">Avenida Justino de Maio, 250</div>
+          </td>
+          <td class="val-col">R$ 14.648,91<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 14.648,91<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Ed. Parque Jardim (VG)">
+          <td>
+            <div class="tenant-name">Alanderson Machado Cesar</div>
+            <div class="tenant-sub">Adriana Santana de Aguiar · Residencial</div>
+            <div class="tenant-sub">Rua Henrique Felipe da Costa, 681</div>
+          </td>
+          <td class="val-col">R$ 2.181,26<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Ed. Parque Jardim (VG) 2-AU44</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 498,79</span><span class='item-tag'>Energia Comum: R$ 34,37</span><span class='item-tag'>Consumo Água: R$ 66,69</span><span class='item-tag'>Consumo Gás: R$ 88,58</span>
+            <div class="cond-total">Total repasse: R$ 688,43</div>
+            
+          </td>
+          <td class="val-col">R$ 2.869,69<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 2.869,69
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL REAJUSTADO 2.181,26 - COND. 498,79 | CONS AGUA 66,69 -CONS. GAS 88,58 | ENERGIA COMUM - 34,37</div>
+          </td>
+          <td class="diff-ok"><span class="badge badge-green">✓ OK</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Alberto Ccallo Ramos</div>
+            <div class="tenant-sub">MÚLTIPLOS (3) · Residencial</div>
+            <div class="tenant-sub">Travessa Ester Margareta Bergsten, 14</div>
+          </td>
+          <td class="val-col">R$ 1.209,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.209,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 1.454,36
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 1209.00 -COND. ABRIL26 -100,00 | CONSUMO ÁGUA 73,12 - IPTU 03 DE 10 - 57,24 | PORTÃO ACESSO - 15,00</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-orange">Diff: R$ 245,36</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Ana Paula de Santana Silverio</div>
+            <div class="tenant-sub">João Azevedo da Silva · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui</div>
+          </td>
+          <td class="val-col">R$ 2.298,16<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.298,16<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Angelica Aparecida do Amaral</div>
+            <div class="tenant-sub">Vera Lúcia Rodrigues · Residencial</div>
+            <div class="tenant-sub">Rua José Bueno, 90</div>
+          </td>
+          <td class="val-col">R$ 1.200,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.200,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Arlene Maria Passos</div>
+            <div class="tenant-sub">Maria Dias Santiago · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.357,97<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 03-53C</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 626,28</span><span class='item-tag'>Energia Comum: R$ 40,77</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Gás: R$ 59,46</span>
+            <div class="cond-total">Total repasse: R$ 734,26</div>
+            
+          </td>
+          <td class="val-col">R$ 3.092,23<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">CARINA SATIKO SASAKE MATSUOKA</div>
+            <div class="tenant-sub">Walter · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui, 189</div>
+          </td>
+          <td class="val-col">R$ 2.500,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.500,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Carlos Victor Andrade da Silva</div>
+            <div class="tenant-sub">Luciana Lúcio da Silva · Comercial</div>
+            <div class="tenant-sub">Avenida Sanatório, 1265</div>
+          </td>
+          <td class="val-col">R$ 948,16<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 948,16<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Cláudio Bernardino</div>
+            <div class="tenant-sub">MÚLTIPLOS (2) · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.610,13<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 01-63A</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 626,28</span><span class='item-tag'>Energia Comum: R$ 40,77</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Água: R$ 184,71</span>
+            <div class="cond-total">Total repasse: R$ 859,51</div>
+            
+          </td>
+          <td class="val-col">R$ 3.469,64<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 3.519,81
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL2610,13--CONDOMINIO.626,28 -TX LEITURA 7,75 | CONS AGUA 184,77 -CONS. GAS - 0,00 | ENERGIA COMUM - 40,77- IPTU 03 DE 07 - 50,11</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-red">✗ Diff: R$ 50,17</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Comércio de Salgados Funchal LTDA</div>
+            <div class="tenant-sub">Irene Lúcio da Silva · Comercial</div>
+            <div class="tenant-sub">Avenida Gustavo Adolfo, 1100</div>
+          </td>
+          <td class="val-col">R$ 5.675,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 5.675,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Vila Jardim Casa Verde (CV)">
+          <td>
+            <div class="tenant-name">Danilo Araújo de Souza</div>
+            <div class="tenant-sub">Elvira Mitsuko Shimizu Frugis · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui, 189</div>
+          </td>
+          <td class="val-col">R$ 2.000,00<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Vila Jardim Casa Verde (CV) A-115</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 530,18</span><span class='item-tag'>Energia Comum: R$ 54,57</span><span class='item-tag'>Consumo Água: R$ 108,52</span><span class='item-tag'>Consumo Gás: R$ 76,26</span>
+            <div class="cond-total">Total repasse: R$ 769,53</div>
+            
+          </td>
+          <td class="val-col">R$ 2.769,53<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 2.943,10
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 2.000,00 - COND. 530,18 | CONS AGUA 108,52 -CONS. GAS 76,26 | ENERGIA COMUM - 54,57 - IPTU 03 DE 10 - 173,57</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-red">✗ Diff: R$ 173,57</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Denis William Cosmo Pinto da Silva</div>
+            <div class="tenant-sub">João Azevedo da Silva · Residencial</div>
+            <div class="tenant-sub">Avenida Clavásio Alves da Silva, 227</div>
+          </td>
+          <td class="val-col">R$ 2.500,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.500,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Ed. Victoria">
+          <td>
+            <div class="tenant-name">Dongming Chen</div>
+            <div class="tenant-sub">Mauricio Sampaio · Comercial</div>
+            <div class="tenant-sub">Avenida Prestes Maia, 321</div>
+          </td>
+          <td class="val-col">R$ 1.261,57<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Ed. Victoria Loja 13</div>
+            
+            
+            <div class="nota">Demonstrativo global do condomínio. Valor total do boleto da loja: R$ 329,39.</div>
+          </td>
+          <td class="val-col">R$ 1.261,57<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Douglas Dubinskas Takenaka</div>
+            <div class="tenant-sub">Vera Lúcia Gago Pera · Residencial</div>
+            <div class="tenant-sub">Avenida Conceição, 933</div>
+          </td>
+          <td class="val-col">R$ 1.960,55<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.960,55<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Edgar Wilfor Terrazas Teran</div>
+            <div class="tenant-sub">Mauricio Sampaio · Residencial</div>
+            <div class="tenant-sub">Avenida Conceição, 1710</div>
+          </td>
+          <td class="val-col">R$ 1.500,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.500,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Edgard Garcia</div>
+            <div class="tenant-sub">Luciaria Maria de Oliveria · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.494,22<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 01-163A</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 626,28</span><span class='item-tag'>Energia Comum: R$ 40,77</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Água: R$ 166,55</span><span class='item-tag'>Consumo Gás: R$ 181,35</span>
+            <div class="cond-total">Total repasse: R$ 1.022,70</div>
+            
+          </td>
+          <td class="val-col">R$ 3.516,92<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 3.574,90
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 2.494,22 -COND..626,28 -TX LEITURA 7,75 | CONS AGUA 166,55 -CONS. GAS - 181,35 | ENERGIA COMUM - 40,77 - IPTU 03 DE 05 - 57,98</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-red">✗ Diff: R$ 57,98</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Ericson Djalma da Silva Costa</div>
+            <div class="tenant-sub">Maria Tânia Lisboa Romeiro · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 3.300,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 3.300,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">FENSTER INDUSTRIA DE ESQUADRIAS LTDA</div>
+            <div class="tenant-sub">MÚLTIPLOS (3) · Comercial</div>
+            <div class="tenant-sub">RUA TARAPITINGA,114</div>
+          </td>
+          <td class="val-col">R$ 25.758,31<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 25.758,31<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Vila Jardim Casa Verde (CV)">
+          <td>
+            <div class="tenant-name">Fernando Barbara Ramos</div>
+            <div class="tenant-sub">Espólio de Silvia Regina Teixeira · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui, 189</div>
+          </td>
+          <td class="val-col">R$ 2.351,50<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Vila Jardim Casa Verde (CV) A-056</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 700,98</span><span class='item-tag'>Energia Comum: R$ 72,15</span><span class='item-tag'>Consumo Água: R$ 143,47</span><span class='item-tag'>Consumo Gás: R$ 100,82</span>
+            <div class="cond-total">Total repasse: R$ 1.017,42</div>
+            
+          </td>
+          <td class="val-col">R$ 3.368,92<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 3.368,92
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 2351,50 - COND. 700,98 | AGUA 143,47 - GAS 100,82 | ENERGIA COMUM - 72,15</div>
+          </td>
+          <td class="diff-ok"><span class="badge badge-green">✓ OK</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Fernando Freitas de Jesus</div>
+            <div class="tenant-sub">Mauricio Sampaio · Comercial</div>
+            <div class="tenant-sub">Rua Jairo Gois, 33</div>
+          </td>
+          <td class="val-col">R$ 1.100,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.100,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Fernando Hideyoshi Neves</div>
+            <div class="tenant-sub">Sergio Luiz Miqueleti · Residencial</div>
+            <div class="tenant-sub">Rua Henrique Felipe da Costa</div>
+          </td>
+          <td class="val-col">R$ 2.000,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.000,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Vila Jardim Casa Verde (CV)">
+          <td>
+            <div class="tenant-name">Henrique Moreira</div>
+            <div class="tenant-sub">Juliana Stefani de Carvalho · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui, 189</div>
+          </td>
+          <td class="val-col">R$ 2.418,96<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Vila Jardim Casa Verde (CV) A-041</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 530,18</span><span class='item-tag'>Energia Comum: R$ 54,57</span><span class='item-tag'>Consumo Água: R$ 108,52</span><span class='item-tag'>Consumo Gás: R$ 76,26</span>
+            <div class="cond-total">Total repasse: R$ 769,53</div>
+            
+          </td>
+          <td class="val-col">R$ 3.188,49<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 3.188,49
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 2.418,96 - COND. 530,18 | CONS AGUA 108,52 -CONS. GAS 76,26 | ENERGIA COMUM - 54,57</div>
+          </td>
+          <td class="diff-ok"><span class="badge badge-green">✓ OK</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Isidro Wilfred Daza Paredes</div>
+            <div class="tenant-sub">Arnaldo Pallante · Residencial</div>
+            <div class="tenant-sub">Rua Tamboril, 34</div>
+          </td>
+          <td class="val-col">R$ 3.000,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 3.000,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">JEAN PIERRE BEJARANO PINTO</div>
+            <div class="tenant-sub">José dos Anjos Preto Alves · Residencial</div>
+            <div class="tenant-sub">Avenida Boschetti, 1094</div>
+          </td>
+          <td class="val-col">R$ 4.152,50<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 4.152,50<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 4.760,59
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL REAJUSTADO 4.152,50 - SEGURO FIANCA 359,15 | SEGURO INCENDI0 06 DE 06 - 92,24 | IPTU 03 DE 10 - 156,70</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-orange">Diff: R$ 608,09</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">JULBER YAURI TUNQUI</div>
+            <div class="tenant-sub">MÚLTIPLOS (3) · Residencial</div>
+            <div class="tenant-sub">Travessa Ester Margareta Bergsten, 15</div>
+          </td>
+          <td class="val-col">R$ 1.500,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.500,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 1.749,94
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 1500,00 | CONSUMO ÁGUA 73,12 - IPTU 03 DE 10 - 176,82</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-orange">Diff: R$ 249,94</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Jacicarla Souza da Silva</div>
+            <div class="tenant-sub">Mário André Caveiro · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.562,97<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 02-63B</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 626,28</span><span class='item-tag'>Energia Comum: R$ 40,77</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Água: R$ 101,20</span><span class='item-tag'>Consumo Gás: R$ 122,50</span>
+            <div class="cond-total">Total repasse: R$ 898,50</div>
+            
+          </td>
+          <td class="val-col">R$ 3.461,47<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 3.511,58
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL REAJ 2.562,97-COND.626,28 -TX LEITURA 7,75 | CONS AGUA 101,20 -CONS. GAS - 122,50 | ENERGIA COMUM - 40,77- IPTU 03 DE 07 - 50,11</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-red">✗ Diff: R$ 50,11</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Cond. Way Vila Guilherme">
+          <td>
+            <div class="tenant-name">Jefferson Soares de Lima</div>
+            <div class="tenant-sub">Vitor Hugo Venancio da Silva · Residencial</div>
+            <div class="tenant-sub">Rua João Ventura Batista, 622</div>
+          </td>
+          <td class="val-col">R$ 2.184,08<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Cond. Way Vila Guilherme 1-000034</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 633,61</span><span class='item-tag'>Consumo Água: R$ 115,13</span><span class='item-tag'>Consumo Gás: R$ 177,21</span>
+            <div class="cond-total">Total repasse: R$ 925,95</div>
+            
+          </td>
+          <td class="val-col">R$ 3.110,03<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">João Paulo Moura de Souza</div>
+            <div class="tenant-sub">MÚLTIPLOS (3) · Residencial</div>
+            <div class="tenant-sub">Travessa Ester Margareta Bergsten, 14</div>
+          </td>
+          <td class="val-col">R$ 1.085,86<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.085,86<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Kelly Francis da Silva Costa</div>
+            <div class="tenant-sub">MÚLTIPLOS (2) · Comercial</div>
+            <div class="tenant-sub">Rua Cruz de Malta, 408</div>
+          </td>
+          <td class="val-col">R$ 3.000,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 3.000,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Liset Micaela Munoz Ramos</div>
+            <div class="tenant-sub">MÚLTIPLOS (3) · Residencial</div>
+            <div class="tenant-sub">Travessa Ester Margareta Bergsten, 32</div>
+          </td>
+          <td class="val-col">R$ 1.085,86<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.085,86<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 1.346,22
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 1085,86- -COND. ABRIL26 -100,00 | CONSUMO ÁGUA 73,12 - IPTU 03 DE 10 - 57,24 | CONTROLE ACESSO 30,00</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-orange">Diff: R$ 260,36</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Livia Rodrigues Alexandrino</div>
+            <div class="tenant-sub">HP Administradora de Imóveis Próprios · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui, 189</div>
+          </td>
+          <td class="val-col">R$ 2.600,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.600,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Lucemir de Oliveira Lima</div>
+            <div class="tenant-sub">Vera Lúcia Rodrigues · Residencial</div>
+            <div class="tenant-sub">Rua José Bueno, 90</div>
+          </td>
+          <td class="val-col">R$ 1.200,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.200,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Lurdes Selima Dutra</div>
+            <div class="tenant-sub">Marceandro da Costa Cruz · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.221,58<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 03-07C</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 626,28</span><span class='item-tag'>Energia Comum: R$ 40,77</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Água: R$ 116,31</span><span class='item-tag'>Consumo Gás: R$ 164,26</span>
+            <div class="cond-total">Total repasse: R$ 955,37</div>
+            
+          </td>
+          <td class="val-col">R$ 3.176,95<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 3.227,06
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL2221,58--CONDOMINIO.626,28 -TX LEITURA 7,75 | CONS AGUA 116,31 -CONS. GAS - 164,26 | ENERGIA COMUM - 40,77- IPTU 03 DE 07 - 50,11</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-red">✗ Diff: R$ 50,11</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Maithe Leal do Nascimento</div>
+            <div class="tenant-sub">Maria Del Carmen Gonzalez Pérez · Residencial</div>
+            <div class="tenant-sub">Avenida Júlio Buono, 1190</div>
+          </td>
+          <td class="val-col">R$ 1.500,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.500,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Marcelo Ferreira Santos Martins</div>
+            <div class="tenant-sub">Maria Del Carmen Gonzalez Pérez · Residencial</div>
+            <div class="tenant-sub">Avenida Júlio Buono, 1196</div>
+          </td>
+          <td class="val-col">R$ 1.245,75<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.245,75<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Marcelo Marcos Lopes</div>
+            <div class="tenant-sub">Silvia Regina Louro · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.457,51<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 02-66B</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 626,28</span><span class='item-tag'>Energia Comum: R$ 40,77</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Água: R$ 192,59</span><span class='item-tag'>Consumo Gás: R$ 237,41</span>
+            <div class="cond-total">Total repasse: R$ 1.104,80</div>
+            
+          </td>
+          <td class="val-col">R$ 3.562,31<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Maria José Oliveira</div>
+            <div class="tenant-sub">Claudemir Izildo Frutuoso · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.320,71<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 01-92A</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 626,28</span><span class='item-tag'>Energia Comum: R$ 40,77</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Água: R$ 69,46</span><span class='item-tag'>Consumo Gás: R$ 1,05</span>
+            <div class="cond-total">Total repasse: R$ 745,31</div>
+            
+          </td>
+          <td class="val-col">R$ 3.066,02<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 3.116,13
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL2320,71--CONDOMINIO.626,28 -TX LEITURA 7,75 | CONS AGUA 69,46 -CONS. GAS - 1,05 | ENERGIA COMUM - 40,77- IPTU 03 DE 07 - 50,11</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-red">✗ Diff: R$ 50,11</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Matheus Theodoro dos santos</div>
+            <div class="tenant-sub">Leandro Caetano Mariana · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui, 189</div>
+          </td>
+          <td class="val-col">R$ 2.200,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.200,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Michele Almeida de Paula</div>
+            <div class="tenant-sub">Benedicta Isolina Lorenzo Gonzales · Residencial</div>
+            <div class="tenant-sub">Rua Doutor Amaral Carvalho, 87</div>
+          </td>
+          <td class="val-col">R$ 2.245,75<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.245,75<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Vila Jardim Casa Verde (CV)">
+          <td>
+            <div class="tenant-name">Milena Salvador Bonafé</div>
+            <div class="tenant-sub">Carolina Manfrin Silverio Dezoti · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui, 189</div>
+          </td>
+          <td class="val-col">R$ 2.237,67<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Vila Jardim Casa Verde (CV) B-044</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 711,25</span><span class='item-tag'>Energia Comum: R$ 73,21</span><span class='item-tag'>Consumo Água: R$ 145,57</span><span class='item-tag'>Consumo Gás: R$ 102,30</span><span class='item-tag'>Vaga Moto: R$ 43,06</span>
+            <div class="cond-total">Total repasse: R$ 1.075,39</div>
+            
+          </td>
+          <td class="val-col">R$ 3.313,06<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 3.375,34
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 2.237,67 - COND. 711,25 | AGUA 145,57 - GAS 102,30- IPTU 03 DE 10- 62,28 | ENERGIA COMUM - 73,21 - VAGA MOTO - 43,06</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-red">✗ Diff: R$ 62,28</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Ministério Apostólico Eterno Deus</div>
+            <div class="tenant-sub">Maria Del Carmen Gonzalez Pérez · Comercial</div>
+            <div class="tenant-sub">Rua Rio Formoso, 25</div>
+          </td>
+          <td class="val-col">R$ 5.500,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 5.500,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Nathalia nascimento oliveira</div>
+            <div class="tenant-sub">Vanessa da Silva Paes · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.100,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.100,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Pedro Luis Pedroza Martins</div>
+            <div class="tenant-sub">Andréa Roberta Ferreira Papa · Residencial</div>
+            <div class="tenant-sub">Rua Dona Joaquina de Jesus, 58</div>
+          </td>
+          <td class="val-col">R$ 2.100,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.100,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 2.266,00
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 2100,00 | CONDOMINIO 166,00</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-orange">Diff: R$ 166,00</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Priscila Lopes Garutti</div>
+            <div class="tenant-sub">Sheila Gomes dos Santos Silva · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.054,77<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 01-34A</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 473,40</span><span class='item-tag'>Energia Comum: R$ 30,82</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Água: R$ 190,19</span><span class='item-tag'>Consumo Gás: R$ 170,97</span>
+            <div class="cond-total">Total repasse: R$ 873,13</div>
+            
+          </td>
+          <td class="val-col">R$ 2.927,90<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">QUN YE</div>
+            <div class="tenant-sub">Rosalina Amelia Failde · Comercial</div>
+            <div class="tenant-sub">Rua Padre Lima, 37</div>
+          </td>
+          <td class="val-col">R$ 3.900,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 3.900,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Renata Pinto Andrade</div>
+            <div class="tenant-sub">Waldemar Roberto Perillo · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.500,00<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 02-32B</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 626,28</span><span class='item-tag'>Energia Comum: R$ 40,77</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Água: R$ 109,09</span><span class='item-tag'>Consumo Gás: R$ 86,14</span>
+            <div class="cond-total">Total repasse: R$ 870,03</div>
+            
+          </td>
+          <td class="val-col">R$ 3.370,03<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Ricardo Antonio Soares Russo Junior</div>
+            <div class="tenant-sub">Rafael de Souza Andrade Lopes · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui, 189</div>
+          </td>
+          <td class="val-col">R$ 2.126,14<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.126,14<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Roberto da Silva Pedroso</div>
+            <div class="tenant-sub">Cleubio Rodrigues de Novaes · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.357,73<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 02-73B</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 626,28</span><span class='item-tag'>Energia Comum: R$ 40,77</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Água: R$ 64,91</span><span class='item-tag'>Consumo Gás: R$ 47,34</span>
+            <div class="cond-total">Total repasse: R$ 787,05</div>
+            
+          </td>
+          <td class="val-col">R$ 3.144,78<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Vila Jardim Casa Verde (CV)">
+          <td>
+            <div class="tenant-name">Rodnei Ventura de Oliveira</div>
+            <div class="tenant-sub">Pablo Ezequiel López · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui, 189</div>
+          </td>
+          <td class="val-col">R$ 2.054,77<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Vila Jardim Casa Verde (CV) A-025</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 530,18</span><span class='item-tag'>Energia Comum: R$ 54,57</span><span class='item-tag'>Consumo Água: R$ 108,52</span><span class='item-tag'>Consumo Gás: R$ 76,26</span>
+            <div class="cond-total">Total repasse: R$ 769,53</div>
+            
+          </td>
+          <td class="val-col">R$ 2.824,30<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 3.147,34
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 2.054,77 - COND. 530,18 | CONS AGUA 108,52 -CONS. GAS 76,26-SEG INCEN 44,92 | ENERGIA COMUM - 54,57-SEGURO FIANÇA 278,12</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-red">✗ Diff: R$ 323,04</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Rodrigo Eliziario Lima da Cruz</div>
+            <div class="tenant-sub">Maria Tânia Lisboa Romeiro · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.450,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.450,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Ed. Crist Lamelas">
+          <td>
+            <div class="tenant-name">Rogerio Pereira de Almeida</div>
+            <div class="tenant-sub">Francisco Carlos de Oliveira · Residencial</div>
+            <div class="tenant-sub">Rua Antônio Pontes, 101</div>
+          </td>
+          <td class="val-col">R$ 1.504,66<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Ed. Crist Lamelas Apto 05</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 470,00</span><span class='item-tag'>Consumo Água: R$ 76,55</span><span class='item-tag'>Consumo Gás: R$ 24,62</span>
+            <div class="cond-total">Total repasse: R$ 571,17</div>
+            
+          </td>
+          <td class="val-col">R$ 2.075,83<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Clube Jardim (VM)">
+          <td>
+            <div class="tenant-name">Thiago Ribeiro Artacho</div>
+            <div class="tenant-sub">Rosana Alves · Residencial</div>
+            <div class="tenant-sub">Rua Itaúna, 1050</div>
+          </td>
+          <td class="val-col">R$ 2.141,20<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Clube Jardim (VM) 03-145C</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 473,40</span><span class='item-tag'>Energia Comum: R$ 30,82</span><span class='item-tag'>Taxa Leitura: R$ 7,75</span><span class='item-tag'>Consumo Água: R$ 89,75</span><span class='item-tag'>Consumo Gás: R$ 89,63</span>
+            <div class="cond-total">Total repasse: R$ 691,35</div>
+            
+          </td>
+          <td class="val-col">R$ 2.832,55<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">Thiago de Souza Tozi</div>
+            <div class="tenant-sub">Benedicta Isolina Lorenzo Gonzales · Residencial</div>
+            <div class="tenant-sub">Rua Canobim, 162</div>
+          </td>
+          <td class="val-col">R$ 2.130,72<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.130,72<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Ed. Parque Jardim (VG)">
+          <td>
+            <div class="tenant-name">Victor Ferreira Cotta</div>
+            <div class="tenant-sub">Leticia Neto Leme · Residencial</div>
+            <div class="tenant-sub">Rua Henrique Felipe da Costa, 681</div>
+          </td>
+          <td class="val-col">R$ 1.763,63<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Ed. Parque Jardim (VG) 1-AU34</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 498,79</span><span class='item-tag'>Energia Comum: R$ 34,37</span><span class='item-tag'>Consumo Água: R$ 66,69</span><span class='item-tag'>Consumo Gás: R$ 156,12</span>
+            <div class="cond-total">Total repasse: R$ 755,97</div>
+            
+          </td>
+          <td class="val-col">R$ 2.519,60<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 2.599,82
+            <div class="source-tag">Ref. ()</div>
+            <div class="ref-items">ALUGUEL 1763,63 - COND. 498,79 | CONS AGUA 66,69 -CONS. GAS 156,12 | ENERGIA COMUM - 34,37- SEG INCENDIO 1 DE 4 - 80,22</div>
+          </td>
+          <td class="diff-large"><span class="badge badge-red">✗ Diff: R$ 80,22</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">WALDIR HUBERT QUISPE ALARCON</div>
+            <div class="tenant-sub">MÚLTIPLOS (3) · Residencial</div>
+            <div class="tenant-sub">Travessa Ester Margareta Bergsten, 32</div>
+          </td>
+          <td class="val-col">R$ 2.000,00<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 2.000,00<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="">
+          <td>
+            <div class="tenant-name">William Duran Rojas</div>
+            <div class="tenant-sub">MÚLTIPLOS (3) · Residencial</div>
+            <div class="tenant-sub">Avenida Conceição, 1710</div>
+          </td>
+          <td class="val-col">R$ 1.554,97<div class="source-tag">Excel</div></td>
+          <td>
+            <span class="no-data">Sem condomínio</span>
+            
+            
+            
+          </td>
+          <td class="val-col">R$ 1.554,97<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            —
+            
+            
+          </td>
+          <td class=""><span class="badge badge-gray">Sem ref.</span></td>
+        </tr>
+        <tr class="tenant-row" data-edificio="Vila Jardim Casa Verde (CV)">
+          <td>
+            <div class="tenant-name">Wilson Nep Ribeiro</div>
+            <div class="tenant-sub">ZHANG TI QUAN · Residencial</div>
+            <div class="tenant-sub">Avenida Mandaqui, 189</div>
+          </td>
+          <td class="val-col">R$ 2.369,76<div class="source-tag">Excel</div></td>
+          <td>
+            <div class="cond-name">Vila Jardim Casa Verde (CV) A-102</div>
+            <span class='item-tag'>Cota/Taxa Cond.: R$ 700,98</span><span class='item-tag'>Energia Comum: R$ 72,15</span><span class='item-tag'>Consumo Água: R$ 143,47</span><span class='item-tag'>Consumo Gás: R$ 100,82</span>
+            <div class="cond-total">Total repasse: R$ 1.017,42</div>
+            
+          </td>
+          <td class="val-col">R$ 3.387,18<div class="source-tag">Calc.</div></td>
+          <td class="val-col">
+            R$ 3.443,21
+            <div class="source-tag">Ref. ()</div>
+            
+          </td>
+          <td class="diff-large"><span class="badge badge-red">✗ Diff: R$ 56,03</span></td>
+        </tr>
+  </table>
+  </div>
+
+  <h2>⚠️ Condomínios sem locatário identificado</h2><table class='table'><tr><th>Condomínio</th><th>Unidade</th><th>Proprietário</th><th>Total Boleto</th><th>Observação</th></tr><tr><td>Clube Jardim (VM)</td><td>01-91A</td><td>Dagoberto Pires Santana</td><td>R$ 547,43</td><td></td></tr><tr><td>Ed. Parque Jardim (VG)</td><td>2-BU53</td><td>Sergio Luiz Miqueleti</td><td>R$ 738,19</td><td></td></tr><tr><td>Paisagem Vila Maria Alta</td><td>Apto 134</td><td>Aline Gomes de Moraes Reis</td><td>R$ 1.390,80</td><td>Endereço: Rua Tapirai 62. Não encontrado locatário correspondente na planilha.</td></tr></table>
+
+</div>
+
+<script>
+function filtrar(tipo, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const rows = document.querySelectorAll('.tenant-row');
+  rows.forEach(r => {
+    const edificio = r.dataset.edificio || '';
+    const badge = r.querySelector('.badge');
+    const badgeText = badge ? badge.textContent : '';
+    const semCond = r.querySelector('.no-data');
+    const semRef = badgeText.includes('Sem ref');
+    const temDiff = badgeText.includes('Diff') || badgeText.includes('✗');
+    let show = true;
+    if (tipo === 'sem_cond') show = !!semCond;
+    else if (tipo === 'sem_ref') show = semRef;
+    else if (tipo === 'diff') show = temDiff;
+    else if (tipo !== 'todos') show = edificio === tipo;
+    r.style.display = show ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

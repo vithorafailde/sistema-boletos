@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reajuste de Aluguel – Funchal Sistema</title>
+<style>
+:root {
+  --bg:#D6E3E8; --card:#fff; --border:#B8CECE; --text:#1A2C30; --muted:#4A6668;
+  --accent:#3B7A8E; --green:#4A6E9A; --red:#B84545; --yellow:#8C6C1F;
+  --orange:#B86030; --header:#2A4A52; --purple:#6A4F8A;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:13px;}
+
+/* ── Header ── */
+.header{background:var(--header);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;}
+.header h1{font-size:17px;font-weight:700;}
+.header p{font-size:11px;color:#94a3b8;margin-top:2px;}
+.header-actions{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.btn-header{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+.btn-voltar{background:rgba(255,255,255,.12);color:#fff;}
+.btn-voltar:hover{background:rgba(255,255,255,.22);}
+
+/* ── Layout ── */
+.container{max-width:1300px;margin:0 auto;padding:20px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.card-title{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+
+/* ── Upload ── */
+.file-drop{display:block;border:2px dashed var(--border);border-radius:8px;padding:24px 20px;text-align:center;cursor:pointer;transition:all .18s;background:#EFF2F2;}
+.file-drop:hover,.file-drop.drag-over{border-color:var(--accent);background:#DDE8EC;}
+.file-drop .icon{font-size:28px;margin-bottom:6px;}
+.file-drop .lbl{font-weight:600;font-size:13px;}
+.file-drop .hint{font-size:11px;color:var(--muted);margin-top:4px;}
+.file-drop input[type=file]{display:none;}
+#fileName{margin-top:8px;font-size:12px;font-weight:600;min-height:16px;}
+
+/* ── Buttons ── */
+.btn{padding:9px 18px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:opacity .15s;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover:not(:disabled){background:#2A6A7E;}
+.btn-apply{background:var(--green);color:#fff;}
+.btn-apply:hover:not(:disabled){background:#3A5A88;}
+.btn-export{background:var(--purple);color:#fff;}
+.btn-export:hover:not(:disabled){background:#5A3F7A;}
+
+/* ── Spinner ── */
+.spinner{display:none;width:16px;height:16px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── Stats ── */
+.stats-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 18px;min-width:130px;border-top:3px solid var(--accent);}
+.stat .num{font-size:22px;font-weight:800;}
+.stat .lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ── Alerta ── */
+.alerta{border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:14px;}
+.alerta-warn{background:#F5EBE0;border:1px solid #D4A87A;color:#7A3A18;}
+.alerta-ok  {background:#D8E4F0;border:1px solid #A8C4E0;color:#1A5235;}
+.alerta-err {background:#F5D5D5;border:1px solid #D4A0A0;color:#7A1B1B;}
+
+/* ── Filtros ── */
+.filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.filtro-btn{padding:5px 13px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;}
+.filtro-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.filtro-btn.red{border-color:var(--red);}
+.filtro-btn.red.active{background:var(--red);color:#fff;}
+.filtro-btn.yellow{border-color:var(--yellow);}
+.filtro-btn.yellow.active{background:var(--yellow);color:#fff;}
+.filtro-btn.green{border-color:var(--green);}
+.filtro-btn.green.active{background:var(--green);color:#fff;}
+.search-box{padding:6px 11px;border:1px solid var(--border);border-radius:7px;font-size:12px;outline:none;width:220px;margin-left:auto;}
+
+/* ── Tabela ── */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{background:#D8E4E4;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:9px 10px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap;}
+td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#EFF2F2;}
+.name-main{font-weight:600;font-size:12px;}
+.name-sub{font-size:11px;color:var(--muted);}
+
+/* ── Checkbox ── */
+input[type=checkbox]{width:15px;height:15px;cursor:pointer;}
+
+/* ── Badges ── */
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap;}
+.badge-vencido{background:#F5D5D5;color:var(--red);}
+.badge-proximo{background:#F0E8C8;color:#7A5010;}
+.badge-ok{background:#D8E4F0;color:var(--green);}
+.badge-idx{background:#DDE8EC;color:var(--accent);}
+
+/* ── Valores ── */
+.val-pos{color:var(--green);font-weight:700;}
+.val-neg{color:var(--red);font-weight:700;}
+.val-na{color:#cbd5e1;font-style:italic;}
+
+/* ── Empty state ── */
+#emptyState{text-align:center;padding:40px;color:var(--muted);display:none;}
+#emptyState .icon{font-size:40px;margin-bottom:8px;}
+
+/* ── Results section (hidden initially) ── */
+#resultSection{display:none;}
+
+/* ── Esconder elementos injetados por extensões do browser ── */
+grammarly-extension,grammarly-desktop-integration,
+[data-lastpass-icon-root],[id^="lastpass"],[class^="lastpass"],
+[id^="grammarly"],[class^="grammarly"],
+[data-1p-ignore],
+#dropZone > *:not(.icon):not(.lbl):not(.hint):not(input) {
+  display:none!important;
+  width:0!important;
+  height:0!important;
+  overflow:hidden!important;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>📈 Reajuste de Aluguel</h1>
+    <p>Cálculo automático via índices BACEN (IPCA / IGPM) • mesma planilha do sistema de boletos</p>
+  </div>
+  <div class="header-actions">
+    <a href="/" class="btn-header btn-voltar">← Voltar ao Sistema</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Upload / Planilha -->
+  <div class="card">
+    <div class="card-title">📂 Planilha de Contratos</div>
+
+
+    <div id="uploadHost" style="margin-bottom:0;"></div>
+    <div id="fileName" style="color:#2563eb;margin-top:8px;font-size:12px;font-weight:600;min-height:16px;"></div>
+
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="btnCalcular" onclick="calcular()">
+        <div class="spinner" id="spinCalc"></div>
+        ⚡ Calcular Reajustes
+      </button>
+      <span id="statusMsg" style="font-size:12px;color:var(--muted);"></span>
+    </div>
+  </div>
+
+  <!-- Resultados -->
+  <div id="resultSection">
+
+    <!-- Stats -->
+    <div class="stats-row" id="statsRow"></div>
+
+    <!-- Aviso BACEN -->
+    <div class="alerta alerta-warn" id="avisoBacken" style="display:none;"></div>
+
+    <!-- Painel de aplicação -->
+    <div class="card" id="painelAplicar" style="display:none;">
+      <div class="card-title">✅ Aplicar Reajustes na Planilha</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+        Os contratos marcados abaixo terão o <strong>novo aluguel gravado diretamente na planilha</strong>.<br>
+        No próximo processamento de boletos, os valores já estarão atualizados automaticamente.
+      </p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-apply" id="btnAplicar" onclick="aplicarReajustes()">
+          <div class="spinner" id="spinAplicar"></div>
+          💾 Aplicar Selecionados na Planilha
+        </button>
+        <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="chkTodos" onchange="selecionarTodos(this.checked)"> Selecionar todos aplicáveis
+        </label>
+        <span id="countSelecionados" style="font-size:12px;color:var(--muted);"></span>
+      </div>
+      <div id="resultadoAplicacao" style="margin-top:12px;display:none;"></div>
+    </div>
+
+    <!-- Botão de download — fora do painelAplicar para não sumir junto -->
+    <div id="painelDownload" style="display:none;margin-bottom:16px;padding:16px;background:#D8E4F0;border:2px solid #A8C4E0;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
+      <div style="font-size:14px;font-weight:700;color:#3A5A88;margin-bottom:6px;">✅ Reajustes aplicados com sucesso!</div>
+      <p style="font-size:12px;color:#166534;margin-bottom:12px;">
+        Baixe a planilha e <strong>substitua o arquivo original</strong> no seu computador.
+        No próximo processamento de boletos os aluguéis reajustados já estarão lá.
+      </p>
+      <a href="/api/baixar_contratos" class="btn btn-apply" style="text-decoration:none;font-size:14px;padding:11px 22px;">
+        ⬇️ Baixar Planilha Excel Atualizada
+      </a>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card">
+      <div class="card-title">
+        <span>📋 Contratos</span>
+      </div>
+
+      <div class="filtros">
+        <button class="filtro-btn active"  id="fTodos"    onclick="filtrar('TODOS')">Todos</button>
+        <button class="filtro-btn red"     id="fEsteMes"  onclick="filtrar('ESTE_MES')">🔴 Reajustar este mês</button>
+        <button class="filtro-btn yellow"  id="fFuturo"   onclick="filtrar('FUTURO')">🟡 Futuros</button>
+        <button class="filtro-btn green"   id="fOk"       onclick="filtrar('OK')">🟢 Já reajustados</button>
+        <input class="search-box" id="searchBox" type="text" placeholder="🔍 Buscar…" oninput="renderTabela()">
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:32px"></th>
+              <th>Locatário / Endereço</th>
+              <th>Aluguel Atual</th>
+              <th>Índice</th>
+              <th>Aniversário</th>
+              <th>Status</th>
+              <th>Acumulado 12m</th>
+              <th>Novo Aluguel</th>
+              <th>Diferença</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaBody"></tbody>
+        </table>
+        <div id="emptyState">
+          <div class="icon">🔍</div>
+          <div>Nenhum contrato encontrado com esses filtros.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /resultSection -->
+
+</div><!-- /container -->
+
+<script>
+let todosContratos = [];
+let selecionados   = new Set();   // num_linha dos marcados
+let zerados        = new Set();   // num_linha marcados para aplicar 0%
+let filtroAtivo    = 'TODOS';
+
+// ── Upload area em Shadow DOM (extensões do Chrome não conseguem injetar aqui) ──
+let arquivoSelecionado = null;
+
+(function() {
+  const host = document.getElementById('uploadHost');
+  const shadow = host.attachShadow({ mode: 'closed' });
+  shadow.innerHTML = `
+    <style>
+      .drop {
+        display:block;
+        border:2px dashed #C8D4D4;
+        border-radius:8px;
+        padding:24px 20px;
+        text-align:center;
+        cursor:pointer;
+        background:#EFF2F2;
+        transition:border-color .18s, background .18s;
+        user-select:none;
+      }
+      .drop:hover, .drop.over { border-color:#3B7A8E; background:#DDE8EC; }
+      .ico { font-size:28px; margin-bottom:6px; }
+      .lbl { font-weight:600; font-size:13px; color:#2A3C3C; }
+      .hint { font-size:11px; color:#64748b; margin-top:4px; }
+    </style>
+    <div class="drop" id="z">
+      <div class="ico">📊</div>
+      <div class="lbl">Clique ou arraste a planilha para atualizar</div>
+      <div class="hint">Formatos: .xlsx · .xls</div>
+    </div>
+  `;
+  const z = shadow.getElementById('z');
+  z.addEventListener('click', pickFile);
+  z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('over'); });
+  z.addEventListener('dragleave', () => z.classList.remove('over'));
+  z.addEventListener('drop', e => {
+    e.preventDefault(); z.classList.remove('over');
+    if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+  });
+})();
+
+function pickFile() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.xlsx,.xls';
+  inp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;';
+  document.body.appendChild(inp);
+  inp.addEventListener('change', () => { if (inp.files[0]) setFile(inp.files[0]); document.body.removeChild(inp); });
+  inp.click();
+}
+function setFile(f) { arquivoSelecionado = f; document.getElementById('fileName').textContent = '📄 ' + f.name; }
+
+// ── Calcular ─────────────────────────────────────────────────────────────────
+async function calcular() {
+  const btn  = document.getElementById('btnCalcular');
+  const spin = document.getElementById('spinCalc');
+  const msg  = document.getElementById('statusMsg');
+  btn.disabled = true; spin.style.display = 'block';
+  msg.style.color = 'var(--muted)';
+  msg.textContent = 'Consultando BACEN e calculando…';
+
+  const fd = new FormData();
+  if (arquivoSelecionado) fd.append('excel', arquivoSelecionado);
+
+  try {
+    const resp = await fetch('/api/calcular_reajustes', { method:'POST', body:fd });
+    const data = await resp.json();
+    if (!data.ok) {
+      msg.style.color = 'var(--red)';
+      msg.textContent = '❌ ' + data.erro;
+      return;
+    }
+    msg.style.color = 'var(--green)';
+    msg.textContent = `✅ ${data.resumo.total} contratos — consulta em ${data.resumo.data_consulta}`;
+    todosContratos = data.contratos;
+    selecionados   = new Set(data.contratos.filter(c => c.aplicavel && c.status === 'ESTE_MES').map(c => c.num_linha));
+    renderResumo(data.resumo);
+    renderAvisoBacen(data.resumo.erros_bacen);
+    renderTabela();
+    document.getElementById('resultSection').style.display = 'block';
+    // Mostrar painel de aplicação apenas se houver aplicáveis
+    document.getElementById('painelAplicar').style.display =
+      data.resumo.aplicaveis > 0 ? 'block' : 'none';
+    atualizarContador();
+  } catch(e) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = '❌ Erro: ' + e.message;
+  } finally {
+    btn.disabled = false; spin.style.display = 'none';
+  }
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function renderResumo(r) {
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat" style="border-top-color:#2563eb">
+      <div class="num">${r.total}</div><div class="lbl">Total Contratos</div>
+    </div>
+    <div class="stat" style="border-top-color:var(--red)">
+      <div class="num" style="color:var(--red)">${r.este_mes}</div><div class="lbl">Reajustar este mês</div>
+    </div>
+    <div class="stat" style="border-top-color:var(--yellow)">
+      <div class="num" style="color:var(--yellow)">${r.futuros}</div><div class="lbl">Futuros</div>
+    </div>
+    <div class="stat" style="border-top-color:var(--green)">
+      <div class="num" style="color:var(--green)">${r.ok}</div><div class="lbl">Já Reajustados</div>
+    </div>
+    <div class="stat" style="border-top-color:var(--orange)">
+      <div class="num" style="color:var(--orange)">${r.aplicaveis}</div><div class="lbl">Prontos p/ Aplicar</div>
+    </div>
+  `;
+}
+
+function renderAvisoBacen(erros) {
+  const el = document.getElementById('avisoBacken');
+  const keys = Object.keys(erros || {});
+  if (!keys.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '⚠️ <strong>Não foi possível buscar dados do BACEN para:</strong> ' +
+    keys.map(k => `${k} — ${erros[k]}`).join(' | ') +
+    '. Contratos com esse índice aparecem sem cálculo.';
+}
+
+// ── Seleção / checkbox ────────────────────────────────────────────────────────
+function selecionarTodos(marcado) {
+  todosContratos.filter(c => c.aplicavel).forEach(c => {
+    if (marcado) selecionados.add(c.num_linha);
+    else         selecionados.delete(c.num_linha);
+  });
+  renderTabela();
+  atualizarContador();
+}
+
+function toggleSelecionado(num_linha) {
+  if (selecionados.has(num_linha)) selecionados.delete(num_linha);
+  else                             selecionados.add(num_linha);
+  atualizarContador();
+}
+
+function toggleZerado(num_linha) {
+  if (zerados.has(num_linha)) zerados.delete(num_linha);
+  else                        zerados.add(num_linha);
+  // Garante que o contrato está selecionado quando marcado como 0%
+  if (zerados.has(num_linha)) selecionados.add(num_linha);
+  atualizarContador();
+}
+
+function atualizarContador() {
+  document.getElementById('countSelecionados').textContent =
+    `${selecionados.size} selecionado(s)`;
+  document.getElementById('chkTodos').checked =
+    selecionados.size === todosContratos.filter(c => c.aplicavel).length;
+}
+
+// ── Aplicar ───────────────────────────────────────────────────────────────────
+async function aplicarReajustes() {
+  if (!selecionados.size) {
+    alert('Nenhum contrato selecionado.');
+    return;
+  }
+  if (!confirm(`Confirma a aplicação de ${selecionados.size} reajuste(s) na planilha?\n\nOs aluguéis serão atualizados diretamente no arquivo.`)) return;
+
+  const btn  = document.getElementById('btnAplicar');
+  const spin = document.getElementById('spinAplicar');
+  btn.disabled = true; spin.style.display = 'block';
+
+  const para_aplicar = todosContratos
+    .filter(c => selecionados.has(c.num_linha))
+    .map(c => zerados.has(c.num_linha) ? {...c, novo_aluguel: c.aluguel} : c);
+
+  try {
+    const resp = await fetch('/api/aplicar_reajustes', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ contratos: para_aplicar })
+    });
+    const data = await resp.json();
+    const el   = document.getElementById('resultadoAplicacao');
+    el.style.display = 'block';
+    if (data.ok) {
+      el.className = 'alerta alerta-ok';
+      el.innerHTML = `✅ <strong>${data.msg}</strong>` +
+        (data.erros && data.erros.length ? '<br>⚠️ Erros: ' + data.erros.join('; ') : '');
+      // Mostrar botão de download (fora do painelAplicar, não some)
+      document.getElementById('painelDownload').style.display = 'block';
+      // Atualiza estado local sem re-chamar o BACEN (evita double-apply e mantém download visível)
+      const aplicados = new Set(para_aplicar.map(c => c.num_linha));
+      todosContratos = todosContratos.map(c => {
+        if (!aplicados.has(c.num_linha)) return c;
+        return { ...c,
+          aluguel:       zerados.has(c.num_linha) ? c.aluguel : (c.novo_aluguel ?? c.aluguel),
+          status:        'OK',
+          aplicavel:     false,
+          acumulado_pct: null,
+          meses_base:    0,
+          novo_aluguel:  null,
+          diferenca:     null,
+        };
+      });
+      selecionados.clear();
+      zerados.clear();
+      arquivoSelecionado = null;
+      document.getElementById('fileName').textContent = '';
+      // Recalcula contadores localmente
+      const nEste  = todosContratos.filter(c => c.status === 'ESTE_MES').length;
+      const nFut   = todosContratos.filter(c => c.status === 'FUTURO').length;
+      const nOk    = todosContratos.filter(c => c.status === 'OK').length;
+      const nAplic = todosContratos.filter(c => c.aplicavel).length;
+      renderResumo({ total: todosContratos.length, este_mes: nEste, futuros: nFut,
+                     ok: nOk, com_calculo: 0, aplicaveis: nAplic,
+                     erros_bacen: {}, data_consulta: '' });
+      renderTabela();
+      document.getElementById('painelAplicar').style.display = nAplic > 0 ? 'block' : 'none';
+      atualizarContador();
+    } else {
+      el.className = 'alerta alerta-err';
+      el.textContent = '❌ ' + data.erro;
+    }
+  } catch(e) {
+    const el = document.getElementById('resultadoAplicacao');
+    el.style.display = 'block';
+    el.className = 'alerta alerta-err';
+    el.textContent = '❌ Erro de comunicação: ' + e.message;
+  } finally {
+    btn.disabled = false; spin.style.display = 'none';
+  }
+}
+
+// ── Filtro ────────────────────────────────────────────────────────────────────
+function filtrar(status) {
+  filtroAtivo = status;
+  ['fTodos','fEsteMes','fFuturo','fOk'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const idMap = {TODOS:'fTodos', ESTE_MES:'fEsteMes', FUTURO:'fFuturo', OK:'fOk'};
+  document.getElementById(idMap[status]).classList.add('active');
+  renderTabela();
+}
+
+// ── Tabela ────────────────────────────────────────────────────────────────────
+function brl(v) {
+  if (v == null) return '<span class="val-na">—</span>';
+  return 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function pct(v) {
+  if (v == null) return '<span class="val-na">—</span>';
+  return Number(v).toLocaleString('pt-BR', {minimumFractionDigits:4, maximumFractionDigits:4}) + '%';
+}
+function diff(v) {
+  if (v == null) return '<span class="val-na">—</span>';
+  const cls = v >= 0 ? 'val-pos' : 'val-neg';
+  const sinal = v >= 0 ? '+' : '-';
+  return `<span class="${cls}">${sinal}R$ ${Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>`;
+}
+function badgeStatus(s) {
+  if (s === 'ESTE_MES') return `<span class="badge badge-vencido">Reajustar este mês</span>`;
+  if (s === 'FUTURO')   return `<span class="badge badge-proximo">Futuro</span>`;
+  return `<span class="badge badge-ok">Já reajustado</span>`;
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderTabela() {
+  const busca = (document.getElementById('searchBox').value || '').toLowerCase();
+  const lista = todosContratos.filter(c => {
+    if (filtroAtivo !== 'TODOS' && c.status !== filtroAtivo) return false;
+    if (busca && !c.locatario.toLowerCase().includes(busca) && !c.endereco.toLowerCase().includes(busca)) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('tabelaBody');
+  const empty = document.getElementById('emptyState');
+  if (!lista.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = lista.map(c => {
+    const chkHtml = c.aplicavel
+      ? `<input type="checkbox" ${selecionados.has(c.num_linha)?'checked':''} onchange="toggleSelecionado(${c.num_linha});renderTabela();">`
+      : '';
+    const aviso12 = c.meses_base === 13
+      ? ` <small style="color:var(--muted)">12/12m</small>`
+      : (c.meses_base > 0
+          ? ` <small style="color:var(--orange)">⚠ ${c.meses_base - 1}/12m</small>`
+          : '');
+    const metodoHtml = '';
+
+    // Opção "Aplicar 0%" para reajustes negativos aplicáveis
+    const negativo = c.aplicavel && c.acumulado_pct != null && c.acumulado_pct < 0;
+    const zero0Html = negativo ? `
+      <div style="margin-top:5px;font-size:10px;display:flex;align-items:center;gap:4px;">
+        <input type="checkbox" ${zerados.has(c.num_linha)?'checked':''}
+          onchange="toggleZerado(${c.num_linha});renderTabela();"
+          style="width:12px;height:12px;">
+        <span style="color:var(--muted);">Aplicar 0% (manter ${brl(c.aluguel)})</span>
+      </div>` : '';
+
+    const novoValor = negativo && zerados.has(c.num_linha)
+      ? `<span style="font-weight:700;color:var(--muted);">${brl(c.aluguel)} <small>(0%)</small></span>`
+      : `<span style="font-weight:700;color:var(--green);">${brl(c.novo_aluguel)}</span>`;
+
+    const difValor = negativo && zerados.has(c.num_linha)
+      ? `<span class="val-na">R$ 0,00</span>`
+      : diff(c.diferenca);
+
+    return `<tr>
+      <td style="text-align:center">${chkHtml}</td>
+      <td>
+        <div class="name-main">${esc(c.locatario)}</div>
+        <div class="name-sub">${esc(c.endereco)}</div>
+      </td>
+      <td style="white-space:nowrap">${brl(c.aluguel)}</td>
+      <td><span class="badge badge-idx">${esc(c.indice)}</span></td>
+      <td style="white-space:nowrap">${esc(c.data_reajuste)}</td>
+      <td>${c.vigencia_ok === false ? `<span class="badge" style="background:#D8E4E4;color:#6B8585;border:1px solid #C8D4D4">Menos de 1 ano</span>` : badgeStatus(c.status)}</td>
+      <td style="white-space:nowrap">${pct(c.acumulado_pct)}${aviso12}${metodoHtml}</td>
+      <td style="white-space:nowrap">${novoValor}${zero0Html}</td>
+      <td style="white-space:nowrap">${difValor}</td>
+    </tr>`;
+  }).join('');
+}
+
+window.addEventListener('pageshow', function(e) {
+  if (e.persisted) window.location.reload(true);
+});
+</script>
+</body>
+</html>

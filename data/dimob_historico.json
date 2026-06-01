@@ -1,0 +1,109 @@
+{
+  "2026": {
+    "DOUGLASDUBINSKASTAKENAKA": {
+      "aluguel_antigo": 2796.36,
+      "locatario": "Douglas Dubinskas Takenaka",
+      "mes_aplicacao": 2
+    },
+    "LURDESSELIMADUTRA": {
+      "aluguel_antigo": 2130.72,
+      "locatario": "Lurdes Selima Dutra",
+      "mes_aplicacao": 2
+    },
+    "MICHELEALMEIDADEPAULA": {
+      "aluguel_antigo": 2245.75,
+      "locatario": "Michele Almeida de Paula",
+      "mes_aplicacao": 2
+    },
+    "MINISTERIOAPOSTOLICOETERNODEUS": {
+      "aluguel_antigo": 4834.14,
+      "locatario": "Ministério Apostólico Eterno Deus",
+      "mes_aplicacao": 2
+    },
+    "RICARDOANTONIOSOARESRUSSOJUNIOR": {
+      "aluguel_antigo": 2039.18,
+      "locatario": "Ricardo Antonio Soares Russo Junior",
+      "mes_aplicacao": 2
+    },
+    "THIAGODESOUZATOZI": {
+      "aluguel_antigo": 2130.72,
+      "locatario": "Thiago de Souza Tozi",
+      "mes_aplicacao": 2
+    },
+    "WILLIAMDURANROJAS": {
+      "aluguel_antigo": 1488.55,
+      "locatario": "William Duran Rojas",
+      "mes_aplicacao": 2
+    },
+    "JEFFERSONSOARESDELIMA": {
+      "aluguel_antigo": 2091.20,
+      "locatario": "Jefferson Soares de Lima",
+      "mes_aplicacao": 3
+    },
+    "MARCELOMARCOSLOPES": {
+      "aluguel_antigo": 2457.51,
+      "locatario": "Marcelo Marcos Lopes",
+      "mes_aplicacao": 3
+    },
+    "ACYRFERREIRACOSTAJUNIOR": {
+      "aluguel_antigo": 1785.98,
+      "locatario": "ACYR FERREIRA COSTA JUNIOR",
+      "mes_aplicacao": 4
+    },
+    "ALANDERSONMACHADOCESAR": {
+      "aluguel_antigo": 2101.15,
+      "locatario": "Alanderson Machado Cesar",
+      "mes_aplicacao": 4
+    },
+    "EDGARDGARCIA": {
+      "aluguel_antigo": 2494.22,
+      "locatario": "Edgard Garcia",
+      "mes_aplicacao": 4
+    },
+    "JACICARLASOUZADASILVA": {
+      "aluguel_antigo": 2468.85,
+      "locatario": "Jacicarla Souza da Silva",
+      "mes_aplicacao": 4
+    },
+    "JEANPIERREBEJARANOPINTO": {
+      "aluguel_antigo": 4000.00,
+      "locatario": "JEAN PIERRE BEJARANO PINTO",
+      "mes_aplicacao": 4
+    },
+    "MARCELOFERREIRASANTOSMARTINS": {
+      "aluguel_antigo": 1200.00,
+      "locatario": "Marcelo Ferreira Santos Martins",
+      "mes_aplicacao": 4
+    },
+    "MARIAJOSEOLIVEIRA": {
+      "aluguel_antigo": 2320.71,
+      "locatario": "Maria José Oliveira",
+      "mes_aplicacao": 4
+    },
+    "ANAPAULADESANTANASILVERIO": {
+      "aluguel_antigo": 2200.00,
+      "locatario": "Ana Paula de Santana Silverio",
+      "mes_aplicacao": 1
+    },
+    "ARLENEMARIAPASSOS": {
+      "aluguel_antigo": 2212.40,
+      "locatario": "Arlene Maria Passos",
+      "mes_aplicacao": 1
+    },
+    "CLAUDIOBERNARDINO": {
+      "aluguel_antigo": 2498.64,
+      "locatario": "Cláudio Bernardino",
+      "mes_aplicacao": 1
+    },
+    "PRISCILALOPESGARUTTI": {
+      "aluguel_antigo": 1967.01,
+      "locatario": "Priscila Lopes Garutti",
+      "mes_aplicacao": 1
+    },
+    "RODNEIVENTURADEOLIVEIRA": {
+      "aluguel_antigo": 1967.01,
+      "locatario": "Rodnei Ventura de Oliveira",
+      "mes_aplicacao": 1
+    }
+  }
+}

@@ -1,0 +1,6 @@
+uploads/
+data/config.json
+__pycache__/
+*.pyc
+*.tmp
+.env

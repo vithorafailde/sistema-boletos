@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Boletos</title>
+<style>
+:root {
+  --bg: #D6E3E8; --card: #fff; --border: #B8CECE; --text: #1A2C30; --muted: #4A6668;
+  --accent: #3B7A8E; --green: #4A6E9A; --red: #B84545; --yellow: #8C6C1F;
+  --orange: #B86030; --header: #2A4A52; --purple: #6A4F8A;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+.header { background: var(--header); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+.header h1 { font-size: 17px; font-weight: 700; }
+.header p { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.card-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.step-num { background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.step-num.done { background: var(--green); }
+.upload-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+@media(max-width:900px){ .upload-grid { grid-template-columns: 1fr; } }
+.file-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; display: block; }
+.file-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 20px 14px; text-align: center; cursor: pointer; transition: all .18s; background: #EFF2F2; }
+.file-drop:hover, .file-drop.drag-over { border-color: var(--accent); background: #DDE8EC; }
+.file-drop .icon { font-size: 24px; margin-bottom: 6px; }
+.file-drop .lbl { font-weight: 600; font-size: 12px; }
+.file-drop .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.file-drop .opt { font-size: 10px; color: var(--orange); margin-top: 3px; font-style: italic; }
+.file-drop input[type=file] { display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.chip { background: #DDE8EC; border: 1px solid #A8C5CE; border-radius: 20px; padding: 2px 9px; font-size: 10px; color: var(--accent); }
+.chip.green { background: #D8E4F0; border-color: #A8C4E0; color: var(--green); }
+.form-row { display: flex; gap: 12px; align-items: flex-end; margin-top: 14px; }
+.form-group { flex: 1; }
+.form-label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+.form-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; outline: none; }
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,122,142,.15); }
+.btn { padding: 8px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2A6A7E; }
+.btn-primary:disabled { background: #8AABAB; cursor: not-allowed; }
+.btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.btn-outline:hover { background: #DDE8EC; }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { background: #3A5A88; }
+.btn-sm { padding: 4px 11px; font-size: 11px; }
+/* Progress */
+.progress-card { display: none; }
+.progress-bar-wrap { background: #C8D4D4; border-radius: 99px; height: 7px; margin: 10px 0; overflow: hidden; }
+.progress-bar { background: var(--accent); height: 100%; border-radius: 99px; transition: width .3s; width: 0%; }
+.log-box { background: #1A2E2E; color: #8AABAB; border-radius: 7px; padding: 10px 12px; font-family: 'Consolas', monospace; font-size: 11px; height: 160px; overflow-y: auto; margin-top: 8px; }
+.log-ok { color: #5AD48A; } .log-warn { color: #E5B24A; } .log-err { color: #E07070; }
+/* Results */
+#resultados { display: none; }
+.stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.stat { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; min-width: 130px; }
+.stat .num { font-size: 20px; font-weight: 700; }
+.stat .lbl { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.table-wrap { overflow-x: auto; }
+table.main-table { width: 100%; border-collapse: collapse; }
+.main-table thead th { background: var(--header); color: #fff; padding: 9px 10px; text-align: left; font-size: 11px; font-weight: 600; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
+.main-table tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.main-table tbody tr:hover td { background: #EFF2F2; }
+/* Discriminated charges */
+.charge-list { display: flex; flex-direction: column; gap: 2px; }
+.charge-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 1px 0; }
+.charge-name { color: var(--muted); white-space: nowrap; }
+.charge-val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; text-align: right; min-width: 72px; }
+.charge-separator { border-top: 1px dashed var(--border); margin: 3px 0; }
+.charge-total { color: var(--accent); font-weight: 700; font-size: 12px; }
+.charge-nrep { color: var(--muted); text-decoration: line-through; font-size: 10px; }
+#bannerCotaAlerta { display:none; background:#FFF8EC; border:1px solid #E8C97A; border-radius:8px; padding:12px 16px; margin-bottom:12px; }
+#bannerCotaAlerta.show { display:block; }
+.banner-titulo { font-weight:700; color:#7A5500; font-size:13px; margin-bottom:8px; display:flex;align-items:center;gap:6px; }
+.banner-item { font-size:12px; color:#5A3F00; padding:3px 0; border-bottom:1px solid #F0DFA0; display:flex;align-items:center;gap:8px; }
+.banner-item:last-child { border-bottom:none; }
+.banner-seta { color:#B86030; font-weight:700; }
+.banner-fechar { float:right;cursor:pointer;color:#999;font-size:16px;line-height:1; margin-left:auto; }
+.nrep-label { font-size: 9px; color: var(--muted); font-style: italic; }
+/* Input cells */
+.input-val { width: 90px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px; text-align: right; font-size: 11px; }
+.input-val:focus { border-color: var(--accent); outline: none; }
+.input-sm { width: 70px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 10px; }
+.input-sm:focus { border-color: var(--accent); outline: none; }
+.input-desc { width: 120px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; }
+.input-desc:focus { border-color: var(--accent); outline: none; }
+.hist-note { font-size: 10px; color: var(--orange); font-style: italic; margin-top: 2px; }
+.from-boleto { font-size: 10px; color: var(--green); font-style: italic; margin-top: 2px; }
+/* Totals column */
+.total-box { background: #E0EEF0; border: 1px solid #93C8D8; border-radius: 6px; padding: 6px 8px; min-width: 120px; }
+.total-grand { font-size: 14px; font-weight: 700; color: var(--accent); }
+/* Name cell */
+.name-main { font-weight: 600; font-size: 12px; }
+.name-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+/* Foot */
+tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top: 2px solid var(--border); }
+/* API status */
+.api-status { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 20px; }
+.api-ok { background: #D8E4F0; color: var(--green); }
+.api-nok { background: #F5D5D5; color: var(--red); }
+.smtp-ok { background: #D8EFD8; color: #2A6A2A; }
+.smtp-nok { background: #F5EAD5; color: #8C5A00; }
+/* Modal */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; align-items: center; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: #fff; border-radius: 12px; padding: 24px; width: 440px; max-width: 95vw; }
+.modal h2 { font-size: 15px; margin-bottom: 12px; }
+.sem-match-row { background: #F5EBE0 !important; }
+/* Botão de filtro ativo */
+.btn-outline.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* ── Informes mensais ──────────────────────────────────────────────────────── */
+#secaoInforme { display:none; }
+.inf-topo { background:var(--header); color:#fff; border-radius:12px; padding:22px 28px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+.inf-topo-left .inf-titulo { font-size:22px; font-weight:700; letter-spacing:-.3px; }
+.inf-topo-left .inf-ref { font-size:13px; color:#94a3b8; margin-top:4px; }
+.inf-filtro-box { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin-bottom:20px; }
+.inf-filtro-titulo { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+.inf-placeholder { text-align:center; padding:48px 20px; color:var(--muted); font-size:14px; }
+.inf-placeholder .ico { font-size:40px; margin-bottom:10px; }
+.inf-card { background:var(--card); border:1px solid var(--border); border-radius:12px; margin-bottom:0; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.06); }
+.inf-card-header { background:var(--header); color:#fff; padding:18px 24px; display:flex; justify-content:space-between; align-items:center; }
+.inf-prop-nome { font-size:18px; font-weight:700; }
+.inf-prop-sub { font-size:12px; color:#94a3b8; margin-top:3px; }
+.inf-card-body { padding:20px 24px; }
+.inf-unidade { border:1px solid var(--border); border-radius:9px; margin-bottom:14px; overflow:hidden; }
+.inf-unid-h { background:#f4f7f8; padding:11px 18px; border-bottom:1px solid var(--border); }
+.inf-unid-end { font-size:14px; font-weight:700; color:var(--text); }
+.inf-unid-loc { font-size:12px; color:var(--muted); margin-top:3px; }
+.inf-unid-tipo { font-size:11px; color:var(--accent); margin-top:2px; }
+.inf-linha { display:flex; justify-content:space-between; padding:5px 18px; font-size:14px; }
+.inf-linha.ded { color:var(--red); }
+.inf-linha.add { color:var(--green); }
+.inf-linha.rep { border-top:2px solid var(--accent); padding-top:10px; margin-top:3px; font-weight:700; font-size:16px; color:var(--accent); }
+.inf-total { background:#E8F4F0; border:2px solid var(--accent); border-radius:9px; padding:16px 22px; display:flex; justify-content:space-between; align-items:center; margin-top:6px; }
+.inf-total .tlbl { font-size:13px; color:var(--muted); font-weight:600; }
+.inf-total .tval { font-size:22px; font-weight:700; color:var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <h1>Sistema de Boletos</h1>
+    <p>Processamento automatico - locacao</p>
+  </div>
+  <div class="header-actions">
+    <a href="/reajustes" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">📈 Reajustes</a>
+    <span id="apiStatusBadge" class="api-status {% if tem_api_key %}api-ok{% else %}api-nok{% endif %}">
+      {% if tem_api_key %}API configurada{% else %}Sem API{% endif %}
+    </span>
+    <button class="btn btn-outline btn-sm" onclick="abrirModal()" style="color:#fff;border-color:#fff8">Configurar API</button>
+    <span id="smtpStatusBadge" class="api-status smtp-nok">📧 Email não config.</span>
+    <button class="btn btn-outline btn-sm" onclick="abrirModalSmtp()" style="color:#fff;border-color:#fff8">Configurar Email</button>
+    <a href="/logout" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">Sair</a>
+  </div>
+</div>
+
+<!-- Modal API -->
+<div id="modalApi" class="modal-bg">
+  <div class="modal">
+    <h2>Chave da API Anthropic</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      Necessaria para leitura automatica dos PDFs.<br>
+      Obtenha em: <strong>console.anthropic.com &rarr; API Keys</strong>
+    </p>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Chave API (sk-ant-...)</label>
+      <input type="password" id="inputApiKey" class="form-input" placeholder="sk-ant-api03-...">
+    </div>
+    <div id="apiErro" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline btn-sm" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarApi()">Salvar e Testar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal SMTP -->
+<div id="modalSmtp" class="modal-bg">
+  <div class="modal" style="width:500px">
+    <h2>📧 Configuração de E-mail (SMTP)</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+      Configure o servidor de e-mail para envio dos informes mensais aos proprietários.
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;margin-bottom:10px">
+      <div class="form-group">
+        <label class="form-label">Servidor SMTP</label>
+        <input type="text" id="smtpHost" class="form-input" placeholder="smtp.gmail.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Porta</label>
+        <input type="number" id="smtpPort" class="form-input" placeholder="587" value="587">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Usuário / E-mail remetente</label>
+      <input type="email" id="smtpUser" class="form-input" placeholder="seu@email.com">
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Senha</label>
+      <input type="password" id="smtpPass" class="form-input" placeholder="Senha ou App Password">
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">E-mail de envio (From) — deixe em branco para usar o usuário</label>
+      <input type="email" id="smtpFrom" class="form-input" placeholder="Funchal Imóveis &lt;noreply@dominio.com&gt;">
+    </div>
+    <p style="font-size:10px;color:var(--muted);margin-bottom:12px">
+      💡 Gmail: ative "Acesso a app menos seguro" ou use uma <strong>App Password</strong> em myaccount.google.com → Segurança → Senhas de app.
+    </p>
+    <div id="smtpErro" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+    <div id="smtpOk" style="color:green;font-size:12px;margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline btn-sm" onclick="fecharModalSmtp()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="btnSalvarSmtp" onclick="salvarSmtp()">Salvar e Testar</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Upload -->
+  <div id="secaoUpload">
+    <div class="card">
+      <div class="card-title"><span class="step-num" id="sn1">1</span> Selecionar arquivos</div>
+      <div class="upload-grid">
+        <!-- Excel -->
+        <div>
+          <span class="file-label">Planilha de Contratos</span>
+          <div id="dropExcel" class="file-drop" onclick="document.getElementById('inExcel').click()">
+            <div class="icon">📊</div>
+            <div class="lbl">Clique para selecionar</div>
+            <div class="hint">Arquivo .xlsx</div>
+            <input type="file" id="inExcel" accept=".xlsx,.xls">
+          </div>
+          <div class="chips" id="chipsExcel"></div>
+        </div>
+        <!-- Condominios -->
+        <div>
+          <span class="file-label">Boletos de Condominio (mes atual)</span>
+          <div id="dropCond" class="file-drop" onclick="document.getElementById('inCond').click()">
+            <div class="icon">🏢</div>
+            <div class="lbl">Clique para selecionar</div>
+            <div class="hint">Todos os PDFs de condominio</div>
+            <input type="file" id="inCond" accept=".pdf" multiple>
+          </div>
+          <div class="chips" id="chipsCond"></div>
+        </div>
+        <!-- Boletos anteriores -->
+        <div>
+          <span class="file-label">Boletos do Mes Anterior <span style="color:var(--orange);font-weight:400">(opcional)</span></span>
+          <div id="dropBol" class="file-drop" onclick="document.getElementById('inBol').click()">
+            <div class="icon">📋</div>
+            <div class="lbl">Clique para selecionar</div>
+            <div class="hint">PDFs do mes anterior</div>
+            <div class="opt">Extrai IPTU e Seguro automaticamente</div>
+            <input type="file" id="inBol" accept=".pdf" multiple>
+          </div>
+          <div class="chips" id="chipsBol"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Mes de referencia</label>
+          <input type="text" id="inMes" class="form-input" placeholder="Ex: Abril/2026">
+        </div>
+        <button class="btn btn-primary" id="btnProcessar" onclick="processar()" disabled>
+          Processar com Claude AI
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progresso -->
+  <div class="card progress-card" id="secaoProgresso">
+    <div class="card-title"><span class="step-num">2</span> Processando...</div>
+    <div id="progTexto" style="font-size:12px;color:var(--muted)">Iniciando...</div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="barra"></div></div>
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+  <!-- Resultados -->
+  <div id="resultados">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="font-size:17px;font-weight:700">Boletos</h2>
+        <p id="subMes" style="font-size:12px;color:var(--muted)"></p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="novoProcessamento()">↩ Novo processamento</button>
+        <button class="btn btn-outline btn-sm" onclick="salvarExtras()">Salvar para proximo mes</button>
+        <button class="btn btn-green btn-sm" onclick="exportarExcel()">Exportar Excel</button>
+        <button class="btn btn-primary" onclick="abrirInformes()" style="font-size:14px;padding:10px 22px;font-weight:700">📄 Informes ao Proprietário</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">Imprimir</button>
+        <button class="btn btn-outline btn-sm" onclick="baixarHistorico()" title="Baixe o historico para nao perder dados ao atualizar o sistema">⬇ Backup</button>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer" title="Restaure um backup anterior do historico">⬆ Restaurar<input type="file" accept=".json" style="display:none" onchange="restaurarHistorico(this)"></label>
+      </div>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+
+    <!-- Banner: cota condominial divergente -->
+    <div id="bannerCotaAlerta">
+      <div class="banner-titulo">
+        ⚠️ Verificação necessária — Cota Condominial alterada
+        <span class="banner-fechar" onclick="document.getElementById('bannerCotaAlerta').classList.remove('show')">✕</span>
+      </div>
+      <div id="bannerCotaLista"></div>
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="filtros">
+      <button class="btn btn-sm btn-outline active" onclick="filtrar('todos',this)">Todos</button>
+      <button class="btn btn-sm btn-outline" onclick="filtrar('itauna',this)">Itaúna</button>
+      <button class="btn btn-sm btn-outline" onclick="filtrar('mandaqui',this)">Mandaqui</button>
+      <button class="btn btn-sm btn-outline" onclick="filtrar('ester',this)">Ester Margareta</button>
+      <button class="btn btn-sm btn-outline" onclick="filtrar('henrique',this)">Henrique Felipe</button>
+      <button class="btn btn-sm btn-outline" onclick="filtrar('outros_end',this)">Outros endereços</button>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table class="main-table">
+          <thead>
+            <tr>
+              <th style="min-width:160px">Locatario</th>
+              <th style="min-width:200px">Discriminacao de Cobranças</th>
+              <th style="min-width:180px">IPTU / Seguros / Extras</th>
+              <th style="min-width:130px">Total do Boleto</th>
+              <th style="min-width:160px;background:#9B4343">Repasse ao Proprietário</th>
+            </tr>
+          </thead>
+          <tbody id="corpo"></tbody>
+          <tfoot>
+            <tr>
+              <td>TOTAIS</td>
+              <td id="footCond"></td>
+              <td id="footExtras"></td>
+              <td id="footTotal" style="color:var(--accent);font-size:14px"></td>
+              <td id="footRepasse" style="color:var(--green);font-size:14px"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sem match -->
+    <div id="semMatchSec" style="display:none;margin-top:14px">
+      <div class="card" style="border-left:4px solid var(--orange)">
+        <div class="card-title">Condominios sem locatario identificado</div>
+        <div class="table-wrap">
+          <table class="main-table">
+            <thead><tr><th>Arquivo</th><th>Edificio</th><th>Unidade</th><th>Pagador</th><th>A/C</th><th>Total</th><th>Observacao</th></tr></thead>
+            <tbody id="corpoSem"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Informes mensais por proprietário ─────────────────────────────────── -->
+  <div id="secaoInforme">
+
+    <!-- Cabeçalho grande -->
+    <div class="inf-topo">
+      <div class="inf-topo-left">
+        <div class="inf-titulo">📄 Informes Mensais de Repasse</div>
+        <div class="inf-ref" id="infSubMes"></div>
+      </div>
+      <button class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8" onclick="voltarParaResultados()">← Voltar aos Boletos</button>
+    </div>
+
+    <!-- Seletor de proprietário -->
+    <div class="inf-filtro-box">
+      <div class="inf-filtro-titulo">Selecione o Proprietário</div>
+      <select id="infSelect" class="form-input" style="font-size:15px;padding:10px 14px;max-width:480px;cursor:pointer" onchange="filtrarInforme(this.value)">
+        <option value="">— escolha um proprietário —</option>
+      </select>
+    </div>
+
+    <!-- Card do proprietário selecionado -->
+    <div id="informeCards"></div>
+
+  </div>
+
+</div>
+
+<script>
+let dados = null;
+
+// restaurarSeDisponivel() é chamada no fim do script, depois de todo o setup
+
+// ─── Formato ────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function brl(v) {
+  const n = parseFloat(v) || 0;
+  return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ─── Upload handlers ──────────────────────────────────────────────────────────
+function setupDrop(dropId, inputId, chipsId, multi) {
+  const drop = document.getElementById(dropId);   // div visível
+  const inp  = document.getElementById(inputId);  // input[type=file] oculto
+  inp.addEventListener('change', () => { renderChips(inp.files, chipsId, multi); checkReady(); });
+  drop.addEventListener('dragover',  e => { e.preventDefault(); drop.classList.add('drag-over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault();
+    drop.classList.remove('drag-over');
+    // DataTransfer é necessário para atribuir arquivos ao input
+    const dt = new DataTransfer();
+    Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+    inp.files = dt.files;
+    inp.dispatchEvent(new Event('change'));
+  });
+}
+
+function renderChips(files, chipsId, multi) {
+  const el = document.getElementById(chipsId);
+  el.innerHTML = '';
+  const arr = Array.from(files);
+  arr.slice(0, 6).forEach(f => {
+    el.innerHTML += `<span class="chip">${f.name}</span>`;
+  });
+  if (arr.length > 6) el.innerHTML += `<span class="chip">+${arr.length-6}</span>`;
+}
+
+function checkReady() {
+  const e = document.getElementById('inExcel').files[0];
+  const c = document.getElementById('inCond').files.length;
+  document.getElementById('btnProcessar').disabled = !(e && c > 0);
+}
+
+setupDrop('dropExcel','inExcel','chipsExcel',false);
+setupDrop('dropCond','inCond','chipsCond',true);
+setupDrop('dropBol','inBol','chipsBol',true);
+
+// ─── Processar ────────────────────────────────────────────────────────────────
+async function processar() {
+  const badge = document.getElementById('apiStatusBadge');
+  if (badge.classList.contains('api-nok')) { abrirModal(); return; }
+
+  const fd = new FormData();
+  fd.append('excel', document.getElementById('inExcel').files[0]);
+  for (const f of document.getElementById('inCond').files) fd.append('condominios', f);
+  for (const f of document.getElementById('inBol').files) fd.append('boletos_anteriores', f);
+  fd.append('mes', document.getElementById('inMes').value);
+
+  document.getElementById('secaoUpload').style.display = 'none';
+  document.getElementById('secaoProgresso').style.display = 'block';
+  document.getElementById('resultados').style.display = 'none';
+
+  const log = document.getElementById('logBox');
+  const barra = document.getElementById('barra');
+  const texto = document.getElementById('progTexto');
+  log.innerHTML = '';
+
+  try {
+    const resp = await fetch('/processar', {method:'POST', body:fd});
+    if (!resp.ok) {
+      const msg = resp.status === 401 ? 'Sessão expirada — faça login novamente.' : `Erro HTTP ${resp.status}`;
+      addLog(log, msg, 'err');
+      document.getElementById('secaoUpload').style.display = 'block';
+      document.getElementById('secaoProgresso').style.display = 'none';
+      return;
+    }
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        try { tratar(JSON.parse(line.slice(5).trim()), log, barra, texto); } catch(e) {}
+      }
+    }
+  } catch(e) {
+    addLog(log, 'Erro: '+e.message, 'err');
+  }
+}
+
+function tratar(ev, log, barra, texto) {
+  if (ev.tipo === 'inicio') {
+    texto.textContent = `Processando ${ev.total} arquivos...`;
+  } else if (ev.tipo === 'progresso') {
+    barra.style.width = (ev.total > 0 ? Math.round(ev.atual/ev.total*100) : 100)+'%';
+    texto.textContent = `${ev.atual}/${ev.total}: ${ev.arquivo}`;
+  } else if (ev.tipo === 'log') {
+    const cls = ev.msg.startsWith('OK') ? 'ok' : ev.msg.startsWith('SEM')||ev.msg.startsWith('AVISO') ? 'warn' : '';
+    addLog(log, ev.msg, cls);
+  } else if (ev.tipo === 'erro') {
+    addLog(log, 'ERRO: '+ev.msg, 'err');
+  } else if (ev.tipo === 'resultado') {
+    barra.style.width = '100%';
+    texto.textContent = 'Concluido!';
+    addLog(log, 'Pronto! Carregando resultados...', 'ok');
+    setTimeout(() => mostrar(ev.dados), 600);
+  }
+}
+
+function addLog(el, msg, cls) {
+  const span = document.createElement('span');
+  if (cls) span.className = 'log-'+cls;
+  span.textContent = msg + '\n';
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ─── Resultados ────────────────────────────────────────────────────────────────
+function mostrar(d, mesRef) {
+  dados = d;
+  document.getElementById('secaoProgresso').style.display = 'none';
+  document.getElementById('resultados').style.display = 'block';
+  const mes = mesRef || document.getElementById('inMes').value;
+  document.getElementById('subMes').textContent = mes ? 'Referencia: '+mes : '';
+  renderStats(d);
+  renderBannerCota(d.locatarios);
+  renderTabela(d.locatarios);
+  renderSemMatch(d.sem_match);
+  // Persiste resultado para que recargas não apaguem os dados
+  const anoMes = new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0');
+  try {
+    localStorage.setItem('boletos_dados', JSON.stringify(d));
+    localStorage.setItem('boletos_mes', mes);
+    localStorage.setItem('boletos_salvo_em', anoMes);
+  } catch(e) {}
+}
+
+function renderStats(d) {
+  const total = d.locatarios.length;
+  const comCond = d.locatarios.filter(r=>r.tem_cond).length;
+  const comIptu = d.locatarios.filter(r=>parseFloat(r.iptu)>0||parseFloat(r.iptu_hist)>0).length;
+  const totComissao = d.locatarios.reduce((s,r)=>s+(parseFloat(r.taxa_imob)||0), 0);
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat"><div class="num">${total}</div><div class="lbl">Locatarios</div></div>
+    <div class="stat"><div class="num">${comCond}</div><div class="lbl">Com Cond. lido</div></div>
+    <div class="stat"><div class="num">${total-comCond}</div><div class="lbl">Sem Cond.</div></div>
+    <div class="stat"><div class="num">${comIptu}</div><div class="lbl">Com IPTU</div></div>
+    <div class="stat"><div class="num" style="color:var(--red)">${(d.sem_match||[]).length}</div><div class="lbl">PDFs sem match</div></div>
+    <div class="stat"><div class="num">${brl(totComissao)}</div><div class="lbl">Comissão Imob.</div></div>
+  `;
+}
+
+function renderBannerCota(lista) {
+  const alertas = lista.filter(r => r.cond_alerta);
+  const banner = document.getElementById('bannerCotaAlerta');
+  const listDiv = document.getElementById('bannerCotaLista');
+  if (alertas.length === 0) {
+    banner.classList.remove('show');
+    listDiv.innerHTML = '';
+    return;
+  }
+  let html = '';
+  alertas.forEach(r => {
+    const diff = (r.cond_cota_atual - r.cond_cota_hist);
+    const seta = diff > 0 ? '▲' : '▼';
+    const cor  = diff > 0 ? 'color:#B84545' : 'color:#2A6A7E';
+    html += `<div class="banner-item">
+      <span style="flex:1;font-weight:600">${escHtml(r.locatario)}</span>
+      <span style="color:var(--muted)">${escHtml(r.endereco||'')}</span>
+      <span class="banner-seta">Histórico: R$ ${brl(r.cond_cota_hist)}</span>
+      <span>→</span>
+      <span style="${cor};font-weight:700">${seta} R$ ${brl(r.cond_cota_atual)}</span>
+    </div>`;
+  });
+  listDiv.innerHTML = html;
+  banner.classList.add('show');
+}
+
+const LABELS = {
+  cota:'Cota Cond.', agua:'Cons. Agua', gas:'Cons. Gas', energia:'Energia Comum',
+  tx_leitura:'Tx. Leitura', vaga_moto:'Vaga Moto', tag:'Tag/Acesso',
+  melhorias:'Melhorias', outros:'Outros Cond.', fundo_reserva:'Fundo Reserva', correio:'Correio'
+};
+
+function renderTabela(lista) {
+  const corpo = document.getElementById('corpo');
+  corpo.innerHTML = '';
+  lista.forEach((row, idx) => {
+    const tr = document.createElement('tr');
+    tr.dataset.idx = idx;
+    tr.dataset.temcond = row.tem_cond ? '1' : '0';
+    const endLow  = (row.endereco     || '').toLowerCase();
+    const propLow = (row.proprietario || '').toLowerCase();
+    tr.dataset.rua = endLow.includes('itauna') || endLow.includes('itaúna') ? 'itauna'
+                   : endLow.includes('mandaqui') ? 'mandaqui'
+                   : endLow.includes('ester')    ? 'ester'
+                   : endLow.includes('henrique') ? 'henrique'
+                   : 'outros';
+
+    // Col 1: Nome
+    const nomeTd = `
+      <td>
+        <div class="name-main">${row.locatario}</div>
+        <div class="name-sub">${row.endereco}</div>
+        <div class="name-sub" style="color:var(--accent);margin-top:2px">${row.tipo}</div>
+      </td>`;
+
+    // Col 2: Discriminação de cobranças
+    let charges = '';
+    charges += chargeRow('Aluguel', row.aluguel, 'font-weight:700');
+
+    if (row.tem_cond && row.cond_info.length > 0) {
+      const info = row.cond_info[0];
+      charges += `<div class="charge-separator"></div>`;
+      charges += `<div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:2px">${info.edificio||'Condominio'} ${info.unidade||''}</div>`;
+      const itens = row.cond_itens_rep || {};
+      for (const [k, v] of Object.entries(itens)) {
+        if (v && k !== 'cota') charges += chargeRow(LABELS[k]||k, v);
+      }
+      const itensNR = row.cond_itens_nrep || {};
+      for (const [k, v] of Object.entries(itensNR)) {
+        if (v) charges += chargeRowNR(LABELS[k]||k, v);
+      }
+    } else if (!row.tem_cond) {
+      charges += `<div style="font-size:10px;color:var(--muted);font-style:italic;margin-top:3px">Sem condominio</div>`;
+    }
+
+    // Col 3: IPTU / Seguros / Extras
+    const iptuVal = parseFloat(row.iptu) || 0;
+    const iptuHist = parseFloat(row.iptu_hist) || 0;
+    const iptuVagaVal = parseFloat(row.iptu_vaga) || 0;
+    const iptuVagaHist = parseFloat(row.iptu_vaga_hist) || 0;
+    const sfVal = parseFloat(row.seg_fianca) || 0;
+    const sfHist = parseFloat(row.seg_fianca_hist) || 0;
+    const siVal = parseFloat(row.seg_incendio) || 0;
+    const siHist = parseFloat(row.seg_incendio_hist) || 0;
+    const fromBoleto = (iptuVal>0||iptuVagaVal>0||sfVal>0||siVal>0);
+
+    // Captura valores originais ANTES de inicializar (para labels de "histórico:" ficarem corretos)
+    const abonoValOrig      = parseFloat(row.abono_val)       || 0;
+    const extrasFixoValOrig  = parseFloat(row.extras_fixo_val)  || 0;
+    const extrasFixo2ValOrig = parseFloat(row.extras_fixo2_val) || 0;
+    const extrasFixo3ValOrig = parseFloat(row.extras_fixo3_val) || 0;
+    const extrasFixo4ValOrig = parseFloat(row.extras_fixo4_val) || 0;
+    const extrasFixo5ValOrig = parseFloat(row.extras_fixo5_val) || 0;
+
+    // Inicializa valores efetivos no modelo (fallback hist já aplicado).
+    row.iptu             = iptuVal || iptuHist;
+    row.iptu_vaga        = iptuVagaVal || iptuVagaHist;
+    row.seg_fianca       = sfVal || sfHist;
+    row.seg_incendio     = siVal || siHist;
+    row.abono_val        = abonoValOrig      || parseFloat(row.abono_val_hist)       || 0;
+    row.extras_fixo_val  = extrasFixoValOrig  || parseFloat(row.extras_fixo_val_hist)  || 0;
+    row.extras_fixo2_val = extrasFixo2ValOrig || parseFloat(row.extras_fixo2_val_hist) || 0;
+    row.extras_fixo3_val = extrasFixo3ValOrig || parseFloat(row.extras_fixo3_val_hist) || 0;
+    row.extras_fixo4_val = extrasFixo4ValOrig || parseFloat(row.extras_fixo4_val_hist) || 0;
+    row.extras_fixo5_val = extrasFixo5ValOrig || parseFloat(row.extras_fixo5_val_hist) || 0;
+
+    const cotaHist = parseFloat(row.cond_cota_hist) || 0;
+    const cotaVal  = parseFloat((row.cond_itens_rep||{}).cota) || 0;
+
+    const col3 = `
+      <td>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div>
+            <div style="font-size:10px;color:var(--muted);font-weight:600">Cota Cond.</div>
+            <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+              value="${cotaVal||''}"
+              oninput="recalcCota(${idx},this.value)" id="cota_${idx}">
+            ${cotaHist ? '<div class="hist-note">historico: '+brl(cotaHist)+'</div>' : ''}
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);font-weight:600">IPTU Apto</div>
+            <div style="display:flex;gap:3px;align-items:center">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${iptuVal||iptuHist||''}"
+                oninput="recalc(${idx})" data-field="iptu" id="iptu_${idx}">
+              <input class="input-sm" type="text" placeholder="parcela"
+                value="${row.iptu_parcela||row.iptu_parcela_hist||''}"
+                oninput="dados.locatarios[${idx}].iptu_parcela=this.value" id="iparc_${idx}">
+            </div>
+            ${fromBoleto&&iptuVal ? '<div class="from-boleto">do boleto anterior</div>' : (iptuHist&&!iptuVal ? '<div class="hist-note">historico: '+brl(iptuHist)+'</div>' : '')}
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);font-weight:600">IPTU Vaga</div>
+            <div style="display:flex;gap:3px;align-items:center">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${iptuVagaVal||iptuVagaHist||''}"
+                oninput="recalc(${idx})" data-field="iptu_vaga" id="iptuv_${idx}">
+              <input class="input-sm" type="text" placeholder="parcela"
+                value="${row.iptu_vaga_parcela||row.iptu_vaga_parcela_hist||''}"
+                oninput="dados.locatarios[${idx}].iptu_vaga_parcela=this.value" id="iparcv_${idx}">
+            </div>
+            ${fromBoleto&&iptuVagaVal ? '<div class="from-boleto">do boleto anterior</div>' : (iptuVagaHist&&!iptuVagaVal ? '<div class="hist-note">historico: '+brl(iptuVagaHist)+'</div>' : '')}
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);font-weight:600">Seg. Fianca</div>
+            <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+              value="${sfVal||sfHist||''}"
+              oninput="recalc(${idx})" data-field="seg_fianca" id="sf_${idx}">
+            ${fromBoleto&&sfVal ? '<div class="from-boleto">do boleto anterior</div>' : (sfHist&&!sfVal ? '<div class="hist-note">historico: '+brl(sfHist)+'</div>' : '')}
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);font-weight:600">Seg. Incendio</div>
+            <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+              value="${siVal||siHist||''}"
+              oninput="recalc(${idx})" data-field="seg_incendio" id="si_${idx}">
+            ${fromBoleto&&siVal ? '<div class="from-boleto">do boleto anterior</div>' : (siHist&&!siVal ? '<div class="hist-note">historico: '+brl(siHist)+'</div>' : '')}
+          </div>
+          <div style="border-top:1px dashed #e2e8f0;margin:4px 0 2px"></div>
+          <div>
+            <div style="font-size:10px;color:var(--red);font-weight:600">Abono <span style="font-weight:400;font-style:italic">(subtrai do total)</span></div>
+            <div style="display:flex;gap:3px;align-items:center">
+              <input class="input-desc" type="text" placeholder="Descricao..."
+                value="${row.abono_desc||row.abono_desc_hist||''}"
+                oninput="dados.locatarios[${idx}].abono_desc=this.value">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${row.abono_val||row.abono_val_hist||''}"
+                oninput="recalc(${idx})" data-field="abono_val">
+              <input class="input-sm" type="text" placeholder="parcela"
+                value="${row.abono_parcela||row.abono_parcela_hist||''}"
+                oninput="dados.locatarios[${idx}].abono_parcela=this.value" id="abpar_${idx}">
+            </div>
+            ${(row.abono_val_hist&&!abonoValOrig)?'<div class="hist-note">historico: '+brl(row.abono_val_hist)+(row.abono_parcela_hist?' ('+row.abono_parcela_hist+')':'')+'</div>':''}
+          </div>
+          <div style="border-top:1px dashed #e2e8f0;margin:4px 0 2px"></div>
+          <div style="font-size:10px;color:var(--green);font-weight:700;margin-bottom:2px">Outros fixo <span style="font-weight:400;font-style:italic">(replica todo mes)</span></div>
+          <div>
+            <div style="display:flex;gap:3px">
+              <input class="input-desc" type="text" placeholder="Descricao..."
+                value="${row.extras_fixo_desc||row.extras_fixo_desc_hist||''}"
+                oninput="dados.locatarios[${idx}].extras_fixo_desc=this.value">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${row.extras_fixo_val||row.extras_fixo_val_hist||''}"
+                oninput="recalc(${idx})" data-field="extras_fixo_val">
+            </div>
+            ${(row.extras_fixo_val_hist&&!extrasFixoValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo_val_hist)+'</div>':''}
+          </div>
+          <div>
+            <div style="display:flex;gap:3px">
+              <input class="input-desc" type="text" placeholder="Descricao..."
+                value="${row.extras_fixo2_desc||row.extras_fixo2_desc_hist||''}"
+                oninput="dados.locatarios[${idx}].extras_fixo2_desc=this.value">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${row.extras_fixo2_val||row.extras_fixo2_val_hist||''}"
+                oninput="recalc(${idx})" data-field="extras_fixo2_val">
+            </div>
+            ${(row.extras_fixo2_val_hist&&!extrasFixo2ValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo2_val_hist)+'</div>':''}
+          </div>
+          <div>
+            <div style="display:flex;gap:3px">
+              <input class="input-desc" type="text" placeholder="Descricao..."
+                value="${row.extras_fixo3_desc||row.extras_fixo3_desc_hist||''}"
+                oninput="dados.locatarios[${idx}].extras_fixo3_desc=this.value">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${row.extras_fixo3_val||row.extras_fixo3_val_hist||''}"
+                oninput="recalc(${idx})" data-field="extras_fixo3_val">
+            </div>
+            ${(row.extras_fixo3_val_hist&&!extrasFixo3ValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo3_val_hist)+'</div>':''}
+          </div>
+          <div>
+            <div style="display:flex;gap:3px">
+              <input class="input-desc" type="text" placeholder="Descricao..."
+                value="${row.extras_fixo4_desc||row.extras_fixo4_desc_hist||''}"
+                oninput="dados.locatarios[${idx}].extras_fixo4_desc=this.value">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${row.extras_fixo4_val||row.extras_fixo4_val_hist||''}"
+                oninput="recalc(${idx})" data-field="extras_fixo4_val">
+            </div>
+            ${(row.extras_fixo4_val_hist&&!extrasFixo4ValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo4_val_hist)+'</div>':''}
+          </div>
+          <div>
+            <div style="display:flex;gap:3px">
+              <input class="input-desc" type="text" placeholder="Descricao..."
+                value="${row.extras_fixo5_desc||row.extras_fixo5_desc_hist||''}"
+                oninput="dados.locatarios[${idx}].extras_fixo5_desc=this.value">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${row.extras_fixo5_val||row.extras_fixo5_val_hist||''}"
+                oninput="recalc(${idx})" data-field="extras_fixo5_val">
+            </div>
+            ${(row.extras_fixo5_val_hist&&!extrasFixo5ValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo5_val_hist)+'</div>':''}
+          </div>
+          <div style="border-top:1px dashed #e2e8f0;margin:4px 0 2px"></div>
+          <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:2px">Outros <span style="font-weight:400;font-style:italic">(so esse mes)</span></div>
+          <div>
+            <div style="display:flex;gap:3px">
+              <input class="input-desc" type="text" placeholder="Descricao..."
+                value="${row.extras_desc||''}"
+                oninput="dados.locatarios[${idx}].extras_desc=this.value">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${row.extras_val||''}"
+                oninput="recalc(${idx})" data-field="extras_val">
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;gap:3px">
+              <input class="input-desc" type="text" placeholder="Descricao..."
+                value="${row.extras2_desc||''}"
+                oninput="dados.locatarios[${idx}].extras2_desc=this.value">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${row.extras2_val||''}"
+                oninput="recalc(${idx})" data-field="extras2_val">
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;gap:3px">
+              <input class="input-desc" type="text" placeholder="Descricao..."
+                value="${row.extras3_desc||''}"
+                oninput="dados.locatarios[${idx}].extras3_desc=this.value">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+                value="${row.extras3_val||''}"
+                oninput="recalc(${idx})" data-field="extras3_val">
+            </div>
+          </div>
+        </div>
+      </td>`;
+
+    // Col 4: Total discriminado
+    const col4 = `<td><div class="total-box" id="totalbox_${idx}"></div></td>`;
+
+    // Col 5: Repasse ao Proprietário — inicializa ded com hist
+    if (!row.cond_itens_nrep_ativo) {
+      row.cond_itens_nrep_ativo = {};
+      for (const k of Object.keys(row.cond_itens_nrep || {})) {
+        row.cond_itens_nrep_ativo[k] = true;
+      }
+    }
+    for (let n = 1; n <= 10; n++) {
+      const orig = parseFloat(row[`ded${n}_val`]) || 0;
+      row[`ded${n}_val`]  = orig || parseFloat(row[`ded${n}_val_hist`])  || 0;
+      if (!row[`ded${n}_desc`] && row[`ded${n}_desc_hist`])
+        row[`ded${n}_desc`] = row[`ded${n}_desc_hist`];
+      if (row[`ded${n}_subtrair`] === undefined) row[`ded${n}_subtrair`] = true;
+    }
+    let dedInputs = '';
+    for (let n = 1; n <= 10; n++) {
+      const dDesc = (row[`ded${n}_desc`] || '').replace(/"/g, '&quot;');
+      const dVal  = row[`ded${n}_val`] || '';
+      const dSub  = row[`ded${n}_subtrair`] !== false;
+      const hNote = (row[`ded${n}_val_hist`] && !(parseFloat(row[`ded${n}_val`])||0))
+        ? `<div class="hist-note">hist: ${brl(row[`ded${n}_val_hist`])}</div>` : '';
+      dedInputs += `
+        <div style="display:flex;gap:3px;margin-bottom:2px;align-items:center">
+          <input class="input-desc" type="text" placeholder="Descrição..."
+            style="width:80px;font-size:10px" value="${dDesc}"
+            oninput="dados.locatarios[${idx}]['ded${n}_desc']=this.value;recalcRepasse(${idx})">
+          <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+            value="${dVal}" oninput="recalcRepasse(${idx})" data-dedfield="ded${n}_val">
+          <input type="checkbox" title="Marcado = subtrai / Desmarcado = soma ao repasse"
+            ${dSub ? 'checked' : ''}
+            onchange="dados.locatarios[${idx}]['ded${n}_subtrair']=this.checked;renderRepasse(${idx});atualizarRodape()"
+            style="cursor:pointer;width:13px;height:13px;flex-shrink:0;accent-color:var(--accent)">
+        </div>${hNote}`;
+    }
+    const paChecked = row.primeiro_aluguel_ativo ? 'checked' : '';
+    const paVal = row.primeiro_aluguel_val || '';
+    const paDisplay = row.primeiro_aluguel_ativo ? '' : 'display:none';
+    const col5 = `
+      <td>
+        <div class="total-box" style="background:#F2DADA;border-color:#D4A0A0;min-width:180px">
+          <div class="charge-list" id="repaseinfo_${idx}"></div>
+          <div style="border-top:1px dashed #D4A0A0;margin:5px 0 4px;padding-top:4px">
+            <label style="font-size:10px;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:5px;cursor:pointer;margin-bottom:3px">
+              <input type="checkbox" ${paChecked}
+                onchange="dados.locatarios[${idx}].primeiro_aluguel_ativo=this.checked;document.getElementById('pa_val_${idx}').style.display=this.checked?'':'none';recalcRepasse(${idx})">
+              Primeiro Aluguel
+            </label>
+            <div id="pa_val_${idx}" style="${paDisplay}">
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="Valor do desconto..."
+                style="width:100%;box-sizing:border-box;margin-bottom:3px"
+                value="${paVal}"
+                oninput="dados.locatarios[${idx}].primeiro_aluguel_val=parseFloat(this.value)||0;recalcRepasse(${idx})">
+            </div>
+          </div>
+          <div style="border-top:1px dashed #bbf7d0;margin:5px 0 4px;padding-top:4px">
+            <div style="font-size:9px;color:var(--muted);font-weight:600;margin-bottom:3px">(-) DEDUÇÕES MANUAIS:</div>
+            ${dedInputs}
+          </div>
+          <div class="charge-separator"></div>
+          <div class="charge-row">
+            <span class="charge-name" style="font-weight:700">REPASSE</span>
+            <span class="charge-val" style="font-weight:700;font-size:13px" id="repaseval_${idx}"></span>
+          </div>
+        </div>
+      </td>`;
+
+    tr.innerHTML = nomeTd + `<td><div class="charge-list">${charges}</div></td>` + col3 + col4 + col5;
+    corpo.appendChild(tr);
+    renderTotal(idx);
+  });
+  atualizarRodape();
+}
+
+function chargeRow(nome, val, style='') {
+  if (!val) return '';
+  return `<div class="charge-row"><span class="charge-name">${nome}</span><span class="charge-val" style="${style}">${brl(val)}</span></div>`;
+}
+
+function chargeRowNR(nome, val) {
+  if (!val) return '';
+  return `<div class="charge-row"><span class="charge-name charge-nrep">${nome} <span class="nrep-label">(proprietário)</span></span><span class="charge-val charge-nrep">${brl(val)}</span></div>`;
+}
+
+
+function renderTotal(idx) {
+  const row = dados.locatarios[idx];
+  // Sem fallback hist aqui — os valores já foram inicializados com hist em renderTabela
+  const iptu = parseFloat(row.iptu)||0;
+  const iptuParc = row.iptu_parcela||row.iptu_parcela_hist||'';
+  const iptuVaga = parseFloat(row.iptu_vaga)||0;
+  const iptuVagaParc = row.iptu_vaga_parcela||row.iptu_vaga_parcela_hist||'';
+  const sf = parseFloat(row.seg_fianca)||0;
+  const si = parseFloat(row.seg_incendio)||0;
+  const ef  = parseFloat(row.extras_fixo_val)||0,  efDesc  = row.extras_fixo_desc ||row.extras_fixo_desc_hist ||'Outros fixo';
+  const ef2 = parseFloat(row.extras_fixo2_val)||0, ef2Desc = row.extras_fixo2_desc||row.extras_fixo2_desc_hist||'Outros fixo 2';
+  const ef3 = parseFloat(row.extras_fixo3_val)||0, ef3Desc = row.extras_fixo3_desc||row.extras_fixo3_desc_hist||'Outros fixo 3';
+  const ef4 = parseFloat(row.extras_fixo4_val)||0, ef4Desc = row.extras_fixo4_desc||row.extras_fixo4_desc_hist||'Outros fixo 4';
+  const ef5 = parseFloat(row.extras_fixo5_val)||0, ef5Desc = row.extras_fixo5_desc||row.extras_fixo5_desc_hist||'Outros fixo 5';
+  const ev  = parseFloat(row.extras_val)||0;
+  const ev2 = parseFloat(row.extras2_val)||0;
+  const ev3 = parseFloat(row.extras3_val)||0;
+  const ab = parseFloat(row.abono_val)||0;
+  const abDesc = row.abono_desc||row.abono_desc_hist||'Abono';
+  const abParc = row.abono_parcela||row.abono_parcela_hist||'';
+  const total = (row.aluguel||0) + (row.cond_repasse||0) + iptu + iptuVaga + sf + si + ef + ef2 + ef3 + ef4 + ef5 + ev + ev2 + ev3 - ab;
+
+  let html = '';
+  html += `<div class="charge-row"><span class="charge-name">Aluguel</span><span class="charge-val">${brl(row.aluguel)}</span></div>`;
+
+  // Cada item do condomínio discriminado individualmente
+  const itens = row.cond_itens_rep || {};
+  for (const [k, v] of Object.entries(itens)) {
+    if (v) html += `<div class="charge-row"><span class="charge-name">${LABELS[k]||k}</span><span class="charge-val">${brl(v)}</span></div>`;
+  }
+
+  if (iptu) html += `<div class="charge-row"><span class="charge-name">IPTU Apto${iptuParc?' ('+iptuParc+')':''}</span><span class="charge-val">${brl(iptu)}</span></div>`;
+  if (iptuVaga) html += `<div class="charge-row"><span class="charge-name">IPTU Vaga${iptuVagaParc?' ('+iptuVagaParc+')':''}</span><span class="charge-val">${brl(iptuVaga)}</span></div>`;
+  if (sf) html += `<div class="charge-row"><span class="charge-name">Seg. Fianca</span><span class="charge-val">${brl(sf)}</span></div>`;
+  if (si) html += `<div class="charge-row"><span class="charge-name">Seg. Incendio</span><span class="charge-val">${brl(si)}</span></div>`;
+  if (ef)  html += `<div class="charge-row"><span class="charge-name">${efDesc}</span><span class="charge-val">${brl(ef)}</span></div>`;
+  if (ef2) html += `<div class="charge-row"><span class="charge-name">${ef2Desc}</span><span class="charge-val">${brl(ef2)}</span></div>`;
+  if (ef3) html += `<div class="charge-row"><span class="charge-name">${ef3Desc}</span><span class="charge-val">${brl(ef3)}</span></div>`;
+  if (ef4) html += `<div class="charge-row"><span class="charge-name">${ef4Desc}</span><span class="charge-val">${brl(ef4)}</span></div>`;
+  if (ef5) html += `<div class="charge-row"><span class="charge-name">${ef5Desc}</span><span class="charge-val">${brl(ef5)}</span></div>`;
+  if (ev)  html += `<div class="charge-row"><span class="charge-name">${row.extras_desc||'Outros'}</span><span class="charge-val">${brl(ev)}</span></div>`;
+  if (ev2) html += `<div class="charge-row"><span class="charge-name">${row.extras2_desc||'Outros 2'}</span><span class="charge-val">${brl(ev2)}</span></div>`;
+  if (ev3) html += `<div class="charge-row"><span class="charge-name">${row.extras3_desc||'Outros 3'}</span><span class="charge-val">${brl(ev3)}</span></div>`;
+  if (ab) html += `<div class="charge-row"><span class="charge-name" style="color:var(--red)">${abDesc}${abParc?' ('+abParc+')':''}</span><span class="charge-val" style="color:var(--red)">- ${brl(ab)}</span></div>`;
+  html += `<div class="charge-separator"></div>`;
+  html += `<div class="charge-row"><span class="charge-name charge-total">TOTAL</span><span class="charge-val charge-total total-grand">${brl(total)}</span></div>`;
+
+  const box = document.getElementById('totalbox_'+idx);
+  if (box) { box.innerHTML = html; box.dataset.total = total; }
+
+  renderRepasse(idx);
+}
+
+function renderRepasse(idx) {
+  const row = dados.locatarios[idx];
+  const paAtivo = row.primeiro_aluguel_ativo && (parseFloat(row.primeiro_aluguel_val)||0) > 0;
+  const paVal = paAtivo ? (parseFloat(row.primeiro_aluguel_val)||0) : 0;
+  const taxaImobBruta = parseFloat(row.taxa_imob) || 0;
+  const percImob = parseFloat(row.percentual_imob) || 0;
+  const taxaImob = paAtivo ? 0 : taxaImobBruta;
+  const itensNRep = row.cond_itens_nrep || {};
+  const nrepAtivo = row.cond_itens_nrep_ativo || {};
+  const dedProp = Object.entries(itensNRep).reduce((s,[k,v])=>s+((nrepAtivo[k]!==false)?(parseFloat(v)||0):0),0);
+  const _ds = n => (row[`ded${n}_subtrair`] !== false ? 1 : -1) * (parseFloat(row[`ded${n}_val`])||0);
+  const ded1=_ds(1),ded2=_ds(2),ded3=_ds(3),ded4=_ds(4),ded5=_ds(5),ded6=_ds(6),ded7=_ds(7),ded8=_ds(8),ded9=_ds(9),ded10=_ds(10);
+  const repProp = (row.aluguel||0) - taxaImob - dedProp - ded1 - ded2 - ded3 - ded4 - ded5 - ded6 - ded7 - ded8 - ded9 - ded10 - paVal;
+
+  let info = '';
+  info += `<div class="charge-row"><span class="charge-name">Aluguel</span><span class="charge-val">${brl(row.aluguel)}</span></div>`;
+  if (paAtivo) {
+    info += `<div class="charge-row"><span class="charge-name" style="color:var(--accent);font-style:italic">(-) Primeiro Aluguel</span><span class="charge-val" style="color:var(--accent)">- ${brl(paVal)}</span></div>`;
+    if (taxaImobBruta) info += `<div class="charge-row"><span class="charge-name" style="color:var(--muted);font-style:italic">Taxa ${percImob}% → 0%</span><span class="charge-val" style="color:var(--muted)">-</span></div>`;
+  } else {
+    if (taxaImob) info += `<div class="charge-row"><span class="charge-name" style="color:var(--red)">(-) Taxa ${percImob}%</span><span class="charge-val" style="color:var(--red)">- ${brl(taxaImob)}</span></div>`;
+  }
+  for (const [k,v] of Object.entries(itensNRep)) {
+    if (v) {
+      const ativo = nrepAtivo[k] !== false;
+      const nomeStyle = ativo ? 'color:var(--muted)' : 'color:var(--muted);opacity:0.45;text-decoration:line-through';
+      const valStyle  = ativo ? 'color:var(--muted)' : 'color:var(--muted);opacity:0.45;text-decoration:line-through';
+      info += `<div class="charge-row" style="align-items:center">
+        <span class="charge-name" style="${nomeStyle}">(-) ${LABELS[k]||k}</span>
+        <span style="display:flex;align-items:center;gap:4px">
+          <span class="charge-val" style="${valStyle}">- ${brl(v)}</span>
+          <input type="checkbox" title="Incluir na dedução do proprietário" ${ativo?'checked':''}
+            onchange="toggleNRep(${idx},'${k}',this.checked)"
+            style="cursor:pointer;width:13px;height:13px;flex-shrink:0;accent-color:var(--accent)">
+        </span>
+      </div>`;
+    }
+  }
+  [1,2,3,4,5,6,7,8,9,10].forEach(n=>{
+    const rawVal = parseFloat(row[`ded${n}_val`])||0;
+    if (!rawVal) return;
+    const sub = row[`ded${n}_subtrair`] !== false;
+    const desc = row[`ded${n}_desc`]||'Dedução';
+    const cor = sub ? 'var(--orange)' : 'var(--accent)';
+    const sinal = sub ? '(-)' : '(+)';
+    const sinalVal = sub ? '-' : '+';
+    info += `<div class="charge-row"><span class="charge-name" style="color:${cor}">${sinal} ${desc}</span><span class="charge-val" style="color:${cor}">${sinalVal} ${brl(rawVal)}</span></div>`;
+  });
+
+  const infoEl = document.getElementById('repaseinfo_'+idx);
+  if (infoEl) infoEl.innerHTML = info;
+
+  const cor = repProp < 0 ? 'var(--red)' : 'var(--green)';
+  const valEl = document.getElementById('repaseval_'+idx);
+  if (valEl) { valEl.textContent = brl(repProp); valEl.style.color = cor; }
+}
+
+function toggleNRep(idx, key, checked) {
+  const row = dados.locatarios[idx];
+  if (!row.cond_itens_nrep_ativo) row.cond_itens_nrep_ativo = {};
+  row.cond_itens_nrep_ativo[key] = checked;
+  renderRepasse(idx);
+  atualizarRodape();
+}
+
+function recalcRepasse(idx) {
+  const row = dados.locatarios[idx];
+  const tr = document.querySelector(`tr[data-idx="${idx}"]`);
+  if (!tr) return;
+  tr.querySelectorAll('input[data-dedfield]').forEach(inp => {
+    row[inp.dataset.dedfield] = parseFloat(inp.value) || 0;
+  });
+  renderRepasse(idx);
+  atualizarRodape();
+}
+
+function recalcCota(idx, val) {
+  const row = dados.locatarios[idx];
+  if (!row.cond_itens_rep) row.cond_itens_rep = {};
+  const novo = parseFloat(val) || 0;
+  const old = (row.cond_itens_rep['cota'] || 0);
+  row.cond_itens_rep['cota'] = novo;
+  row.cond_cota = novo;
+  row.cond_repasse = Math.round((row.cond_repasse - old + novo) * 100) / 100;
+  renderTotal(idx);
+  atualizarRodape();
+}
+
+function recalc(idx) {
+  const row = dados.locatarios[idx];
+  const tr = document.querySelector(`tr[data-idx="${idx}"]`);
+  if (!tr) return;
+  tr.querySelectorAll('input[data-field]').forEach(inp => {
+    row[inp.dataset.field] = inp.type==='number' ? parseFloat(inp.value)||0 : inp.value;
+  });
+  renderTotal(idx);
+  atualizarRodape();
+}
+
+function atualizarRodape() {
+  let totAl=0, totCo=0, totEx=0, totGeral=0, totRepasse=0, totComissao=0;
+  dados.locatarios.forEach(row => {
+    totAl += row.aluguel||0;
+    totCo += row.cond_repasse||0;
+    const iptu = parseFloat(row.iptu)||0;
+    const iptuVaga = parseFloat(row.iptu_vaga)||0;
+    const sf = parseFloat(row.seg_fianca)||0;
+    const si = parseFloat(row.seg_incendio)||0;
+    const ef  = parseFloat(row.extras_fixo_val)||0;
+    const ef2 = parseFloat(row.extras_fixo2_val)||0;
+    const ef3 = parseFloat(row.extras_fixo3_val)||0;
+    const ef4 = parseFloat(row.extras_fixo4_val)||0;
+    const ef5 = parseFloat(row.extras_fixo5_val)||0;
+    const ev  = parseFloat(row.extras_val)||0;
+    const ev2 = parseFloat(row.extras2_val)||0;
+    const ev3 = parseFloat(row.extras3_val)||0;
+    const ab  = parseFloat(row.abono_val)||0;
+    totEx += iptu+iptuVaga+sf+si+ef+ef2+ef3+ef4+ef5+ev+ev2+ev3-ab;
+    totGeral += (row.aluguel||0)+(row.cond_repasse||0)+iptu+iptuVaga+sf+si+ef+ef2+ef3+ef4+ef5+ev+ev2+ev3-ab;
+    // Repasse: recalcula a partir dos dados atuais
+    const taxaImob = parseFloat(row.taxa_imob)||0;
+    const dedProp = Object.entries(row.cond_itens_nrep||{}).reduce((s,[k,v])=>s+((row.cond_itens_nrep_ativo||{})[k]!==false?(parseFloat(v)||0):0),0);
+    const paAtivo = row.primeiro_aluguel_ativo && (parseFloat(row.primeiro_aluguel_val)||0) > 0;
+    const paVal = paAtivo ? (parseFloat(row.primeiro_aluguel_val)||0) : 0;
+    const taxaImobEf = paAtivo ? 0 : taxaImob;
+    const _dsR = n => (row[`ded${n}_subtrair`]!==false?1:-1)*(parseFloat(row[`ded${n}_val`])||0);
+    const dedMan = _dsR(1)+_dsR(2)+_dsR(3)+_dsR(4)+_dsR(5)+_dsR(6)+_dsR(7)+_dsR(8)+_dsR(9)+_dsR(10);
+    totRepasse += (row.aluguel||0) - taxaImobEf - dedProp - dedMan - paVal;
+    totComissao += taxaImobEf;
+  });
+  document.getElementById('footCond').innerHTML = `<span style="font-size:11px">Aluguel: ${brl(totAl)}<br>Cond: ${brl(totCo)}</span>`;
+  document.getElementById('footExtras').innerHTML = `<span style="font-size:11px">IPTU+Seguros+Extras: ${brl(totEx)}</span>`;
+  document.getElementById('footTotal').textContent = brl(totGeral);
+  document.getElementById('footRepasse').innerHTML = `
+    <span style="font-size:11px;color:var(--muted);display:block">Total Repasse Prop.</span>
+    ${brl(totRepasse)}
+    <span style="font-size:11px;color:var(--purple);display:block;margin-top:4px;font-weight:600">Comissão Imob.: ${brl(totComissao)}</span>`;
+}
+
+function renderSemMatch(lista) {
+  if (!lista||!lista.length) { document.getElementById('semMatchSec').style.display='none'; return; }
+  document.getElementById('semMatchSec').style.display = 'block';
+  document.getElementById('corpoSem').innerHTML = lista.map(c=>`
+    <tr class="sem-match-row">
+      <td style="font-size:10px">${c.arquivo||''}</td>
+      <td>${c.edificio||'-'}</td><td>${c.unidade||'-'}</td>
+      <td>${c.pagador||'-'}</td><td>${c.ac||'-'}</td>
+      <td>${c.total_boleto?brl(c.total_boleto):'-'}</td>
+      <td style="font-size:10px;color:var(--red)">${c.erro||''}</td>
+    </tr>`).join('');
+}
+
+// ─── Filtros ──────────────────────────────────────────────────────────────────
+function filtrar(tipo, btn) {
+  document.querySelectorAll('#filtros .btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#corpo tr').forEach(tr => {
+    const tc  = tr.dataset.temcond === '1';
+    const rua = tr.dataset.rua || 'outros';
+    const vis = tipo === 'todos'
+      || (tipo === 'com_cond'   && tc)
+      || (tipo === 'sem_cond'   && !tc)
+      || (tipo === 'itauna'     && rua === 'itauna')
+      || (tipo === 'mandaqui'   && rua === 'mandaqui')
+      || (tipo === 'ester'      && rua === 'ester')
+      || (tipo === 'henrique'   && rua === 'henrique')
+      || (tipo === 'outros_end' && rua === 'outros');
+    tr.style.display = vis ? '' : 'none';
+  });
+}
+
+// ─── Salvar e Exportar ────────────────────────────────────────────────────────
+async function salvarExtras() {
+  const r = await fetch('/salvar_extras',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(dados)});
+  const j = await r.json();
+  if (j.ok) {
+    try { localStorage.setItem('boletos_dados', JSON.stringify(dados)); } catch(e) {}
+    alert('Salvo! No proximo mes Cota Cond., IPTU e Seguros serao pre-preenchidos automaticamente.');
+  }
+}
+
+async function exportarExcel() {
+  const mes = document.getElementById('inMes').value;
+  const r = await fetch('/exportar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({locatarios:dados.locatarios,mes})});
+  if (!r.ok){alert('Erro ao exportar');return;}
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`boletos_${mes.replace('/','_')||'export'}.xlsx`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── API Modal ────────────────────────────────────────────────────────────────
+function abrirModal() { document.getElementById('modalApi').classList.add('open'); }
+function fecharModal() { document.getElementById('modalApi').classList.remove('open'); }
+// Fecha modal ao clicar no fundo escuro
+document.getElementById('modalApi').addEventListener('click', function(e) {
+  if (e.target === this) fecharModal();
+});
+async function salvarApi() {
+  const key = document.getElementById('inputApiKey').value.trim();
+  if (!key) return;
+  const btn = document.querySelector('#modalApi .btn-primary');
+  btn.disabled=true; btn.textContent='Testando...';
+  const r = await fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:key})});
+  const j = await r.json();
+  btn.disabled=false; btn.textContent='Salvar e Testar';
+  if (j.ok) {
+    const b=document.getElementById('apiStatusBadge');
+    b.className='api-status api-ok'; b.textContent='API configurada';
+    fecharModal(); checkReady();
+  } else {
+    document.getElementById('apiErro').textContent=j.erro;
+    document.getElementById('apiErro').style.display='block';
+  }
+}
+
+// ─── Novo processamento ───────────────────────────────────────────────────────
+function novoProcessamento() {
+  dados = null;
+  try { localStorage.removeItem('boletos_dados'); localStorage.removeItem('boletos_mes'); localStorage.removeItem('boletos_salvo_em'); } catch(e) {}
+  document.getElementById('resultados').style.display = 'none';
+  document.getElementById('secaoInforme').style.display = 'none';
+  document.getElementById('secaoProgresso').style.display = 'none';
+  document.getElementById('secaoUpload').style.display = 'block';
+  // Limpa chips e inputs de arquivo
+  ['chipsExcel','chipsCond','chipsBol'].forEach(id => document.getElementById(id).innerHTML = '');
+  ['inExcel','inCond','inBol'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('barra').style.width = '0%';
+  document.getElementById('logBox').innerHTML = '';
+  checkReady();
+}
+
+// ─── Backup / Restaurar histórico ────────────────────────────────────────────
+function baixarHistorico() {
+  window.location.href = '/baixar_historico';
+}
+
+async function restaurarHistorico(input) {
+  const file = input.files[0];
+  if (!file) return;
+  try {
+    const texto = await file.text();
+    const json = JSON.parse(texto);
+    const r = await fetch('/restaurar_historico', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(json)
+    });
+    const j = await r.json();
+    if (j.ok) {
+      alert(`Histórico restaurado com sucesso! ${j.registros} locatário(s) carregados.`);
+    } else {
+      alert('Erro ao restaurar: ' + j.erro);
+    }
+  } catch(e) {
+    alert('Arquivo inválido: ' + e.message);
+  }
+  input.value = '';
+}
+
+// ─── Informes mensais ────────────────────────────────────────────────────────
+
+function normProp(s) {
+  return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+}
+
+function calcRepasseData(row) {
+  const paAtivo = row.primeiro_aluguel_ativo && (parseFloat(row.primeiro_aluguel_val)||0) > 0;
+  const paVal   = paAtivo ? (parseFloat(row.primeiro_aluguel_val)||0) : 0;
+  const taxaImobBruta = parseFloat(row.taxa_imob) || 0;
+  const percImob = parseFloat(row.percentual_imob) || 0;
+  const taxaImob = paAtivo ? 0 : taxaImobBruta;
+  const itensNRep = row.cond_itens_nrep || {};
+  const nrepAtivo = row.cond_itens_nrep_ativo || {};
+  const dedPropItens = Object.entries(itensNRep)
+    .map(([k,v]) => ({ key:k, val: (nrepAtivo[k]!==false) ? (parseFloat(v)||0) : 0 }))
+    .filter(x => x.val > 0);
+  const dedPropTotal = dedPropItens.reduce((s,x) => s+x.val, 0);
+  const deds = [];
+  for (let n=1; n<=10; n++) {
+    const rawVal = parseFloat(row[`ded${n}_val`])||0;
+    if (!rawVal) continue;
+    deds.push({ desc: row[`ded${n}_desc`]||'Dedução', val: rawVal, sub: row[`ded${n}_subtrair`]!==false });
+  }
+  const dedsManual = deds.reduce((s,d) => s + (d.sub ? d.val : -d.val), 0);
+  const repasse = (row.aluguel||0) - taxaImob - dedPropTotal - dedsManual - paVal;
+  return { aluguel: row.aluguel||0, taxaImob, percImob, paAtivo, paVal, dedPropItens, deds, repasse };
+}
+
+// Grupos de proprietários (populado em abrirInformes)
+let _infGrupos = {};
+let _infOrdem  = [];
+
+function abrirInformes() {
+  if (!dados) return;
+  document.getElementById('resultados').style.display = 'none';
+  document.getElementById('secaoInforme').style.display = 'block';
+  document.getElementById('infSubMes').textContent = document.getElementById('subMes').textContent;
+
+  // Monta grupos
+  _infGrupos = {};
+  _infOrdem  = [];
+  dados.locatarios.forEach(row => {
+    const key = normProp(row.proprietario);
+    if (!_infGrupos[key]) { _infGrupos[key] = { nome: row.proprietario, rows: [] }; _infOrdem.push(key); }
+    _infGrupos[key].rows.push(row);
+  });
+  _infOrdem.sort((a, b) => _infGrupos[a].nome.localeCompare(_infGrupos[b].nome, 'pt-BR', {sensitivity:'base'}));
+
+  // Popula o select
+  const sel = document.getElementById('infSelect');
+  sel.innerHTML = '<option value="">— escolha um proprietário —</option>';
+  _infOrdem.forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = _infGrupos[key].nome;
+    sel.appendChild(opt);
+  });
+
+  // Placeholder inicial
+  document.getElementById('informeCards').innerHTML = `
+    <div class="inf-placeholder">
+      <div class="ico">👆</div>
+      Selecione um proprietário acima para visualizar o informe
+    </div>`;
+
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function filtrarInforme(propKey) {
+  if (!propKey) {
+    document.getElementById('informeCards').innerHTML = `
+      <div class="inf-placeholder"><div class="ico">👆</div>Selecione um proprietário acima para visualizar o informe</div>`;
+    return;
+  }
+  const g = _infGrupos[propKey];
+  if (!g) return;
+
+  let totalGeral = 0;
+  let unidadesHtml = '';
+
+  g.rows.forEach(row => {
+    const rd = calcRepasseData(row);
+    totalGeral += rd.repasse;
+
+    let linhas = `<div class="inf-linha"><span>Aluguel</span><span style="font-weight:600">${brl(rd.aluguel)}</span></div>`;
+    if (rd.taxaImob)
+      linhas += `<div class="inf-linha ded"><span>(-) Taxa Imobiliária ${rd.percImob}%</span><span>- ${brl(rd.taxaImob)}</span></div>`;
+    if (rd.paAtivo)
+      linhas += `<div class="inf-linha ded"><span>(-) Primeiro Aluguel</span><span>- ${brl(rd.paVal)}</span></div>`;
+    rd.dedPropItens.forEach(d =>
+      linhas += `<div class="inf-linha ded"><span>(-) ${escHtml(LABELS[d.key]||d.key)} (prop.)</span><span>- ${brl(d.val)}</span></div>`);
+    rd.deds.forEach(d => {
+      if (d.sub) linhas += `<div class="inf-linha ded"><span>(-) ${escHtml(d.desc)}</span><span>- ${brl(d.val)}</span></div>`;
+      else       linhas += `<div class="inf-linha add"><span>(+) ${escHtml(d.desc)}</span><span>+ ${brl(d.val)}</span></div>`;
+    });
+    linhas += `<div class="inf-linha rep"><span>Repasse Líquido</span><span>${brl(rd.repasse)}</span></div>`;
+
+    unidadesHtml += `
+      <div class="inf-unidade">
+        <div class="inf-unid-h">
+          <div class="inf-unid-end">${escHtml(row.endereco||'')}</div>
+          <div class="inf-unid-loc">Locatário: ${escHtml(row.locatario)}</div>
+          ${row.tipo ? `<div class="inf-unid-tipo">${escHtml(row.tipo)}</div>` : ''}
+        </div>
+        <div style="padding:6px 0 10px">${linhas}</div>
+      </div>`;
+  });
+
+  const safeKey = propKey.replace(/'/g,"\\'");
+  document.getElementById('informeCards').innerHTML = `
+    <div class="inf-card">
+      <div class="inf-card-header">
+        <div>
+          <div class="inf-prop-nome">${escHtml(g.nome)}</div>
+          <div class="inf-prop-sub">${g.rows.length} imóvel(is) · ${document.getElementById('infSubMes').textContent}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-sm"
+            style="background:#fff;color:var(--header);font-weight:700;border:none;font-size:13px;padding:8px 16px"
+            onclick="gerarPdfProprietario('${safeKey}')">📄 Gerar PDF</button>
+          <button class="btn btn-sm"
+            style="background:#4A8A4A;color:#fff;font-weight:700;border:none;font-size:13px;padding:8px 16px"
+            onclick="enviarInforme('${safeKey}')">📧 Enviar por E-mail</button>
+        </div>
+      </div>
+      <div class="inf-card-body">
+        ${unidadesHtml}
+        <div class="inf-total">
+          <span class="tlbl">TOTAL A REPASSAR — ${g.rows.length} imóvel(is)</span>
+          <span class="tval">${brl(totalGeral)}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function voltarParaResultados() {
+  document.getElementById('secaoInforme').style.display = 'none';
+  document.getElementById('resultados').style.display = 'block';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function gerarPdfProprietario(propKey) {
+  if (!dados) return;
+  const g = _infGrupos[propKey];
+  if (!g) return;
+
+  const mes    = document.getElementById('inMes').value || '';
+  const hoje   = new Date().toLocaleDateString('pt-BR');
+  const logoUrl = window.location.origin + '/static/logo.png';
+  const e  = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const nr = v => parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  const LL = {
+    cota:'Cota Cond.', agua:'Cons. Água', gas:'Cons. Gás', energia:'Energia Comum',
+    tx_leitura:'Tx. Leitura', vaga_moto:'Vaga/Garagem', tag:'Tag/Acesso',
+    melhorias:'Melhorias', outros:'Outros', fundo_reserva:'Fundo Reserva', correio:'Correio'
+  };
+
+  let unidadesHtml = '';
+  let totalGeral = 0;
+
+  g.rows.forEach((row, i) => {
+    const rd = calcRepasseData(row);
+    totalGeral += rd.repasse;
+
+    let trs = `<tr><td class="desc">Aluguel bruto</td><td class="val">R$ ${nr(rd.aluguel)}</td></tr>`;
+    if (rd.taxaImob)
+      trs += `<tr class="ded"><td class="desc">(-) Taxa de administração ${rd.percImob}%</td><td class="val">(R$ ${nr(rd.taxaImob)})</td></tr>`;
+    if (rd.paAtivo)
+      trs += `<tr class="ded"><td class="desc">(-) Primeiro aluguel</td><td class="val">(R$ ${nr(rd.paVal)})</td></tr>`;
+    rd.dedPropItens.forEach(d =>
+      trs += `<tr class="ded"><td class="desc">(-) ${e(LL[d.key]||d.key)} — encargo do proprietário</td><td class="val">(R$ ${nr(d.val)})</td></tr>`);
+    rd.deds.forEach(d => {
+      if (d.sub) trs += `<tr class="ded"><td class="desc">(-) ${e(d.desc)}</td><td class="val">(R$ ${nr(d.val)})</td></tr>`;
+      else       trs += `<tr class="add"><td class="desc">(+) ${e(d.desc)}</td><td class="val">R$ ${nr(d.val)}</td></tr>`;
+    });
+    trs += `<tr class="sep"><td colspan="2"></td></tr>`;
+    trs += `<tr class="rep"><td class="desc">Valor líquido a repassar</td><td class="val">R$ ${nr(rd.repasse)}</td></tr>`;
+
+    const sep = i > 0 ? '<hr class="imovel-sep">' : '';
+    unidadesHtml += `
+      ${sep}
+      <div class="imovel">
+        <div class="imovel-titulo">Imóvel ${i+1}: ${e(row.endereco||'')}</div>
+        <div class="imovel-sub">Locatário: <strong>${e(row.locatario)}</strong>${row.tipo ? ' &nbsp;|&nbsp; ' + e(row.tipo) : ''}</div>
+        <table class="lancamentos">${trs}</table>
+      </div>`;
+  });
+
+  const pdfHtml = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Informe — ${e(g.nome)} — ${e(mes)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Times New Roman',Times,serif;color:#000;background:#fff;padding:32px 40px;font-size:12pt}
+/* Cabeçalho do documento */
+.doc-hdr{border-bottom:2px solid #000;padding-bottom:12px;margin-bottom:18px}
+.doc-logo-row{margin-bottom:12px}
+.doc-logo-row img{width:100%;height:auto;display:block}
+.doc-titulo{font-size:14pt;font-weight:bold;text-transform:uppercase;letter-spacing:1px;text-align:center;margin-top:4px}
+.doc-subtitulo{font-size:10pt;text-align:center;margin-top:3px}
+.doc-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:9pt}
+/* Identificação do proprietário */
+.prop-bloco{border:1px solid #000;padding:10px 14px;margin-bottom:18px}
+.prop-bloco table{width:100%;border-collapse:collapse}
+.prop-bloco td{padding:2px 6px;font-size:10pt;vertical-align:top}
+.prop-bloco .lbl{font-weight:bold;width:130px;white-space:nowrap}
+/* Cada imóvel */
+.imovel{margin-bottom:18px;page-break-inside:avoid}
+.imovel-titulo{font-size:10pt;font-weight:bold;text-transform:uppercase;border-bottom:1px solid #000;padding-bottom:4px;margin-bottom:6px;letter-spacing:.3px}
+.imovel-sub{font-size:9pt;margin-bottom:8px}
+table.lancamentos{width:100%;border-collapse:collapse;font-size:10pt}
+table.lancamentos td{padding:4px 8px;border-bottom:1px solid #ddd}
+table.lancamentos td.desc{width:75%}
+table.lancamentos td.val{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.lancamentos tr.ded td{font-style:italic}
+table.lancamentos tr.add td{font-style:italic}
+table.lancamentos tr.sep td{border-bottom:1px solid #000;padding:0;height:0}
+table.lancamentos tr.rep td{border-top:2px solid #000;border-bottom:none;font-weight:bold;font-size:11pt;padding-top:6px;padding-bottom:6px}
+/* Separador entre imóveis */
+.imovel-sep{border:none;border-top:1px dashed #999;margin:14px 0}
+/* Total geral */
+.total-geral{border:2px solid #000;padding:10px 14px;margin-top:4px;display:flex;justify-content:space-between;align-items:baseline;page-break-inside:avoid}
+.total-geral .tg-lbl{font-size:11pt;font-weight:bold;text-transform:uppercase;letter-spacing:.5px}
+.total-geral .tg-val{font-size:14pt;font-weight:bold}
+/* Rodapé */
+.assinaturas{display:flex;justify-content:space-between;margin-top:48px}
+.assin-bloco{text-align:center;flex:1}
+.assin-bloco .linha{border-top:1px solid #000;width:200px;margin:0 auto;padding-top:5px;font-size:9pt}
+.doc-ftr{margin-top:24px;border-top:1px solid #000;padding-top:8px;display:flex;justify-content:space-between;font-size:8pt}
+@media print{body{padding:15mm 18mm}@page{margin:0;size:A4}}
+</style></head><body>
+
+<div class="doc-hdr">
+  <div class="doc-logo-row">
+    <img src="${logoUrl}" alt="Funchal Imóveis">
+  </div>
+  <div style="height:10px"></div>
+  <div class="doc-titulo">Demonstrativo Mensal de Repasse</div>
+  <div class="doc-subtitulo">Competência: ${e(mes)}</div>
+  <div class="doc-meta">
+    <span>Data de emissão: ${hoje}</span>
+    <span>Documento de uso interno</span>
+  </div>
+</div>
+
+<div class="prop-bloco">
+  <table>
+    <tr><td class="lbl">Proprietário:</td><td><strong>${e(g.nome)}</strong></td>
+        <td class="lbl" style="text-align:right;padding-right:8px">Imóveis:</td><td style="width:40px">${g.rows.length}</td></tr>
+  </table>
+</div>
+
+${unidadesHtml}
+
+<div class="total-geral">
+  <span class="tg-lbl">Total Líquido a Repassar</span>
+  <span class="tg-val">R$ ${nr(totalGeral)}</span>
+</div>
+
+<div class="assinaturas">
+  <div class="assin-bloco"><div class="linha">Administradora / Responsável</div></div>
+  <div class="assin-bloco"><div class="linha">Proprietário — Ciente</div></div>
+</div>
+
+<div class="doc-ftr">
+  <span>Documento gerado pelo Sistema de Boletos — uso exclusivo da administradora</span>
+  <span>${hoje}</span>
+</div>
+
+<script>setTimeout(function(){window.print();window.onafterprint=function(){window.close()};},350);<\/script>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=960,height=720');
+  if (!w) { alert('Permita pop-ups para gerar o PDF.'); return; }
+  w.document.write(pdfHtml);
+  w.document.close();
+}
+
+// ─── SMTP Modal ──────────────────────────────────────────────────────────────
+function abrirModalSmtp() {
+  // Carrega configuração atual ao abrir
+  fetch('/get_smtp').then(r=>r.json()).then(j=>{
+    document.getElementById('smtpHost').value = j.host || '';
+    document.getElementById('smtpPort').value = j.port || 587;
+    document.getElementById('smtpUser').value = j.user || '';
+    document.getElementById('smtpPass').value = '';
+    document.getElementById('smtpFrom').value = j.from_addr || '';
+    document.getElementById('smtpErro').style.display = 'none';
+    document.getElementById('smtpOk').style.display   = 'none';
+  }).catch(()=>{});
+  document.getElementById('modalSmtp').classList.add('open');
+}
+
+function fecharModalSmtp() {
+  document.getElementById('modalSmtp').classList.remove('open');
+}
+
+document.getElementById('modalSmtp').addEventListener('click', function(e) {
+  if (e.target === this) fecharModalSmtp();
+});
+
+async function salvarSmtp() {
+  const host  = document.getElementById('smtpHost').value.trim();
+  const port  = parseInt(document.getElementById('smtpPort').value) || 587;
+  const user  = document.getElementById('smtpUser').value.trim();
+  const pass  = document.getElementById('smtpPass').value;
+  const from_ = document.getElementById('smtpFrom').value.trim();
+
+  if (!host || !user || !pass) {
+    document.getElementById('smtpErro').textContent = 'Preencha servidor, usuário e senha.';
+    document.getElementById('smtpErro').style.display = 'block';
+    document.getElementById('smtpOk').style.display   = 'none';
+    return;
+  }
+
+  const btn = document.getElementById('btnSalvarSmtp');
+  btn.disabled = true; btn.textContent = 'Testando...';
+  document.getElementById('smtpErro').style.display = 'none';
+  document.getElementById('smtpOk').style.display   = 'none';
+
+  try {
+    const r = await fetch('/configurar_smtp', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ host, port, user, passw:pass, from_addr:from_ })
+    });
+    const j = await r.json();
+    if (j.ok) {
+      document.getElementById('smtpOk').textContent = '✓ Conexão testada com sucesso! E-mail configurado.';
+      document.getElementById('smtpOk').style.display = 'block';
+      const b = document.getElementById('smtpStatusBadge');
+      b.className = 'api-status smtp-ok';
+      b.textContent = '📧 E-mail configurado';
+      setTimeout(fecharModalSmtp, 1800);
+    } else {
+      document.getElementById('smtpErro').textContent = j.erro || 'Erro ao testar conexão.';
+      document.getElementById('smtpErro').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('smtpErro').textContent = 'Erro: ' + e.message;
+    document.getElementById('smtpErro').style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Salvar e Testar';
+}
+
+// ─── Enviar Informe por E-mail ────────────────────────────────────────────────
+async function enviarInforme(propKey) {
+  const g = _infGrupos[propKey];
+  if (!g) return;
+
+  // Descobre o e-mail: pega do primeiro row que tiver
+  let emailDest = '';
+  for (const row of g.rows) {
+    if (row.email_proprietario && row.email_proprietario.trim()) {
+      emailDest = row.email_proprietario.trim();
+      break;
+    }
+  }
+
+  // Se não houver e-mail cadastrado, pede ao usuário
+  if (!emailDest) {
+    const inp = prompt(`Nenhum e-mail cadastrado para ${g.nome}.\nDigite o e-mail do proprietário:`);
+    if (!inp || !inp.trim()) return;
+    emailDest = inp.trim();
+  } else {
+    // Confirma o endereço de destino
+    const confirmado = prompt(`Enviar informe de ${g.nome} para:`, emailDest);
+    if (confirmado === null) return;
+    emailDest = confirmado.trim() || emailDest;
+  }
+
+  const mes = document.getElementById('inMes').value || '';
+
+  // Monta payload de rows com dados calculados
+  const rows = g.rows.map(row => {
+    const rd = calcRepasseData(row);
+    return {
+      locatario: row.locatario || '',
+      endereco:  row.endereco  || '',
+      tipo:      row.tipo      || '',
+      aluguel:   rd.aluguel,
+      taxa_imob: rd.taxaImob,
+      perc_imob: rd.percImob,
+      pa_ativo:  rd.paAtivo,
+      pa_val:    rd.paVal,
+      ded_prop_itens: rd.dedPropItens.map(d=>({label: LABELS[d.key]||d.key, val: d.val})),
+      deds:      rd.deds,
+      repasse:   rd.repasse
+    };
+  });
+  const total = rows.reduce((s, r) => s + r.repasse, 0);
+
+  // Feedback visual
+  const btnEl = document.querySelector(`button[onclick="enviarInforme('${propKey.replace(/'/g,"\\'")}')"]`);
+  const textoOriginal = btnEl ? btnEl.innerHTML : '';
+  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '⏳ Enviando...'; }
+
+  try {
+    const r = await fetch('/enviar_informe', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ proprietario: g.nome, email_dest: emailDest, mes, rows, total })
+    });
+    const j = await r.json();
+    if (j.ok) {
+      alert(`✓ Informe enviado com sucesso para ${emailDest}!`);
+    } else {
+      alert(`Erro ao enviar: ${j.erro}`);
+    }
+  } catch(e) {
+    alert('Erro de comunicação: ' + e.message);
+  }
+  if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = textoOriginal; }
+}
+
+// ─── Verifica status SMTP ao carregar ────────────────────────────────────────
+(async function verificarSmtp() {
+  try {
+    const r = await fetch('/get_smtp');
+    const j = await r.json();
+    if (j.configurado) {
+      const b = document.getElementById('smtpStatusBadge');
+      b.className = 'api-status smtp-ok';
+      b.textContent = '📧 E-mail configurado';
+    }
+  } catch(e) {}
+})();
+
+// Sugestão de mês
+const M=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const now=new Date();
+document.getElementById('inMes').value=`${M[now.getMonth()]}/${now.getFullYear()}`;
+
+// ─── Restauração automática do localStorage ──────────────────────────────────
+// Roda por último, depois de todo o setup, para garantir que todas as funções
+// e elementos estão prontos antes de tentar restaurar.
+(function restaurarSeDisponivel() {
+  const anoMesAtual = new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0');
+  const salvoEm = localStorage.getItem('boletos_salvo_em');
+  if (!salvoEm) { return; }
+  const raw = localStorage.getItem('boletos_dados');
+  if (salvoEm !== anoMesAtual) {
+    localStorage.removeItem('boletos_dados');
+    localStorage.removeItem('boletos_mes');
+    localStorage.removeItem('boletos_salvo_em');
+    return;
+  }
+  if (!raw) { return; }
+  let d;
+  try { d = JSON.parse(raw); } catch(e) { alert('Erro ao ler dados salvos: ' + e.message); return; }
+  const mes = localStorage.getItem('boletos_mes') || '';
+  document.getElementById('secaoUpload').style.display = 'none';
+  if (mes) document.getElementById('inMes').value = mes;
+  try {
+    mostrar(d, mes);
+  } catch(e) {
+    alert('Erro ao restaurar tabela: ' + e.message + '\n\n' + e.stack);
+    document.getElementById('secaoUpload').style.display = 'block';
+  }
+})();
+</script>
+</body>
+</html>
