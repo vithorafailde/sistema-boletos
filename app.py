@@ -4,6 +4,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import urllib.request
+import urllib.error
 import json as _json
 from pathlib import Path
 from functools import wraps
@@ -1621,8 +1622,12 @@ def _enviar_via_resend(api_key, de, para, assunto, html_body, reply_to=None):
         },
         method="POST"
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        return resp.status == 200
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.status == 200
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="ignore")
+        raise Exception(f"HTTP {e.code}: {body}")
 
 def _smtp_connect(smtp, timeout=15):
     """Conecta ao servidor SMTP usando SSL (porta 465) ou STARTTLS (demais portas)."""
