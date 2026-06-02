@@ -1,4 +1,4 @@
-import json, re, base64, io, unicodedata, time, os, traceback
+﻿import json, re, base64, io, unicodedata, time, os, traceback
 import urllib.request
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -1650,7 +1650,8 @@ def _enviar_via_resend(api_key, de, para, assunto, html_body, reply_to=None):
         data=payload,
         headers={
             "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "User-Agent": "python-urllib/sistema-boletos"
         },
         method="POST"
     )
