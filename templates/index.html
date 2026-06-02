@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -178,6 +178,19 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-outline btn-sm" onclick="fecharModal()">Cancelar</button>
       <button class="btn btn-primary btn-sm" onclick="salvarApi()">Salvar e Testar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal E-mails Proprietários -->
+<div id="modalEmails" class="modal-bg" style="display:none">
+  <div class="modal" style="width:500px;max-height:80vh;display:flex;flex-direction:column">
+    <h2>✉️ E-mails dos Proprietários</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Cadastre o e-mail de cada proprietário. Ficam salvos no servidor.</p>
+    <div id="emailsListaModal" style="overflow-y:auto;flex:1;padding-right:4px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <button class="btn btn-outline btn-sm" onclick="fecharModalEmails()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="btnSalvarEmails" onclick="salvarEmailsProprietarios()">Salvar</button>
     </div>
   </div>
 </div>
@@ -388,7 +401,10 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
 
     <!-- Seletor de proprietário -->
     <div class="inf-filtro-box">
-      <div class="inf-filtro-titulo">Selecione o Proprietário</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div class="inf-filtro-titulo" style="margin-bottom:0">Selecione o Proprietário</div>
+        <button class="btn btn-outline btn-sm" onclick="abrirModalEmails()" style="font-size:12px;padding:5px 12px">✏️ Editar E-mails</button>
+      </div>
       <select id="infSelect" class="form-input" style="font-size:15px;padding:10px 14px;max-width:480px;cursor:pointer" onchange="filtrarInforme(this.value)">
         <option value="">— escolha um proprietário —</option>
       </select>
@@ -1291,12 +1307,14 @@ function calcRepasseData(row) {
 // Grupos de proprietários (populado em abrirInformes)
 let _infGrupos = {};
 let _infOrdem  = [];
+let _emailsProprietarios = {};
 
 function abrirInformes() {
   if (!dados) return;
   document.getElementById('resultados').style.display = 'none';
   document.getElementById('secaoInforme').style.display = 'block';
   document.getElementById('infSubMes').textContent = document.getElementById('subMes').textContent;
+  carregarEmailsProprietarios();
 
   // Monta grupos
   _infGrupos = {};
@@ -1623,25 +1641,20 @@ async function enviarInforme(propKey) {
   const g = _infGrupos[propKey];
   if (!g) return;
 
-  // Descobre o e-mail: pega do primeiro row que tiver
-  let emailDest = '';
-  for (const row of g.rows) {
-    if (row.email_proprietario && row.email_proprietario.trim()) {
-      emailDest = row.email_proprietario.trim();
-      break;
+  // Busca e-mail: primeiro no cadastro salvo, depois na planilha
+  let emailDest = _emailsProprietarios[propKey] || '';
+  if (!emailDest) {
+    for (const row of g.rows) {
+      if (row.email_proprietario && row.email_proprietario.trim()) {
+        emailDest = row.email_proprietario.trim();
+        break;
+      }
     }
   }
 
-  // Se não houver e-mail cadastrado, pede ao usuário
   if (!emailDest) {
-    const inp = prompt(`Nenhum e-mail cadastrado para ${g.nome}.\nDigite o e-mail do proprietário:`);
-    if (!inp || !inp.trim()) return;
-    emailDest = inp.trim();
-  } else {
-    // Confirma o endereço de destino
-    const confirmado = prompt(`Enviar informe de ${g.nome} para:`, emailDest);
-    if (confirmado === null) return;
-    emailDest = confirmado.trim() || emailDest;
+    abrirModalEmails(propKey);
+    return;
   }
 
   const mes = document.getElementById('inMes').value || '';
@@ -1686,6 +1699,57 @@ async function enviarInforme(propKey) {
     alert('Erro de comunicação: ' + e.message);
   }
   if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = textoOriginal; }
+}
+
+// ─── E-mails dos Proprietários ────────────────────────────────────────────────
+async function carregarEmailsProprietarios() {
+  try {
+    const r = await fetch('/emails_proprietarios');
+    if (r.ok) _emailsProprietarios = await r.json();
+  } catch(e) {}
+}
+
+function abrirModalEmails(focoKey) {
+  const lista = document.getElementById('emailsListaModal');
+  lista.innerHTML = '';
+  _infOrdem.forEach(key => {
+    const nome = _infGrupos[key].nome;
+    const email = _emailsProprietarios[key] || '';
+    const destaque = focoKey && key === focoKey ? 'border:2px solid var(--accent);' : '';
+    lista.innerHTML += `<div style="margin-bottom:12px">
+      <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">${nome}</label>
+      <input type="email" class="form-input" style="${destaque}" data-ekey="${key}" value="${email}" placeholder="email@exemplo.com">
+    </div>`;
+  });
+  document.getElementById('modalEmails').style.display = 'flex';
+  if (focoKey) {
+    setTimeout(() => {
+      const inp = lista.querySelector(`input[data-ekey="${focoKey}"]`);
+      if (inp) inp.focus();
+    }, 100);
+  }
+}
+
+function fecharModalEmails() {
+  document.getElementById('modalEmails').style.display = 'none';
+}
+
+async function salvarEmailsProprietarios() {
+  const inputs = document.querySelectorAll('#emailsListaModal input[data-ekey]');
+  const emails = {};
+  inputs.forEach(inp => { if (inp.value.trim()) emails[inp.dataset.ekey] = inp.value.trim(); });
+  const btn = document.getElementById('btnSalvarEmails');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    const r = await fetch('/salvar_emails_proprietarios', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({emails})
+    });
+    const j = await r.json();
+    if (j.ok) { _emailsProprietarios = emails; fecharModalEmails(); }
+    else alert('Erro ao salvar: ' + j.erro);
+  } catch(e) { alert('Erro: ' + e.message); }
+  btn.disabled = false; btn.textContent = 'Salvar';
 }
 
 // ─── Verifica status SMTP ao carregar (só admin) ─────────────────────────────
