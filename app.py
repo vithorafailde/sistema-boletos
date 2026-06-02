@@ -2794,7 +2794,8 @@ def processar_boletos_locatarios():
             elif chave_match:
                 yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM EMAIL {orig_name} -> {locatario_pdf} (sem email cadastrado)'})}\n\n"
             else:
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH {orig_name} -> {locatario_pdf or \"nome nao identificado\"}'})}\n\n"
+                _nome_display = locatario_pdf or 'nome nao identificado'
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH {orig_name} -> {_nome_display}'})}\n\n"
 
         yield f"data: {json.dumps({'tipo': 'resultado', 'dados': resultados})}\n\n"
 
