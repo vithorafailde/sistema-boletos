@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Envio de Boletos — Funchal Imóveis</title>
+<style>
+:root {
+  --bg: #D6E3E8; --card: #fff; --border: #B8CECE; --text: #1A2C30; --muted: #4A6668;
+  --accent: #3B7A8E; --green: #4A6E9A; --red: #B84545; --yellow: #8C6C1F;
+  --orange: #B86030; --header: #2A4A52; --purple: #6A4F8A;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+.header { background: var(--header); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+.header h1 { font-size: 17px; font-weight: 700; }
+.header p { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.card-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.step-num { background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.btn { padding: 8px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2A6A7E; }
+.btn-primary:disabled { background: #8AABAB; cursor: not-allowed; }
+.btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.btn-outline:hover { background: #DDE8EC; }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { background: #3A5A88; }
+.btn-red { background: var(--red); color: #fff; }
+.btn-red:hover { background: #9A3535; }
+.btn-sm { padding: 4px 11px; font-size: 11px; }
+.btn-xs { padding: 2px 8px; font-size: 10px; }
+.form-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; outline: none; }
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,122,142,.15); }
+.form-label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+/* File drop */
+.file-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 28px 14px; text-align: center; cursor: pointer; transition: all .18s; background: #EFF2F2; }
+.file-drop:hover, .file-drop.drag-over { border-color: var(--accent); background: #DDE8EC; }
+.file-drop .icon { font-size: 32px; margin-bottom: 8px; }
+.file-drop .lbl { font-weight: 600; font-size: 13px; }
+.file-drop .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.file-drop input[type=file] { display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.chip { background: #DDE8EC; border: 1px solid #A8C5CE; border-radius: 20px; padding: 2px 9px; font-size: 10px; color: var(--accent); }
+/* Progress */
+.progress-bar-wrap { background: #C8D4D4; border-radius: 99px; height: 7px; margin: 10px 0; overflow: hidden; }
+.progress-bar { background: var(--accent); height: 100%; border-radius: 99px; transition: width .3s; width: 0%; }
+.log-box { background: #1A2E2E; color: #8AABAB; border-radius: 7px; padding: 10px 12px; font-family: 'Consolas', monospace; font-size: 11px; height: 130px; overflow-y: auto; margin-top: 8px; }
+.log-ok { color: #5AD48A; } .log-warn { color: #E5B24A; } .log-err { color: #E07070; }
+/* Table */
+.table-wrap { overflow-x: auto; }
+table.main-table { width: 100%; border-collapse: collapse; }
+.main-table thead th { background: var(--header); color: #fff; padding: 9px 10px; text-align: left; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.main-table tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.main-table tbody tr:hover td { background: #EFF2F2; }
+/* Status badges */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.badge-ok { background: #D8E4F0; color: var(--green); }
+.badge-warn { background: #FFF3CD; color: var(--yellow); }
+.badge-err { background: #F5D5D5; color: var(--red); }
+.badge-sent { background: #D0F0D8; color: #2A6A2A; }
+/* Modal */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; align-items: center; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: #fff; border-radius: 12px; padding: 24px; width: 440px; max-width: 95vw; }
+.modal h2 { font-size: 15px; margin-bottom: 14px; }
+/* API/SMTP status */
+.api-status { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 20px; }
+.api-ok { background: #D8E4F0; color: var(--green); }
+.api-nok { background: #F5D5D5; color: var(--red); }
+.smtp-ok { background: #D8EFD8; color: #2A6A2A; }
+.smtp-nok { background: #F5EAD5; color: #8C5A00; }
+/* Email cell */
+.email-cell { font-size: 11px; color: var(--muted); }
+/* Sections */
+#secaoProcessar { display: none; }
+#secaoResultados { display: none; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <h1>📧 Envio de Boletos</h1>
+    <p>Envio automático de boletos por e-mail para locatários</p>
+  </div>
+  <div class="header-actions">
+    <a href="/boletos" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">📋 Boletos</a>
+    <a href="/reajustes" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">📈 Reajustes</a>
+    <a href="/dimob" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">📄 DIMOB</a>
+    <span id="smtpBadge" class="api-status {% if tem_smtp %}smtp-ok{% else %}smtp-nok{% endif %}">
+      {% if tem_smtp %}📧 Email configurado{% else %}📧 Email não config.{% endif %}
+    </span>
+    <a href="/logout" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">Sair</a>
+  </div>
+</div>
+
+<!-- Modal: Adicionar/Editar locatário -->
+<div id="modalLocatario" class="modal-bg">
+  <div class="modal">
+    <h2 id="modalTitulo">Adicionar Locatário</h2>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Nome do Locatário</label>
+      <input type="text" id="inputNome" class="form-input" placeholder="Ex: Jean Pierre Silva">
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">E-mail</label>
+      <input type="email" id="inputEmail" class="form-input" placeholder="locatario@email.com">
+    </div>
+    <input type="hidden" id="inputChaveAntiga">
+    <div id="modalErro" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline btn-sm" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarLocatario()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ── Cadastro de e-mails ─────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="step-num">1</span>
+        Cadastro de E-mails dos Locatários
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="abrirModalAdd()">+ Adicionar</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      Cadastre o e-mail de cada locatário. O sistema identificará automaticamente o boleto de cada um.
+    </p>
+    <div id="semLocatarios" style="text-align:center;padding:20px;color:var(--muted);display:none">
+      <div style="font-size:28px;margin-bottom:8px">📭</div>
+      Nenhum locatário cadastrado. Clique em "+ Adicionar" para começar.
+    </div>
+    <div class="table-wrap" id="tabelaWrap">
+      <table class="main-table">
+        <thead>
+          <tr>
+            <th>Locatário</th>
+            <th>E-mail</th>
+            <th style="width:120px">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="corpoLocatarios"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Upload dos boletos ──────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">
+      <span class="step-num">2</span>
+      Upload dos Boletos (PDF)
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+      Faça o upload de todos os boletos gerados. O sistema vai identificar o locatário de cada um automaticamente.
+    </p>
+    <div id="dropBoletos" class="file-drop" onclick="document.getElementById('inBoletos').click()">
+      <div class="icon">📂</div>
+      <div class="lbl">Clique ou arraste os PDFs aqui</div>
+      <div class="hint">Selecione todos os boletos do mês de uma vez</div>
+      <input type="file" id="inBoletos" accept=".pdf" multiple>
+    </div>
+    <div class="chips" id="chipsBoletos"></div>
+    <div style="display:flex;gap:12px;align-items:flex-end;margin-top:14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px">
+        <label class="form-label">Mês de referência</label>
+        <input type="text" id="inMes" class="form-input" placeholder="Ex: Junho/2026">
+      </div>
+      <button class="btn btn-primary" id="btnProcessar" onclick="processar()" disabled>
+        🔍 Identificar Locatários
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Progresso ──────────────────────────────────────────────────── -->
+  <div class="card" id="secaoProcessar">
+    <div class="card-title"><span class="step-num">⏳</span> Processando PDFs...</div>
+    <div id="progTexto" style="font-size:12px;color:var(--muted)">Iniciando...</div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="barra"></div></div>
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+  <!-- ── Resultados ─────────────────────────────────────────────────── -->
+  <div id="secaoResultados">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="font-size:17px;font-weight:700">Boletos Identificados</h2>
+        <p id="subMes" style="font-size:12px;color:var(--muted)"></p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="novoProcessamento()">↩ Novo upload</button>
+        <button class="btn btn-green" id="btnEnviarTodos" onclick="enviarTodos()">
+          📧 Enviar Todos com E-mail
+        </button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table class="main-table">
+          <thead>
+            <tr>
+              <th style="min-width:180px">Arquivo PDF</th>
+              <th style="min-width:160px">Locatário (lido do boleto)</th>
+              <th style="min-width:160px">Locatário cadastrado</th>
+              <th style="min-width:200px">E-mail</th>
+              <th style="min-width:110px">Status</th>
+              <th style="min-width:90px">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="corpoResultados"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let resultados = [];
+
+// ─── Cadastro de locatários ──────────────────────────────────────────────────
+
+async function carregarLocatarios() {
+  const resp = await fetch('/api/locatarios_emails');
+  const db = await resp.json();
+  renderLocatarios(db);
+}
+
+function renderLocatarios(db) {
+  const corpo = document.getElementById('corpoLocatarios');
+  const sem = document.getElementById('semLocatarios');
+  const wrap = document.getElementById('tabelaWrap');
+  const entries = Object.entries(db).sort((a, b) => a[1].locatario.localeCompare(b[1].locatario));
+
+  if (entries.length === 0) {
+    sem.style.display = 'block';
+    wrap.style.display = 'none';
+    return;
+  }
+  sem.style.display = 'none';
+  wrap.style.display = 'block';
+
+  corpo.innerHTML = entries.map(([chave, info]) => `
+    <tr>
+      <td style="font-weight:600">${escHtml(info.locatario)}</td>
+      <td class="email-cell">${info.email ? escHtml(info.email) : '<span style="color:var(--orange);font-style:italic">sem e-mail</span>'}</td>
+      <td>
+        <button class="btn btn-outline btn-xs" onclick="abrirModalEdit('${escHtml(chave)}','${escHtml(info.locatario)}','${escHtml(info.email||'')}')">Editar</button>
+        <button class="btn btn-red btn-xs" style="margin-left:4px" onclick="excluir('${escHtml(chave)}','${escHtml(info.locatario)}')">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function abrirModalAdd() {
+  document.getElementById('modalTitulo').textContent = 'Adicionar Locatário';
+  document.getElementById('inputNome').value = '';
+  document.getElementById('inputEmail').value = '';
+  document.getElementById('inputChaveAntiga').value = '';
+  document.getElementById('modalErro').style.display = 'none';
+  document.getElementById('modalLocatario').classList.add('open');
+  setTimeout(() => document.getElementById('inputNome').focus(), 100);
+}
+
+function abrirModalEdit(chave, nome, email) {
+  document.getElementById('modalTitulo').textContent = 'Editar Locatário';
+  document.getElementById('inputNome').value = nome;
+  document.getElementById('inputEmail').value = email;
+  document.getElementById('inputChaveAntiga').value = chave;
+  document.getElementById('modalErro').style.display = 'none';
+  document.getElementById('modalLocatario').classList.add('open');
+  setTimeout(() => document.getElementById('inputNome').focus(), 100);
+}
+
+function fecharModal() {
+  document.getElementById('modalLocatario').classList.remove('open');
+}
+
+async function salvarLocatario() {
+  const nome = document.getElementById('inputNome').value.trim();
+  const email = document.getElementById('inputEmail').value.trim();
+  const chaveAntiga = document.getElementById('inputChaveAntiga').value.trim();
+  const erroEl = document.getElementById('modalErro');
+
+  if (!nome) { erroEl.textContent = 'Nome obrigatório'; erroEl.style.display = 'block'; return; }
+
+  const resp = await fetch('/api/locatarios_emails', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({locatario: nome, email: email, chave_antiga: chaveAntiga})
+  });
+  const r = await resp.json();
+  if (r.ok) {
+    fecharModal();
+    carregarLocatarios();
+  } else {
+    erroEl.textContent = r.erro || 'Erro ao salvar';
+    erroEl.style.display = 'block';
+  }
+}
+
+async function excluir(chave, nome) {
+  if (!confirm(`Excluir o cadastro de "${nome}"?`)) return;
+  await fetch(`/api/locatarios_emails/${encodeURIComponent(chave)}`, {method: 'DELETE'});
+  carregarLocatarios();
+}
+
+// Enter no modal salva
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('modalLocatario').classList.contains('open')) salvarLocatario();
+  if (e.key === 'Escape' && document.getElementById('modalLocatario').classList.contains('open')) fecharModal();
+});
+
+// ─── Upload ──────────────────────────────────────────────────────────────────
+
+const drop = document.getElementById('dropBoletos');
+const inp  = document.getElementById('inBoletos');
+
+inp.addEventListener('change', () => { renderChips(inp.files); checkReady(); });
+drop.addEventListener('dragover',  e => { e.preventDefault(); drop.classList.add('drag-over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+drop.addEventListener('drop', e => {
+  e.preventDefault();
+  drop.classList.remove('drag-over');
+  const dt = new DataTransfer();
+  Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+  inp.files = dt.files;
+  inp.dispatchEvent(new Event('change'));
+});
+
+function renderChips(files) {
+  const el = document.getElementById('chipsBoletos');
+  el.innerHTML = '';
+  const arr = Array.from(files);
+  arr.slice(0, 8).forEach(f => { el.innerHTML += `<span class="chip">${f.name}</span>`; });
+  if (arr.length > 8) el.innerHTML += `<span class="chip">+${arr.length-8} arquivos</span>`;
+}
+
+function checkReady() {
+  document.getElementById('btnProcessar').disabled = inp.files.length === 0;
+}
+
+// ─── Processar ───────────────────────────────────────────────────────────────
+
+async function processar() {
+  const fd = new FormData();
+  for (const f of inp.files) fd.append('boletos', f);
+  fd.append('mes', document.getElementById('inMes').value);
+
+  document.querySelector('.card:nth-child(2)').style.display = 'none'; // upload card
+  document.getElementById('secaoProcessar').style.display = 'block';
+  document.getElementById('secaoResultados').style.display = 'none';
+
+  const log = document.getElementById('logBox');
+  const barra = document.getElementById('barra');
+  const texto = document.getElementById('progTexto');
+  log.innerHTML = '';
+
+  try {
+    const resp = await fetch('/envio_boletos/processar', {method: 'POST', body: fd});
+    if (!resp.ok) { addLog(log, `Erro HTTP ${resp.status}`, 'err'); return; }
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        try { tratar(JSON.parse(line.slice(5).trim()), log, barra, texto); } catch(e) {}
+      }
+    }
+  } catch(e) {
+    addLog(log, 'Erro: ' + e.message, 'err');
+  }
+}
+
+function tratar(ev, log, barra, texto) {
+  if (ev.tipo === 'inicio') {
+    texto.textContent = `Processando ${ev.total} arquivo(s)...`;
+  } else if (ev.tipo === 'progresso') {
+    barra.style.width = (ev.total > 0 ? Math.round(ev.atual/ev.total*100) : 100) + '%';
+    texto.textContent = `${ev.atual}/${ev.total}: ${ev.arquivo}`;
+  } else if (ev.tipo === 'log') {
+    const cls = ev.msg.startsWith('OK') ? 'ok' : (ev.msg.startsWith('SEM')||ev.msg.startsWith('ERRO')) ? 'warn' : '';
+    addLog(log, ev.msg, cls);
+  } else if (ev.tipo === 'resultado') {
+    barra.style.width = '100%';
+    texto.textContent = 'Concluído!';
+    addLog(log, 'Pronto! Carregando resultados...', 'ok');
+    resultados = ev.dados;
+    setTimeout(() => mostrarResultados(), 600);
+  }
+}
+
+function addLog(el, msg, cls) {
+  const span = document.createElement('span');
+  if (cls) span.className = 'log-' + cls;
+  span.textContent = msg + '\n';
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ─── Resultados ──────────────────────────────────────────────────────────────
+
+function mostrarResultados() {
+  document.getElementById('secaoProcessar').style.display = 'none';
+  document.getElementById('secaoResultados').style.display = 'block';
+  const mes = document.getElementById('inMes').value;
+  document.getElementById('subMes').textContent = mes ? 'Mês de referência: ' + mes : '';
+  renderResultados();
+}
+
+function renderResultados() {
+  const corpo = document.getElementById('corpoResultados');
+  corpo.innerHTML = '';
+  let temParaEnviar = false;
+
+  resultados.forEach((r, idx) => {
+    const temEmail = r.email && r.email.trim() !== '';
+    const temMatch = !!r.chave_match;
+    const enviado  = r._enviado;
+    const errEnvio = r._erroEnvio;
+
+    if (temEmail) temParaEnviar = true;
+
+    let badgeHtml, acaoHtml;
+
+    if (r.erro) {
+      badgeHtml = `<span class="badge badge-err">❌ Erro PDF</span>`;
+      acaoHtml  = `<span style="color:var(--muted);font-size:10px">—</span>`;
+    } else if (!temMatch) {
+      badgeHtml = `<span class="badge badge-warn">⚠️ Sem match</span>`;
+      acaoHtml  = `<span style="color:var(--muted);font-size:10px">Cadastre o e-mail</span>`;
+    } else if (!temEmail) {
+      badgeHtml = `<span class="badge badge-warn">⚠️ Sem e-mail</span>`;
+      acaoHtml  = `<button class="btn btn-outline btn-xs" onclick="abrirModalEdit('${escHtml(r.chave_match||'')}','${escHtml(r.locatario_match||r.locatario_pdf||'')}','')">+ Email</button>`;
+    } else if (enviado) {
+      badgeHtml = `<span class="badge badge-sent">✅ Enviado</span>`;
+      acaoHtml  = `<span style="color:#2A6A2A;font-size:10px;font-weight:600">✓ OK</span>`;
+    } else if (errEnvio) {
+      badgeHtml = `<span class="badge badge-err" title="${escHtml(errEnvio)}">❌ Erro envio</span>`;
+      acaoHtml  = `<button class="btn btn-primary btn-xs" id="btnEnv_${idx}" onclick="enviarUm(${idx})">Tentar novamente</button>`;
+    } else {
+      badgeHtml = `<span class="badge badge-ok">✅ Pronto</span>`;
+      acaoHtml  = `<button class="btn btn-primary btn-xs" id="btnEnv_${idx}" onclick="enviarUm(${idx})">📧 Enviar</button>`;
+    }
+
+    // Campo de email editável inline
+    const emailCampo = `
+      <div style="display:flex;gap:4px;align-items:center">
+        <input type="email" class="form-input" style="padding:3px 6px;font-size:11px;flex:1"
+          id="emailInp_${idx}" value="${escHtml(r.email||'')}"
+          oninput="resultados[${idx}].email=this.value"
+          placeholder="digitar e-mail...">
+      </div>`;
+
+    corpo.innerHTML += `
+      <tr>
+        <td style="font-size:11px;color:var(--muted)">${escHtml(r.arquivo)}</td>
+        <td style="font-weight:600">${escHtml(r.locatario_pdf || '—')}</td>
+        <td>${r.locatario_match ? escHtml(r.locatario_match) : '<span style="color:var(--orange);font-style:italic;font-size:10px">não identificado</span>'}</td>
+        <td>${emailCampo}</td>
+        <td>${badgeHtml}</td>
+        <td>${acaoHtml}</td>
+      </tr>`;
+  });
+
+  document.getElementById('btnEnviarTodos').disabled = !temParaEnviar;
+}
+
+async function enviarUm(idx) {
+  const r = resultados[idx];
+  const email = document.getElementById(`emailInp_${idx}`)?.value || r.email || '';
+  if (!email) { alert('Informe o e-mail antes de enviar.'); return; }
+
+  const btn = document.getElementById(`btnEnv_${idx}`);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+
+  const mes = document.getElementById('inMes').value;
+  const resp = await fetch('/envio_boletos/enviar', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      arquivo_salvo: r.arquivo_salvo,
+      email: email,
+      locatario: r.locatario_match || r.locatario_pdf || '',
+      mes: mes
+    })
+  });
+  const result = await resp.json();
+  if (result.ok) {
+    resultados[idx]._enviado = true;
+    resultados[idx]._erroEnvio = null;
+  } else {
+    resultados[idx]._enviado = false;
+    resultados[idx]._erroEnvio = result.erro || 'Erro desconhecido';
+    alert('Erro ao enviar: ' + (result.erro || 'Erro desconhecido'));
+  }
+  renderResultados();
+}
+
+async function enviarTodos() {
+  const mes = document.getElementById('inMes').value;
+  const paraEnviar = resultados.map((r, i) => ({...r, _idx: i}))
+    .filter(r => !r._enviado && !r.erro && (r.email || document.getElementById(`emailInp_${r._idx}`)?.value));
+
+  if (paraEnviar.length === 0) { alert('Nenhum boleto disponível para enviar.'); return; }
+  if (!confirm(`Enviar ${paraEnviar.length} boleto(s) por e-mail?`)) return;
+
+  document.getElementById('btnEnviarTodos').disabled = true;
+  document.getElementById('btnEnviarTodos').textContent = '⏳ Enviando...';
+
+  for (const r of paraEnviar) {
+    const email = document.getElementById(`emailInp_${r._idx}`)?.value || r.email || '';
+    if (!email) continue;
+    const resp = await fetch('/envio_boletos/enviar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        arquivo_salvo: r.arquivo_salvo,
+        email: email,
+        locatario: r.locatario_match || r.locatario_pdf || '',
+        mes: mes
+      })
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      resultados[r._idx]._enviado = true;
+      resultados[r._idx]._erroEnvio = null;
+    } else {
+      resultados[r._idx]._enviado = false;
+      resultados[r._idx]._erroEnvio = result.erro || 'Erro';
+    }
+    renderResultados();
+    // Pequena pausa para não sobrecarregar a API
+    await new Promise(res => setTimeout(res, 400));
+  }
+
+  document.getElementById('btnEnviarTodos').disabled = false;
+  document.getElementById('btnEnviarTodos').textContent = '📧 Enviar Todos com E-mail';
+}
+
+function novoProcessamento() {
+  resultados = [];
+  document.getElementById('secaoResultados').style.display = 'none';
+  document.getElementById('secaoProcessar').style.display = 'none';
+  document.querySelector('.card:nth-child(2)').style.display = 'block';
+  inp.value = '';
+  document.getElementById('chipsBoletos').innerHTML = '';
+  document.getElementById('btnProcessar').disabled = true;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Inicialização
+carregarLocatarios();
+</script>
+</body>
+</html>

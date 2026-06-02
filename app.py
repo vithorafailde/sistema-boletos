@@ -21,6 +21,7 @@ CONFIG_FILE = DATA_DIR / "config.json"
 HISTORICO_FILE = DATA_DIR / "historico.json"
 
 DIMOB_HISTORICO_FILE = DATA_DIR / "dimob_historico.json"
+LOCATARIOS_EMAILS_FILE = DATA_DIR / "locatarios_emails.json"
 
 MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -617,6 +618,23 @@ def ler_dimob_historico():
 def salvar_dimob_historico(dados):
     with open(DIMOB_HISTORICO_FILE, 'w', encoding='utf-8') as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
+
+# ─── Emails dos Locatários ────────────────────────────────────────────────────
+
+def ler_locatarios_emails():
+    if LOCATARIOS_EMAILS_FILE.exists():
+        try:
+            with open(LOCATARIOS_EMAILS_FILE, encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def salvar_locatarios_emails(d):
+    tmp = LOCATARIOS_EMAILS_FILE.with_suffix('.tmp')
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(d, f, ensure_ascii=False, indent=2)
+    tmp.replace(LOCATARIOS_EMAILS_FILE)
 
 def ler_excel_dimob(path):
     """Lê contratos para DIMOB incluindo CPF/CNPJ (colunas L=11, M=12) se existirem."""
@@ -2616,6 +2634,281 @@ def api_dimob_exportar():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         headers={"Content-Disposition": f"attachment; filename={nome}"}
     )
+
+
+# ─── Envio de Boletos aos Locatários ─────────────────────────────────────────
+
+PROMPT_NOME_LOCATARIO = """Analise este boleto de locação/aluguel brasileiro.
+Extraia o nome do locatário/inquilino e o mês de referência.
+
+Retorne APENAS JSON válido:
+{
+  "locatario": "nome completo do locatário",
+  "mes_referencia": "Mês/Ano ex: Abril/2026"
+}
+
+Instruções:
+- O locatário é quem paga o aluguel (não o proprietário do imóvel)
+- Procure campos: "Locatário:", "Inquilino:", "Sacado:", "Nome do Locatário:", "Pagador:"
+- Para o mês procure: "Referente a:", "Competência:", "Vencimento:", "Mês/Ano"
+- Retorne null se não encontrar o campo"""
+
+
+@app.route("/envio_boletos")
+@login_required
+def envio_boletos():
+    smtp = ler_smtp()
+    config = ler_config()
+    tem_smtp = bool(smtp["resend_key"]) or bool(smtp["user"] and smtp["passw"])
+    return render_template("envio_boletos.html",
+                           tem_smtp=tem_smtp,
+                           tem_api_key=bool(config.get("api_key")),
+                           is_admin=is_admin())
+
+
+@app.route("/api/locatarios_emails", methods=["GET"])
+@login_required
+def get_locatarios_emails():
+    return jsonify(ler_locatarios_emails())
+
+
+@app.route("/api/locatarios_emails", methods=["POST"])
+@login_required
+def post_locatario_email():
+    d = request.get_json() or {}
+    nome = (d.get("locatario") or "").strip()
+    email_loc = (d.get("email") or "").strip()
+    chave_antiga = (d.get("chave_antiga") or "").strip()
+    if not nome:
+        return jsonify({"ok": False, "erro": "Nome obrigatório"})
+    emails = ler_locatarios_emails()
+    # Se editando (chave_antiga diferente da nova), remove a antiga
+    nova_chave = norm(nome)
+    if chave_antiga and chave_antiga != nova_chave and chave_antiga in emails:
+        del emails[chave_antiga]
+    emails[nova_chave] = {"locatario": nome, "email": email_loc}
+    salvar_locatarios_emails(emails)
+    return jsonify({"ok": True, "chave": nova_chave})
+
+
+@app.route("/api/locatarios_emails/<chave>", methods=["DELETE"])
+@login_required
+def delete_locatario_email(chave):
+    emails = ler_locatarios_emails()
+    if chave in emails:
+        del emails[chave]
+        salvar_locatarios_emails(emails)
+    return jsonify({"ok": True})
+
+
+@app.route("/envio_boletos/processar", methods=["POST"])
+@login_required
+def processar_boletos_locatarios():
+    config = ler_config()
+    api_key = config.get("api_key")
+    if not api_key:
+        return jsonify({"ok": False, "erro": "Configure a chave API primeiro"})
+
+    pdf_files = request.files.getlist("boletos")
+    if not pdf_files:
+        return jsonify({"ok": False, "erro": "Nenhum PDF enviado"})
+
+    emails_db = ler_locatarios_emails()
+
+    # Salva arquivos no upload dir
+    saved = []
+    for f in pdf_files:
+        if f.filename.lower().endswith(".pdf"):
+            safe_name = Path(f.filename).name
+            dest = UPLOAD_DIR / ("loc_" + safe_name)
+            f.save(str(dest))
+            saved.append((dest, safe_name))
+
+    def gerar():
+        yield f"data: {json.dumps({'tipo': 'inicio', 'total': len(saved)})}\n\n"
+        resultados = []
+
+        for i, (pdf_path, orig_name) in enumerate(saved):
+            yield f"data: {json.dumps({'tipo': 'progresso', 'atual': i+1, 'total': len(saved), 'arquivo': orig_name})}\n\n"
+
+            content = montar_content(pdf_path, PROMPT_NOME_LOCATARIO)
+            if not content:
+                resultados.append({"arquivo": orig_name, "arquivo_salvo": "loc_" + orig_name,
+                                   "locatario_pdf": "", "mes_referencia": "",
+                                   "chave_match": None, "locatario_match": None,
+                                   "email": None, "score": 0, "erro": "Não converteu PDF"})
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'ERRO {orig_name}: nao converteu PDF'})}\n\n"
+                continue
+
+            dados, erro = chamar_claude(api_key, content, max_tokens=200)
+            if erro or not dados:
+                resultados.append({"arquivo": orig_name, "arquivo_salvo": "loc_" + orig_name,
+                                   "locatario_pdf": "", "mes_referencia": "",
+                                   "chave_match": None, "locatario_match": None,
+                                   "email": None, "score": 0, "erro": erro or "Sem resposta"})
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'ERRO {orig_name}: {erro}'})}\n\n"
+                continue
+
+            locatario_pdf = (dados.get("locatario") or "").strip()
+            mes_ref = (dados.get("mes_referencia") or "").strip()
+
+            # Match contra o banco de emails
+            chave_match = None
+            email_match = None
+            nome_match = None
+            melhor_score = 0
+
+            if locatario_pdf:
+                chave_exato = norm(locatario_pdf)
+                if chave_exato in emails_db:
+                    chave_match = chave_exato
+                    email_match = emails_db[chave_exato].get("email", "")
+                    nome_match = emails_db[chave_exato].get("locatario", locatario_pdf)
+                    melhor_score = 100
+                else:
+                    palavras_pdf = norm_palavras(locatario_pdf)
+                    for chave, info in emails_db.items():
+                        palavras_db = norm_palavras(info.get("locatario", ""))
+                        s = score_nome_arquivo(palavras_pdf, palavras_db)
+                        sc = int(s * 100)
+                        if sc > melhor_score and sc >= 50:
+                            melhor_score = sc
+                            chave_match = chave
+                            email_match = info.get("email", "")
+                            nome_match = info.get("locatario", "")
+
+            resultado = {
+                "arquivo": orig_name,
+                "arquivo_salvo": "loc_" + orig_name,
+                "locatario_pdf": locatario_pdf,
+                "mes_referencia": mes_ref,
+                "chave_match": chave_match,
+                "locatario_match": nome_match,
+                "email": email_match,
+                "score": melhor_score,
+            }
+            resultados.append(resultado)
+
+            if chave_match and email_match:
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'OK [{melhor_score}%] {orig_name} -> {locatario_pdf} -> {email_match}'})}\n\n"
+            elif chave_match:
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM EMAIL {orig_name} -> {locatario_pdf} (sem email cadastrado)'})}\n\n"
+            else:
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH {orig_name} -> {locatario_pdf or \"nome nao identificado\"}'})}\n\n"
+
+        yield f"data: {json.dumps({'tipo': 'resultado', 'dados': resultados})}\n\n"
+
+    return Response(
+        stream_with_context(gerar()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"}
+    )
+
+
+@app.route("/envio_boletos/enviar", methods=["POST"])
+@login_required
+def enviar_boleto_locatario():
+    from email.mime.base import MIMEBase
+    from email import encoders as email_encoders
+
+    d = request.get_json() or {}
+    arquivo_salvo = (d.get("arquivo_salvo") or "").strip()
+    email_dest = (d.get("email") or "").strip()
+    locatario = (d.get("locatario") or "").strip()
+    mes = (d.get("mes") or "").strip()
+
+    if not email_dest:
+        return jsonify({"ok": False, "erro": "Email não informado"})
+    if not arquivo_salvo:
+        return jsonify({"ok": False, "erro": "Arquivo não informado"})
+
+    pdf_path = UPLOAD_DIR / arquivo_salvo
+    if not pdf_path.exists():
+        return jsonify({"ok": False, "erro": "Arquivo não encontrado no servidor"})
+
+    smtp = ler_smtp()
+    if not smtp["resend_key"] and (not smtp["user"] or not smtp["passw"]):
+        return jsonify({"ok": False, "erro": "Email não configurado. Configure em 'Configurar Email'."})
+
+    # Lê PDF como base64
+    with open(str(pdf_path), "rb") as f:
+        pdf_b64 = base64.b64encode(f.read()).decode()
+
+    # Nome do arquivo para o anexo (sem prefixo loc_)
+    nome_anexo = arquivo_salvo[4:] if arquivo_salvo.startswith("loc_") else arquivo_salvo
+
+    mes_texto = mes or "referência"
+    assunto = f"Boleto de Aluguel — {mes_texto}"
+    if locatario:
+        assunto += f" — {locatario}"
+
+    logo_path = BASE / "static" / "logo.png"
+    logo_tag = ""
+    if logo_path.exists():
+        with open(logo_path, "rb") as f:
+            b64_logo = base64.b64encode(f.read()).decode()
+        logo_tag = f'<img src="data:image/png;base64,{b64_logo}" style="max-width:220px;height:auto;display:block;margin-bottom:16px" alt="Funchal Imoveis">'
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="font-family:'Times New Roman',Times,serif;color:#000;background:#fff;max-width:600px;margin:0 auto;padding:24px">
+  {logo_tag}
+  <p>Boa tarde,</p>
+  <p>Segue em anexo o boleto referente ao m&ecirc;s de <strong>{mes_texto}</strong>.</p>
+  <br>
+  <p>Atenciosamente,</p>
+  <p><strong>Financeiro Funchal Im&oacute;veis</strong></p>
+  <hr style="margin-top:32px;border:none;border-top:1px solid #ccc">
+  <p style="font-size:9pt;color:#888">Funchal Solu&ccedil;&otilde;es Empresariais e Imobili&aacute;rias Ltda. &mdash; CRECI 21.360-J</p>
+</body></html>"""
+
+    if smtp["resend_key"]:
+        remetente = "Funchal Imoveis <noreply@funchalimoveis.com.br>"
+        reply_to = smtp["user"] or None
+        data_resend = {
+            "from": remetente,
+            "to": [email_dest],
+            "subject": assunto,
+            "html": html_body,
+            "attachments": [{"filename": nome_anexo, "content": pdf_b64}]
+        }
+        if reply_to:
+            data_resend["reply_to"] = [reply_to]
+        payload = _json.dumps(data_resend).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            data=payload,
+            headers={"Authorization": f"Bearer {smtp['resend_key']}", "Content-Type": "application/json"},
+            method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return jsonify({"ok": resp.status in (200, 201)})
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="ignore")
+            return jsonify({"ok": False, "erro": f"HTTP {e.code}: {body[:300]}"})
+        except Exception as e:
+            return jsonify({"ok": False, "erro": str(e)})
+
+    # SMTP com anexo
+    remetente = smtp["from"] or smtp["user"]
+    msg = MIMEMultipart()
+    msg["Subject"] = assunto
+    msg["From"] = remetente
+    msg["To"] = email_dest
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    part = MIMEBase("application", "octet-stream")
+    with open(str(pdf_path), "rb") as f:
+        part.set_payload(f.read())
+    email_encoders.encode_base64(part)
+    part.add_header("Content-Disposition", f'attachment; filename="{nome_anexo}"')
+    msg.attach(part)
+    try:
+        with _smtp_connect(smtp, timeout=15) as s:
+            s.sendmail(remetente, [email_dest], msg.as_string())
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "erro": str(e)})
 
 
 if __name__ == "__main__":
