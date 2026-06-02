@@ -2752,11 +2752,7 @@ def delete_locatario_email(chave):
 @app.route("/envio_boletos/processar", methods=["POST"])
 @login_required
 def processar_boletos_locatarios():
-    config = ler_config()
-    api_key = config.get("api_key")
-    if not api_key:
-        return jsonify({"ok": False, "erro": "Configure a chave API primeiro"})
-
+    """Identifica o locatário de cada boleto pelo nome do arquivo (sem usar IA)."""
     pdf_files = request.files.getlist("boletos")
     if not pdf_files:
         return jsonify({"ok": False, "erro": "Nenhum PDF enviado"})
@@ -2770,66 +2766,56 @@ def processar_boletos_locatarios():
             safe_name = Path(f.filename).name
             dest = UPLOAD_DIR / ("loc_" + safe_name)
             f.save(str(dest))
-            saved.append((dest, safe_name))
+            saved.append(safe_name)
+
+    def _match_nome_arquivo(nome_arq):
+        """Extrai palavras do nome do arquivo e tenta casar com o banco de emails."""
+        stem = Path(nome_arq).stem  # remove extensão
+        # Normaliza: remove underscores, hifens e palavras genéricas como "boleto"
+        stem = re.sub(r'(?i)boleto[_\s-]*', '', stem)
+        stem = re.sub(r'[_\-]', ' ', stem).strip()
+        palavras_arq = norm_palavras(stem)
+
+        chave_match = None
+        email_match = None
+        nome_match = None
+        melhor_score = 0
+
+        # Match exato primeiro
+        chave_exato = norm(stem)
+        if chave_exato in emails_db:
+            return chave_exato, emails_db[chave_exato].get("locatario", stem), emails_db[chave_exato].get("email", ""), 100
+
+        # Match por palavras
+        for chave, info in emails_db.items():
+            palavras_db = norm_palavras(info.get("locatario", ""))
+            s = score_nome_arquivo(palavras_arq, palavras_db)
+            sc = int(s * 100)
+            if sc > melhor_score and sc >= 50:
+                melhor_score = sc
+                chave_match = chave
+                email_match = info.get("email", "")
+                nome_match = info.get("locatario", "")
+
+        return chave_match, nome_match, email_match, melhor_score
 
     def gerar():
         yield f"data: {json.dumps({'tipo': 'inicio', 'total': len(saved)})}\n\n"
         resultados = []
 
-        for i, (pdf_path, orig_name) in enumerate(saved):
+        for i, orig_name in enumerate(saved):
             yield f"data: {json.dumps({'tipo': 'progresso', 'atual': i+1, 'total': len(saved), 'arquivo': orig_name})}\n\n"
 
-            content = montar_content(pdf_path, PROMPT_NOME_LOCATARIO)
-            if not content:
-                resultados.append({"arquivo": orig_name, "arquivo_salvo": "loc_" + orig_name,
-                                   "locatario_pdf": "", "mes_referencia": "",
-                                   "chave_match": None, "locatario_match": None,
-                                   "email": None, "score": 0, "erro": "Não converteu PDF"})
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'ERRO {orig_name}: nao converteu PDF'})}\n\n"
-                continue
-
-            dados, erro = chamar_claude(api_key, content, max_tokens=200)
-            if erro or not dados:
-                resultados.append({"arquivo": orig_name, "arquivo_salvo": "loc_" + orig_name,
-                                   "locatario_pdf": "", "mes_referencia": "",
-                                   "chave_match": None, "locatario_match": None,
-                                   "email": None, "score": 0, "erro": erro or "Sem resposta"})
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'ERRO {orig_name}: {erro}'})}\n\n"
-                continue
-
-            locatario_pdf = (dados.get("locatario") or "").strip()
-            mes_ref = (dados.get("mes_referencia") or "").strip()
-
-            # Match contra o banco de emails
-            chave_match = None
-            email_match = None
-            nome_match = None
-            melhor_score = 0
-
-            if locatario_pdf:
-                chave_exato = norm(locatario_pdf)
-                if chave_exato in emails_db:
-                    chave_match = chave_exato
-                    email_match = emails_db[chave_exato].get("email", "")
-                    nome_match = emails_db[chave_exato].get("locatario", locatario_pdf)
-                    melhor_score = 100
-                else:
-                    palavras_pdf = norm_palavras(locatario_pdf)
-                    for chave, info in emails_db.items():
-                        palavras_db = norm_palavras(info.get("locatario", ""))
-                        s = score_nome_arquivo(palavras_pdf, palavras_db)
-                        sc = int(s * 100)
-                        if sc > melhor_score and sc >= 50:
-                            melhor_score = sc
-                            chave_match = chave
-                            email_match = info.get("email", "")
-                            nome_match = info.get("locatario", "")
+            chave_match, nome_match, email_match, melhor_score = _match_nome_arquivo(orig_name)
+            # Nome extraído do arquivo (para exibir na tabela)
+            stem_display = re.sub(r'(?i)boleto[_\s-]*', '', Path(orig_name).stem)
+            stem_display = re.sub(r'[_\-]', ' ', stem_display).strip()
 
             resultado = {
                 "arquivo": orig_name,
                 "arquivo_salvo": "loc_" + orig_name,
-                "locatario_pdf": locatario_pdf,
-                "mes_referencia": mes_ref,
+                "locatario_pdf": stem_display,
+                "mes_referencia": "",
                 "chave_match": chave_match,
                 "locatario_match": nome_match,
                 "email": email_match,
@@ -2838,12 +2824,11 @@ def processar_boletos_locatarios():
             resultados.append(resultado)
 
             if chave_match and email_match:
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'OK [{melhor_score}%] {orig_name} -> {locatario_pdf} -> {email_match}'})}\n\n"
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'OK [{melhor_score}%] {orig_name} -> {nome_match} -> {email_match}'})}\n\n"
             elif chave_match:
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM EMAIL {orig_name} -> {locatario_pdf} (sem email cadastrado)'})}\n\n"
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM EMAIL {orig_name} -> {nome_match} (sem email cadastrado)'})}\n\n"
             else:
-                _nome_display = locatario_pdf or 'nome nao identificado'
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH {orig_name} -> {_nome_display}'})}\n\n"
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH {orig_name} -> verifique o nome do arquivo'})}\n\n"
 
         yield f"data: {json.dumps({'tipo': 'resultado', 'dados': resultados})}\n\n"
 
