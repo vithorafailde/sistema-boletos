@@ -404,7 +404,13 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
     <div class="inf-filtro-box">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
         <div class="inf-filtro-titulo" style="margin-bottom:0">Selecione o Proprietário</div>
-        <button class="btn btn-outline btn-sm" onclick="abrirModalEmails()" style="font-size:12px;padding:5px 12px">✏️ Editar E-mails</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="abrirModalEmails()" style="font-size:12px;padding:5px 12px">✏️ Editar E-mails</button>
+          <button class="btn btn-sm" id="btnEnviarTodos" onclick="enviarParaTodos()"
+            style="background:#2A6A2A;color:#fff;font-weight:700;font-size:12px;padding:5px 14px;border:none">
+            📧 Enviar para Todos
+          </button>
+        </div>
       </div>
       <select id="infSelect" class="form-input" style="font-size:15px;padding:10px 14px;max-width:480px;cursor:pointer" onchange="filtrarInforme(this.value)">
         <option value="">— escolha um proprietário —</option>
@@ -1751,6 +1757,79 @@ async function salvarEmailsProprietarios() {
     else alert('Erro ao salvar: ' + j.erro);
   } catch(e) { alert('Erro: ' + e.message); }
   btn.disabled = false; btn.textContent = 'Salvar';
+}
+
+// ─── Enviar para Todos ───────────────────────────────────────────────────────
+async function enviarParaTodos() {
+  if (!_infOrdem || _infOrdem.length === 0) return;
+
+  const semEmail = _infOrdem.filter(k => {
+    const g = _infGrupos[k];
+    return !g.rows.some(r => r.email_proprietario && r.email_proprietario.trim());
+  });
+  const comEmail = _infOrdem.filter(k => {
+    const g = _infGrupos[k];
+    return g.rows.some(r => r.email_proprietario && r.email_proprietario.trim());
+  });
+
+  if (comEmail.length === 0) {
+    alert('Nenhum proprietário tem e-mail cadastrado na planilha (coluna N).');
+    return;
+  }
+
+  let msg = `Enviar informes para ${comEmail.length} proprietário(s)?`;
+  if (semEmail.length > 0) {
+    const nomes = semEmail.map(k => _infGrupos[k].nome).join(', ');
+    msg += `\n\nSem e-mail (serão ignorados): ${nomes}`;
+  }
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById('btnEnviarTodos');
+  btn.disabled = true;
+
+  const mes = document.getElementById('inMes').value || '';
+  let ok = 0, erro = 0, erros = [];
+
+  for (let i = 0; i < comEmail.length; i++) {
+    const propKey = comEmail[i];
+    const g = _infGrupos[propKey];
+    btn.textContent = `⏳ Enviando ${i+1}/${comEmail.length}…`;
+
+    let emailDest = '';
+    for (const row of g.rows) {
+      if (row.email_proprietario && row.email_proprietario.trim()) {
+        emailDest = row.email_proprietario.trim(); break;
+      }
+    }
+
+    const rows = g.rows.map(row => {
+      const rd = calcRepasseData(row);
+      return {
+        locatario: row.locatario||'', endereco: row.endereco||'', tipo: row.tipo||'',
+        aluguel: rd.aluguel, taxa_imob: rd.taxaImob, perc_imob: rd.percImob,
+        pa_ativo: rd.paAtivo, pa_val: rd.paVal,
+        ded_prop_itens: rd.dedPropItens.map(d=>({label: LABELS[d.key]||d.key, val: d.val})),
+        deds: rd.deds, repasse: rd.repasse
+      };
+    });
+    const total = rows.reduce((s,r) => s+r.repasse, 0);
+
+    try {
+      const r = await fetch('/enviar_informe', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({proprietario: g.nome, email_dest: emailDest, mes, rows, total})
+      });
+      const j = await r.json();
+      if (j.ok) { ok++; } else { erro++; erros.push(`${g.nome}: ${j.erro}`); }
+    } catch(e) { erro++; erros.push(`${g.nome}: ${e.message}`); }
+  }
+
+  btn.disabled = false;
+  btn.textContent = '📧 Enviar para Todos';
+
+  let resultado = `✓ ${ok} informe(s) enviado(s) com sucesso!`;
+  if (erro > 0) resultado += `\n\n✗ ${erro} erro(s):\n` + erros.join('\n');
+  alert(resultado);
 }
 
 // ─── Verifica status SMTP ao carregar (só admin) ─────────────────────────────
