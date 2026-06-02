@@ -120,16 +120,8 @@ table.main-table { width: 100%; border-collapse: collapse; }
       <div style="font-size:28px;margin-bottom:8px">⏳</div>
       Carregando locatários...
     </div>
-    <div class="table-wrap" id="tabelaWrap" style="display:none">
-      <table class="main-table">
-        <thead>
-          <tr>
-            <th style="min-width:200px">Locatário</th>
-            <th>E-mail</th>
-          </tr>
-        </thead>
-        <tbody id="corpoLocatarios"></tbody>
-      </table>
+    <div id="tabelaWrap" style="display:none;max-height:420px;overflow-y:auto;padding-right:6px">
+      <div id="listaLocatarios" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 20px"></div>
     </div>
   </div>
 
@@ -218,13 +210,13 @@ async function carregarLocatarios() {
 }
 
 function renderLocatarios(db) {
-  const corpo = document.getElementById('corpoLocatarios');
   const sem = document.getElementById('semLocatarios');
   const wrap = document.getElementById('tabelaWrap');
+  const lista = document.getElementById('listaLocatarios');
   const entries = Object.entries(db).sort((a, b) => a[1].locatario.localeCompare(b[1].locatario));
 
   if (entries.length === 0) {
-    sem.innerHTML = '<div style="font-size:28px;margin-bottom:8px">📭</div>Nenhum locatário encontrado. Processe os boletos primeiro na aba <strong>Boletos</strong> para carregar a planilha.';
+    sem.innerHTML = '<div style="font-size:28px;margin-bottom:8px">📭</div>Nenhum locatário encontrado.<br><span style="font-size:12px">Processe os boletos primeiro na aba <strong>Boletos</strong> para carregar os nomes.</span>';
     sem.style.display = 'block';
     wrap.style.display = 'none';
     return;
@@ -232,18 +224,16 @@ function renderLocatarios(db) {
   sem.style.display = 'none';
   wrap.style.display = 'block';
 
-  corpo.innerHTML = entries.map(([chave, info]) => `
-    <tr>
-      <td style="font-weight:600;padding:6px 10px">${escHtml(info.locatario)}</td>
-      <td style="padding:4px 10px">
-        <input type="email" class="form-input email-loc-input"
-          style="padding:5px 8px;font-size:12px"
-          data-chave="${escHtml(chave)}"
-          data-nome="${escHtml(info.locatario)}"
-          value="${escHtml(info.email || '')}"
-          placeholder="email@exemplo.com">
-      </td>
-    </tr>
+  lista.innerHTML = entries.map(([chave, info]) => `
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">${escHtml(info.locatario)}</label>
+      <input type="email" class="form-input email-loc-input"
+        style="padding:6px 10px;font-size:13px"
+        data-chave="${escHtml(chave)}"
+        data-nome="${escHtml(info.locatario)}"
+        value="${escHtml(info.email || '')}"
+        placeholder="email@exemplo.com">
+    </div>
   `).join('');
 }
 

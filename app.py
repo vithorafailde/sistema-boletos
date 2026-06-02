@@ -1281,6 +1281,13 @@ def processar():
         try:
             contratos, proprietarios = ler_excel(excel_path)
             yield f"data: {json.dumps({'tipo': 'log', 'msg': f'Excel: {len(contratos)} locatarios'})}\n\n"
+            # Salva nomes dos locatários para o módulo de envio de boletos
+            try:
+                nomes = {norm(ct["locatario"]): ct["locatario"] for ct in contratos.values()}
+                with open(DATA_DIR / "locatarios_nomes.json", "w", encoding="utf-8") as _f:
+                    json.dump(nomes, _f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
         except Exception as e:
             yield f"data: {json.dumps({'tipo': 'erro', 'msg': f'Erro Excel: {e}'})}\n\n"
             return
@@ -2672,18 +2679,31 @@ def get_locatarios_emails():
     emails_salvos = ler_locatarios_emails()
     resultado = dict(emails_salvos)
 
-    # Complementa com todos os locatários da planilha Excel (se existir)
-    excel_path = UPLOAD_DIR / "contratos.xlsx"
-    if excel_path.exists():
+    # Complementa com locatários do arquivo de nomes (salvo ao processar boletos)
+    nomes_path = DATA_DIR / "locatarios_nomes.json"
+    if nomes_path.exists():
         try:
-            contratos, _ = ler_excel(excel_path)
-            for _, ct in contratos.items():
-                nome = ct["locatario"]
-                chave = norm(nome)
+            with open(nomes_path, encoding="utf-8") as _f:
+                nomes_salvos = json.load(_f)
+            for chave, nome in nomes_salvos.items():
                 if chave not in resultado:
                     resultado[chave] = {"locatario": nome, "email": ""}
         except Exception:
             pass
+
+    # Fallback: tenta ler direto da planilha Excel (se existir no upload dir)
+    if not resultado:
+        excel_path = UPLOAD_DIR / "contratos.xlsx"
+        if excel_path.exists():
+            try:
+                contratos, _ = ler_excel(excel_path)
+                for _, ct in contratos.items():
+                    nome = ct["locatario"]
+                    chave = norm(nome)
+                    if chave not in resultado:
+                        resultado[chave] = {"locatario": nome, "email": ""}
+            except Exception:
+                pass
 
     return jsonify(resultado)
 
