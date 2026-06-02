@@ -378,27 +378,16 @@ function mostrarResultados() {
 function renderResultados() {
   const corpo = document.getElementById('corpoResultados');
   corpo.innerHTML = '';
-  let temParaEnviar = false;
 
   resultados.forEach((r, idx) => {
-    const temEmail = r.email && r.email.trim() !== '';
-    const temMatch = !!r.chave_match;
     const enviado  = r._enviado;
     const errEnvio = r._erroEnvio;
-
-    if (temEmail) temParaEnviar = true;
 
     let badgeHtml, acaoHtml;
 
     if (r.erro) {
       badgeHtml = `<span class="badge badge-err">❌ Erro PDF</span>`;
       acaoHtml  = `<span style="color:var(--muted);font-size:10px">—</span>`;
-    } else if (!temMatch) {
-      badgeHtml = `<span class="badge badge-warn">⚠️ Sem match</span>`;
-      acaoHtml  = `<span style="color:var(--muted);font-size:10px">Cadastre o e-mail</span>`;
-    } else if (!temEmail) {
-      badgeHtml = `<span class="badge badge-warn">⚠️ Sem e-mail</span>`;
-      acaoHtml  = `<button class="btn btn-outline btn-xs" onclick="abrirModalEdit('${escHtml(r.chave_match||'')}','${escHtml(r.locatario_match||r.locatario_pdf||'')}','')">+ Email</button>`;
     } else if (enviado) {
       badgeHtml = `<span class="badge badge-sent">✅ Enviado</span>`;
       acaoHtml  = `<span style="color:#2A6A2A;font-size:10px;font-weight:600">✓ OK</span>`;
@@ -410,7 +399,7 @@ function renderResultados() {
       acaoHtml  = `<button class="btn btn-primary btn-xs" id="btnEnv_${idx}" onclick="enviarUm(${idx})">📧 Enviar</button>`;
     }
 
-    // Campo de email editável inline
+    // Campo de email editável inline — preenchido do cadastro ou digitável
     const emailCampo = `
       <div style="display:flex;gap:4px;align-items:center">
         <input type="email" class="form-input" style="padding:3px 6px;font-size:11px;flex:1"
@@ -430,7 +419,8 @@ function renderResultados() {
       </tr>`;
   });
 
-  document.getElementById('btnEnviarTodos').disabled = !temParaEnviar;
+  // Botão sempre habilitado quando há resultados — email pode ter sido digitado inline
+  document.getElementById('btnEnviarTodos').disabled = resultados.length === 0;
 }
 
 async function enviarUm(idx) {
@@ -466,17 +456,20 @@ async function enviarUm(idx) {
 
 async function enviarTodos() {
   const mes = document.getElementById('inMes').value;
-  const paraEnviar = resultados.map((r, i) => ({...r, _idx: i}))
-    .filter(r => !r._enviado && !r.erro && (r.email || document.getElementById(`emailInp_${r._idx}`)?.value));
+  // Coleta e-mail do campo inline (digitado ou pré-preenchido do cadastro)
+  const paraEnviar = resultados.map((r, i) => {
+    const emailInp = document.getElementById(`emailInp_${i}`)?.value?.trim() || r.email || '';
+    return {...r, _idx: i, _emailFinal: emailInp};
+  }).filter(r => !r._enviado && !r.erro && r._emailFinal);
 
-  if (paraEnviar.length === 0) { alert('Nenhum boleto disponível para enviar.'); return; }
+  if (paraEnviar.length === 0) { alert('Nenhum boleto com e-mail disponível para enviar.\nPreencha os e-mails no cadastro ou diretamente na tabela.'); return; }
   if (!confirm(`Enviar ${paraEnviar.length} boleto(s) por e-mail?`)) return;
 
   document.getElementById('btnEnviarTodos').disabled = true;
   document.getElementById('btnEnviarTodos').textContent = '⏳ Enviando...';
 
   for (const r of paraEnviar) {
-    const email = document.getElementById(`emailInp_${r._idx}`)?.value || r.email || '';
+    const email = r._emailFinal;
     if (!email) continue;
     const resp = await fetch('/envio_boletos/enviar', {
       method: 'POST',
