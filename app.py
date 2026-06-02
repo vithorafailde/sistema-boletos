@@ -1714,6 +1714,21 @@ def get_smtp():
                     "from_addr": s["from"], "resend_key": "***" if s["resend_key"] else "",
                     "configurado": configurado})
 
+@app.route("/emails_proprietarios", methods=["GET"])
+@login_required
+def get_emails_proprietarios():
+    cfg = ler_config()
+    return jsonify(cfg.get("emails_proprietarios", {}))
+
+@app.route("/salvar_emails_proprietarios", methods=["POST"])
+@login_required
+def salvar_emails_proprietarios():
+    emails = (request.get_json() or {}).get("emails", {})
+    cfg = ler_config()
+    cfg["emails_proprietarios"] = emails
+    salvar_config(cfg)
+    return jsonify({"ok": True})
+
 def _gerar_html_email(proprietario, mes, rows, total, hoje):
     """Gera o corpo HTML do email do demonstrativo de repasse."""
     logo_path = BASE / "static" / "logo.png"
