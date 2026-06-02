@@ -2912,7 +2912,11 @@ def enviar_boleto_locatario():
         req = urllib.request.Request(
             "https://api.resend.com/emails",
             data=payload,
-            headers={"Authorization": f"Bearer {smtp['resend_key']}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {smtp['resend_key']}",
+                "Content-Type": "application/json",
+                "User-Agent": "python-urllib/sistema-boletos"
+            },
             method="POST"
         )
         try:
