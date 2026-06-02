@@ -131,6 +131,8 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 - Card mostra todas as unidades do proprietário com discriminação completa do repasse
 - Botão **"📄 Gerar PDF"** → abre janela com PDF profissional (Times New Roman, P&B, logo Funchal)
 - Botão **"📧 Enviar por E-mail"** → envia via Resend para o email da coluna N do Excel
+- Botão **"📧 Enviar para Todos"** → envia sequencialmente para todos os proprietários com email cadastrado; mostra progresso (`⏳ Enviando X/N…`) e resumo final de sucesso/erros; proprietários sem email são listados e ignorados
+- Botão **"✏️ Editar E-mails"** → modal para editar emails dos proprietários sem precisar reupar a planilha
 
 ### Cálculo do repasse (`calcRepasseData(row)`)
 ```
