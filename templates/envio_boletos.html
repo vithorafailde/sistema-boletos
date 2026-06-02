@@ -98,26 +98,6 @@ table.main-table { width: 100%; border-collapse: collapse; }
   </div>
 </div>
 
-<!-- Modal: Adicionar/Editar locatário -->
-<div id="modalLocatario" class="modal-bg">
-  <div class="modal">
-    <h2 id="modalTitulo">Adicionar Locatário</h2>
-    <div class="form-group" style="margin-bottom:12px">
-      <label class="form-label">Nome do Locatário</label>
-      <input type="text" id="inputNome" class="form-input" placeholder="Ex: Jean Pierre Silva">
-    </div>
-    <div class="form-group" style="margin-bottom:16px">
-      <label class="form-label">E-mail</label>
-      <input type="email" id="inputEmail" class="form-input" placeholder="locatario@email.com">
-    </div>
-    <input type="hidden" id="inputChaveAntiga">
-    <div id="modalErro" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-outline btn-sm" onclick="fecharModal()">Cancelar</button>
-      <button class="btn btn-primary btn-sm" onclick="salvarLocatario()">Salvar</button>
-    </div>
-  </div>
-</div>
 
 <div class="container">
 
@@ -128,22 +108,24 @@ table.main-table { width: 100%; border-collapse: collapse; }
         <span class="step-num">1</span>
         Cadastro de E-mails dos Locatários
       </div>
-      <button class="btn btn-primary btn-sm" onclick="abrirModalAdd()">+ Adicionar</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="statusSalvo" style="font-size:11px;color:#2A6A2A;display:none">✅ Salvo!</span>
+        <button class="btn btn-primary btn-sm" onclick="salvarTodos()">💾 Salvar E-mails</button>
+      </div>
     </div>
     <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-      Cadastre o e-mail de cada locatário. O sistema identificará automaticamente o boleto de cada um.
+      Os locatários são carregados automaticamente da planilha. Preencha o e-mail de cada um e clique em <strong>Salvar E-mails</strong>.
     </p>
-    <div id="semLocatarios" style="text-align:center;padding:20px;color:var(--muted);display:none">
-      <div style="font-size:28px;margin-bottom:8px">📭</div>
-      Nenhum locatário cadastrado. Clique em "+ Adicionar" para começar.
+    <div id="semLocatarios" style="text-align:center;padding:24px;color:var(--muted)">
+      <div style="font-size:28px;margin-bottom:8px">⏳</div>
+      Carregando locatários...
     </div>
-    <div class="table-wrap" id="tabelaWrap">
+    <div class="table-wrap" id="tabelaWrap" style="display:none">
       <table class="main-table">
         <thead>
           <tr>
-            <th>Locatário</th>
+            <th style="min-width:200px">Locatário</th>
             <th>E-mail</th>
-            <th style="width:120px">Ações</th>
           </tr>
         </thead>
         <tbody id="corpoLocatarios"></tbody>
@@ -227,10 +209,12 @@ let resultados = [];
 
 // ─── Cadastro de locatários ──────────────────────────────────────────────────
 
+let _dbLocatarios = {};
+
 async function carregarLocatarios() {
   const resp = await fetch('/api/locatarios_emails');
-  const db = await resp.json();
-  renderLocatarios(db);
+  _dbLocatarios = await resp.json();
+  renderLocatarios(_dbLocatarios);
 }
 
 function renderLocatarios(db) {
@@ -240,6 +224,7 @@ function renderLocatarios(db) {
   const entries = Object.entries(db).sort((a, b) => a[1].locatario.localeCompare(b[1].locatario));
 
   if (entries.length === 0) {
+    sem.innerHTML = '<div style="font-size:28px;margin-bottom:8px">📭</div>Nenhum locatário encontrado. Processe os boletos primeiro na aba <strong>Boletos</strong> para carregar a planilha.';
     sem.style.display = 'block';
     wrap.style.display = 'none';
     return;
@@ -249,74 +234,53 @@ function renderLocatarios(db) {
 
   corpo.innerHTML = entries.map(([chave, info]) => `
     <tr>
-      <td style="font-weight:600">${escHtml(info.locatario)}</td>
-      <td class="email-cell">${info.email ? escHtml(info.email) : '<span style="color:var(--orange);font-style:italic">sem e-mail</span>'}</td>
-      <td>
-        <button class="btn btn-outline btn-xs" onclick="abrirModalEdit('${escHtml(chave)}','${escHtml(info.locatario)}','${escHtml(info.email||'')}')">Editar</button>
-        <button class="btn btn-red btn-xs" style="margin-left:4px" onclick="excluir('${escHtml(chave)}','${escHtml(info.locatario)}')">Excluir</button>
+      <td style="font-weight:600;padding:6px 10px">${escHtml(info.locatario)}</td>
+      <td style="padding:4px 10px">
+        <input type="email" class="form-input email-loc-input"
+          style="padding:5px 8px;font-size:12px"
+          data-chave="${escHtml(chave)}"
+          data-nome="${escHtml(info.locatario)}"
+          value="${escHtml(info.email || '')}"
+          placeholder="email@exemplo.com">
       </td>
     </tr>
   `).join('');
 }
 
-function abrirModalAdd() {
-  document.getElementById('modalTitulo').textContent = 'Adicionar Locatário';
-  document.getElementById('inputNome').value = '';
-  document.getElementById('inputEmail').value = '';
-  document.getElementById('inputChaveAntiga').value = '';
-  document.getElementById('modalErro').style.display = 'none';
-  document.getElementById('modalLocatario').classList.add('open');
-  setTimeout(() => document.getElementById('inputNome').focus(), 100);
-}
+async function salvarTodos() {
+  const inputs = document.querySelectorAll('.email-loc-input');
+  const emails = {};
+  inputs.forEach(inp => {
+    emails[inp.dataset.chave] = {
+      locatario: inp.dataset.nome,
+      email: inp.value.trim()
+    };
+  });
 
-function abrirModalEdit(chave, nome, email) {
-  document.getElementById('modalTitulo').textContent = 'Editar Locatário';
-  document.getElementById('inputNome').value = nome;
-  document.getElementById('inputEmail').value = email;
-  document.getElementById('inputChaveAntiga').value = chave;
-  document.getElementById('modalErro').style.display = 'none';
-  document.getElementById('modalLocatario').classList.add('open');
-  setTimeout(() => document.getElementById('inputNome').focus(), 100);
-}
+  const btn = document.querySelector('[onclick="salvarTodos()"]');
+  const textoOrig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Salvando...';
 
-function fecharModal() {
-  document.getElementById('modalLocatario').classList.remove('open');
-}
-
-async function salvarLocatario() {
-  const nome = document.getElementById('inputNome').value.trim();
-  const email = document.getElementById('inputEmail').value.trim();
-  const chaveAntiga = document.getElementById('inputChaveAntiga').value.trim();
-  const erroEl = document.getElementById('modalErro');
-
-  if (!nome) { erroEl.textContent = 'Nome obrigatório'; erroEl.style.display = 'block'; return; }
-
-  const resp = await fetch('/api/locatarios_emails', {
+  const resp = await fetch('/api/locatarios_emails/bulk', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({locatario: nome, email: email, chave_antiga: chaveAntiga})
+    body: JSON.stringify({emails})
   });
   const r = await resp.json();
+
+  btn.disabled = false;
+  btn.innerHTML = textoOrig;
+
   if (r.ok) {
-    fecharModal();
-    carregarLocatarios();
+    const st = document.getElementById('statusSalvo');
+    st.style.display = 'inline';
+    setTimeout(() => { st.style.display = 'none'; }, 3000);
+    _dbLocatarios = emails;
   } else {
-    erroEl.textContent = r.erro || 'Erro ao salvar';
-    erroEl.style.display = 'block';
+    alert('Erro ao salvar: ' + (r.erro || 'desconhecido'));
   }
 }
-
-async function excluir(chave, nome) {
-  if (!confirm(`Excluir o cadastro de "${nome}"?`)) return;
-  await fetch(`/api/locatarios_emails/${encodeURIComponent(chave)}`, {method: 'DELETE'});
-  carregarLocatarios();
-}
-
-// Enter no modal salva
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById('modalLocatario').classList.contains('open')) salvarLocatario();
-  if (e.key === 'Escape' && document.getElementById('modalLocatario').classList.contains('open')) fecharModal();
-});
 
 // ─── Upload ──────────────────────────────────────────────────────────────────
 

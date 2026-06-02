@@ -2669,7 +2669,35 @@ def envio_boletos():
 @app.route("/api/locatarios_emails", methods=["GET"])
 @login_required
 def get_locatarios_emails():
-    return jsonify(ler_locatarios_emails())
+    emails_salvos = ler_locatarios_emails()
+    resultado = dict(emails_salvos)
+
+    # Complementa com todos os locatários da planilha Excel (se existir)
+    excel_path = UPLOAD_DIR / "contratos.xlsx"
+    if excel_path.exists():
+        try:
+            contratos, _ = ler_excel(excel_path)
+            for _, ct in contratos.items():
+                nome = ct["locatario"]
+                chave = norm(nome)
+                if chave not in resultado:
+                    resultado[chave] = {"locatario": nome, "email": ""}
+        except Exception:
+            pass
+
+    return jsonify(resultado)
+
+
+@app.route("/api/locatarios_emails/bulk", methods=["POST"])
+@login_required
+def bulk_locatarios_emails():
+    """Salva todos os e-mails de locatários de uma vez."""
+    emails_novos = (request.get_json() or {}).get("emails", {})
+    emails = ler_locatarios_emails()
+    for chave, info in emails_novos.items():
+        emails[chave] = info
+    salvar_locatarios_emails(emails)
+    return jsonify({"ok": True})
 
 
 @app.route("/api/locatarios_emails", methods=["POST"])
