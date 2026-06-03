@@ -150,8 +150,8 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
   </div>
   <div class="header-actions">
     <a href="/" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">← Início</a>
-    <a href="/reajustes" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">📈 Reajustes</a>
-    <a href="/envio_boletos" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">📧 Envio</a>
+    <a href="/reajustes" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">Reajustes</a>
+    <a href="/envio_boletos" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">Envio</a>
     {% if is_admin %}
     <a href="/configuracoes" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">Configurações</a>
     {% endif %}
@@ -182,7 +182,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
 <!-- Modal E-mails Proprietários -->
 <div id="modalEmails" class="modal-bg" style="display:none">
   <div class="modal" style="width:500px;max-height:80vh;display:flex;flex-direction:column">
-    <h2>✉️ E-mails dos Proprietários</h2>
+    <h2>E-mails dos Proprietários</h2>
     <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Cadastre o e-mail de cada proprietário. Ficam salvos no servidor.</p>
     <div id="emailsListaModal" style="overflow-y:auto;flex:1;padding-right:4px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
@@ -195,7 +195,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
 <!-- Modal SMTP -->
 <div id="modalSmtp" class="modal-bg">
   <div class="modal" style="width:500px">
-    <h2>📧 Configuração de E-mail (SMTP)</h2>
+    <h2>Configuração de E-mail (SMTP)</h2>
     <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
       Configure o servidor de e-mail para envio dos informes mensais aos proprietários.
     </p>
@@ -222,7 +222,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       <input type="email" id="smtpFrom" class="form-input" placeholder="Funchal Imóveis &lt;noreply@dominio.com&gt;">
     </div>
     <div style="border:1px solid #A8D4A8;border-radius:8px;padding:12px 14px;background:#F0FAF0;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#2A6A2A;margin-bottom:6px">✅ Recomendado: Resend (grátis, funciona no Railway)</div>
+      <div style="font-size:12px;font-weight:700;color:#2A6A2A;margin-bottom:6px">Recomendado: Resend (grátis, funciona no Railway)</div>
       <div class="form-group">
         <label class="form-label">Chave API do Resend (re_...)</label>
         <input type="password" id="smtpResendKey" class="form-input" placeholder="re_xxxxxxxxxxxxxxxxxxxx">
@@ -233,7 +233,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       </div>
     </div>
     <p style="font-size:10px;color:var(--muted);margin-bottom:12px">
-      💡 Ou use SMTP: Gmail requer <strong>App Password</strong> em myaccount.google.com → Segurança → Senhas de app.
+      Ou use SMTP: Gmail requer <strong>App Password</strong> em myaccount.google.com → Segurança → Senhas de app.
     </p>
     <div id="smtpErro" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
     <div id="smtpOk" style="color:green;font-size:12px;margin-bottom:10px;display:none"></div>
@@ -255,7 +255,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
         <div>
           <span class="file-label">Planilha de Contratos</span>
           <div id="dropExcel" class="file-drop" onclick="document.getElementById('inExcel').click()">
-            <div class="icon">📊</div>
+            <div class="icon"></div>
             <div class="lbl">Clique para selecionar</div>
             <div class="hint">Arquivo .xlsx</div>
             <input type="file" id="inExcel" accept=".xlsx,.xls">
@@ -266,7 +266,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
         <div>
           <span class="file-label">Boletos de Condominio (mes atual)</span>
           <div id="dropCond" class="file-drop" onclick="document.getElementById('inCond').click()">
-            <div class="icon">🏢</div>
+            <div class="icon"></div>
             <div class="lbl">Clique para selecionar</div>
             <div class="hint">Todos os PDFs de condominio</div>
             <input type="file" id="inCond" accept=".pdf" multiple>
@@ -277,7 +277,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
         <div>
           <span class="file-label">Boletos do Mes Anterior <span style="color:var(--orange);font-weight:400">(opcional)</span></span>
           <div id="dropBol" class="file-drop" onclick="document.getElementById('inBol').click()">
-            <div class="icon">📋</div>
+            <div class="icon"></div>
             <div class="lbl">Clique para selecionar</div>
             <div class="hint">PDFs do mes anterior</div>
             <div class="opt">Extrai IPTU e Seguro automaticamente</div>
@@ -314,13 +314,13 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
         <p id="subMes" style="font-size:12px;color:var(--muted)"></p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="novoProcessamento()">↩ Novo processamento</button>
+        <button class="btn btn-outline btn-sm" onclick="novoProcessamento()">Novo processamento</button>
         <button class="btn btn-outline btn-sm" onclick="salvarExtras()">Salvar para proximo mes</button>
         <button class="btn btn-green btn-sm" onclick="exportarExcel()">Exportar Excel</button>
-        <button class="btn btn-primary" onclick="abrirInformes()" style="font-size:14px;padding:10px 22px;font-weight:700">📄 Informes ao Proprietário</button>
+        <button class="btn btn-primary" onclick="abrirInformes()" style="font-size:14px;padding:10px 22px;font-weight:700">Informes ao Proprietário</button>
         <button class="btn btn-outline btn-sm" onclick="window.print()">Imprimir</button>
-        <button class="btn btn-outline btn-sm" onclick="baixarHistorico()" title="Baixe o historico para nao perder dados ao atualizar o sistema">⬇ Backup</button>
-        <label class="btn btn-outline btn-sm" style="cursor:pointer" title="Restaure um backup anterior do historico">⬆ Restaurar<input type="file" accept=".json" style="display:none" onchange="restaurarHistorico(this)"></label>
+        <button class="btn btn-outline btn-sm" onclick="baixarHistorico()" title="Baixe o historico para nao perder dados ao atualizar o sistema">Backup</button>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer" title="Restaure um backup anterior do historico">Restaurar<input type="file" accept=".json" style="display:none" onchange="restaurarHistorico(this)"></label>
       </div>
     </div>
 
@@ -329,7 +329,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
     <!-- Banner: cota condominial divergente -->
     <div id="bannerCotaAlerta">
       <div class="banner-titulo">
-        ⚠️ Verificação necessária — Cota Condominial alterada
+        Verificação necessária — Cota Condominial alterada
         <span class="banner-fechar" onclick="document.getElementById('bannerCotaAlerta').classList.remove('show')">✕</span>
       </div>
       <div id="bannerCotaLista"></div>
@@ -390,7 +390,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
     <!-- Cabeçalho grande -->
     <div class="inf-topo">
       <div class="inf-topo-left">
-        <div class="inf-titulo">📄 Informes Mensais de Repasse</div>
+        <div class="inf-titulo">Informes Mensais de Repasse</div>
         <div class="inf-ref" id="infSubMes"></div>
       </div>
       <button class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8" onclick="voltarParaResultados()">← Voltar aos Boletos</button>
@@ -401,10 +401,10 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
         <div class="inf-filtro-titulo" style="margin-bottom:0">Selecione o Proprietário</div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-outline btn-sm" onclick="abrirModalEmails()" style="font-size:12px;padding:5px 12px">✏️ Editar E-mails</button>
+          <button class="btn btn-outline btn-sm" onclick="abrirModalEmails()" style="font-size:12px;padding:5px 12px">Editar E-mails</button>
           <button class="btn btn-sm" id="btnEnviarTodos" onclick="enviarParaTodos()"
             style="background:#2A6A2A;color:#fff;font-weight:700;font-size:12px;padding:5px 14px;border:none">
-            📧 Enviar para Todos
+            Enviar para Todos
           </button>
         </div>
       </div>
@@ -419,7 +419,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
     <!-- ── Auditoria de Envios ──────────────────────────────────────────── -->
     <div id="secaoAuditoria" style="margin-top:32px;display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <div style="font-size:15px;font-weight:700;color:var(--text)">📋 Auditoria de Envios</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text)">Auditoria de Envios</div>
         <div style="display:flex;gap:8px;align-items:center">
           <select id="filtroMesLog" class="form-input" style="font-size:12px;padding:5px 10px;width:auto" onchange="renderLogFiltrado()">
             <option value="">Todos os meses</option>
@@ -1372,7 +1372,7 @@ function abrirInformes() {
   // Placeholder inicial
   document.getElementById('informeCards').innerHTML = `
     <div class="inf-placeholder">
-      <div class="ico">👆</div>
+      <div class="ico"></div>
       Selecione um proprietário acima para visualizar o informe
     </div>`;
 
@@ -1382,7 +1382,7 @@ function abrirInformes() {
 function filtrarInforme(propKey) {
   if (!propKey) {
     document.getElementById('informeCards').innerHTML = `
-      <div class="inf-placeholder"><div class="ico">👆</div>Selecione um proprietário acima para visualizar o informe</div>`;
+      <div class="inf-placeholder"><div class="ico"></div>Selecione um proprietário acima para visualizar o informe</div>`;
     return;
   }
   const g = _infGrupos[propKey];
@@ -1433,10 +1433,10 @@ function filtrarInforme(propKey) {
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn btn-sm"
             style="background:#fff;color:var(--header);font-weight:700;border:none;font-size:13px;padding:8px 16px"
-            onclick="gerarPdfProprietario('${safeKey}')">📄 Gerar PDF</button>
+            onclick="gerarPdfProprietario('${safeKey}')">Gerar PDF</button>
           <button class="btn btn-sm"
             style="background:#4A8A4A;color:#fff;font-weight:700;border:none;font-size:13px;padding:8px 16px"
-            onclick="enviarInforme('${safeKey}')">📧 Enviar por E-mail</button>
+            onclick="enviarInforme('${safeKey}')">Enviar por E-mail</button>
         </div>
       </div>
       <div class="inf-card-body">
@@ -1653,10 +1653,10 @@ async function salvarSmtp() {
     });
     const j = await r.json();
     if (j.ok) {
-      document.getElementById('smtpOk').textContent = '✓ Conexão testada com sucesso! E-mail configurado.';
+      document.getElementById('smtpOk').textContent = 'Conexão testada com sucesso! E-mail configurado.';
       document.getElementById('smtpOk').style.display = 'block';
       const b = document.getElementById('smtpStatusBadge');
-      if (b) { b.className = 'api-status smtp-ok'; b.textContent = '📧 E-mail configurado'; }
+      if (b) { b.className = 'api-status smtp-ok'; b.textContent = 'E-mail configurado'; }
       setTimeout(fecharModalSmtp, 1800);
     } else {
       document.getElementById('smtpErro').textContent = j.erro || 'Erro ao testar conexão.';
@@ -1714,7 +1714,7 @@ async function enviarInforme(propKey) {
   // Feedback visual
   const btnEl = document.querySelector(`button[onclick="enviarInforme('${propKey.replace(/'/g,"\\'")}')"]`);
   const textoOriginal = btnEl ? btnEl.innerHTML : '';
-  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '⏳ Enviando...'; }
+  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = 'Enviando...'; }
 
   try {
     const r = await fetch('/enviar_informe', {
@@ -1724,7 +1724,7 @@ async function enviarInforme(propKey) {
     });
     const j = await r.json();
     if (j.ok) {
-      alert(`✓ Informe enviado com sucesso para ${emailDest}!`);
+      alert(`Informe enviado com sucesso para ${emailDest}!`);
     } else {
       alert(`Erro ao enviar: ${j.erro}`);
     }
@@ -1873,7 +1873,7 @@ async function enviarParaTodos() {
   for (let i = 0; i < comEmail.length; i++) {
     const propKey = comEmail[i];
     const g = _infGrupos[propKey];
-    btn.textContent = `⏳ Enviando ${i+1}/${comEmail.length}…`;
+    btn.textContent = `Enviando ${i+1}/${comEmail.length}…`;
 
     let emailDest = '';
     for (const row of g.rows) {
@@ -1905,10 +1905,10 @@ async function enviarParaTodos() {
   }
 
   btn.disabled = false;
-  btn.textContent = '📧 Enviar para Todos';
+  btn.textContent = 'Enviar para Todos';
 
-  let resultado = `✓ ${ok} informe(s) enviado(s) com sucesso!`;
-  if (erro > 0) resultado += `\n\n✗ ${erro} erro(s):\n` + erros.join('\n');
+  let resultado = `${ok} informe(s) enviado(s) com sucesso!`;
+  if (erro > 0) resultado += `\n\n${erro} erro(s):\n` + erros.join('\n');
   alert(resultado);
   carregarLogEnvios();
 }
@@ -1922,7 +1922,7 @@ async function enviarParaTodos() {
     const j = await r.json();
     if (j.configurado) {
       b.className = 'api-status smtp-ok';
-      b.textContent = '📧 E-mail configurado';
+      b.textContent = 'E-mail configurado';
     }
   } catch(e) {}
 })();

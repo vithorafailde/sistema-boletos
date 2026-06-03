@@ -84,16 +84,16 @@ table.main-table { width: 100%; border-collapse: collapse; }
 <!-- Header -->
 <div class="header">
   <div>
-    <h1>📧 Envio de Boletos</h1>
+    <h1>Envio de Boletos</h1>
     <p>Envio automático de boletos por e-mail para locatários</p>
   </div>
   <div class="header-actions">
     <a href="/" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">← Início</a>
-    <a href="/boletos" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">📋 Boletos</a>
-    <a href="/reajustes" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">📈 Reajustes</a>
-    <a href="/dimob" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">📄 DIMOB</a>
+    <a href="/boletos" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">Boletos</a>
+    <a href="/reajustes" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">Reajustes</a>
+    <a href="/dimob" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">DIMOB</a>
     <span id="smtpBadge" class="api-status {% if tem_smtp %}smtp-ok{% else %}smtp-nok{% endif %}">
-      {% if tem_smtp %}📧 Email configurado{% else %}📧 Email não config.{% endif %}
+      {% if tem_smtp %}Email configurado{% else %}Email não config.{% endif %}
     </span>
     <a href="/logout" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">Sair</a>
   </div>
@@ -112,7 +112,7 @@ table.main-table { width: 100%; border-collapse: collapse; }
         <span style="font-size:14px;font-weight:700">Cadastro de E-mails dos Locatários</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <span id="statusSalvo" style="font-size:11px;color:#2A6A2A;display:none">✅ Salvo!</span>
+        <span id="statusSalvo" style="font-size:11px;color:#2A6A2A;display:none">Salvo!</span>
         <span id="cadastroChevron" style="font-size:13px;color:var(--muted);transition:transform .2s">▼</span>
       </div>
     </div>
@@ -122,10 +122,10 @@ table.main-table { width: 100%; border-collapse: collapse; }
         Os locatários são carregados automaticamente da planilha. Preencha o e-mail de cada um e clique em <strong>Salvar E-mails</strong>.
       </p>
       <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-        <button class="btn btn-primary btn-sm" onclick="salvarTodos();event.stopPropagation()">💾 Salvar E-mails</button>
+        <button class="btn btn-primary btn-sm" onclick="salvarTodos();event.stopPropagation()">Salvar E-mails</button>
       </div>
       <div id="semLocatarios" style="text-align:center;padding:24px;color:var(--muted)">
-        <div style="font-size:28px;margin-bottom:8px">⏳</div>
+        <div style="font-size:28px;margin-bottom:8px"></div>
         Carregando locatários...
       </div>
       <div id="tabelaWrap" style="display:none;max-height:420px;overflow-y:auto;padding-right:6px">
@@ -144,7 +144,7 @@ table.main-table { width: 100%; border-collapse: collapse; }
       Faça o upload de todos os boletos. O sistema identifica o locatário pelo <strong>nome do arquivo</strong> automaticamente — sem precisar da IA.
     </p>
     <div id="dropBoletos" class="file-drop" onclick="document.getElementById('inBoletos').click()">
-      <div class="icon">📂</div>
+      <div class="icon"></div>
       <div class="lbl">Clique ou arraste os PDFs aqui</div>
       <div class="hint">Selecione todos os boletos do mês de uma vez</div>
       <input type="file" id="inBoletos" accept=".pdf" multiple>
@@ -156,14 +156,14 @@ table.main-table { width: 100%; border-collapse: collapse; }
         <input type="text" id="inMes" class="form-input" placeholder="Ex: Junho/2026">
       </div>
       <button class="btn btn-primary" id="btnProcessar" onclick="processar()" disabled>
-        🔍 Identificar Locatários
+        Identificar Locatários
       </button>
     </div>
   </div>
 
   <!-- ── Progresso ──────────────────────────────────────────────────── -->
   <div class="card" id="secaoProcessar">
-    <div class="card-title"><span class="step-num">⏳</span> Processando PDFs...</div>
+    <div class="card-title"><span class="step-num">...</span> Processando PDFs...</div>
     <div id="progTexto" style="font-size:12px;color:var(--muted)">Iniciando...</div>
     <div class="progress-bar-wrap"><div class="progress-bar" id="barra"></div></div>
     <div class="log-box" id="logBox"></div>
@@ -172,7 +172,7 @@ table.main-table { width: 100%; border-collapse: collapse; }
   <!-- ── Auditoria de Envios ───────────────────────────────────────── -->
   <div class="card" id="secaoAuditoria" style="margin-top:4px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div class="card-title" style="margin-bottom:0">📋 Auditoria de Envios</div>
+      <div class="card-title" style="margin-bottom:0">Auditoria de Envios</div>
       <div style="display:flex;gap:8px;align-items:center">
         <select id="filtroMesLog" class="form-input" style="font-size:12px;padding:5px 10px;width:auto" onchange="renderLogFiltrado()">
           <option value="">Todos os meses</option>
@@ -206,9 +206,9 @@ table.main-table { width: 100%; border-collapse: collapse; }
         <p id="subMes" style="font-size:12px;color:var(--muted)"></p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="novoProcessamento()">↩ Novo upload</button>
+        <button class="btn btn-outline btn-sm" onclick="novoProcessamento()">Novo upload</button>
         <button class="btn btn-green" id="btnEnviarTodos" onclick="enviarTodos()">
-          📧 Enviar Todos com E-mail
+          Enviar Todos com E-mail
         </button>
       </div>
     </div>
@@ -263,7 +263,7 @@ function renderLocatarios(db) {
   const entries = Object.entries(db).sort((a, b) => a[1].locatario.localeCompare(b[1].locatario));
 
   if (entries.length === 0) {
-    sem.innerHTML = '<div style="font-size:28px;margin-bottom:8px">📭</div>Nenhum locatário encontrado.<br><span style="font-size:12px">Processe os boletos primeiro na aba <strong>Boletos</strong> para carregar os nomes.</span>';
+    sem.innerHTML = '<div style="font-size:28px;margin-bottom:8px"></div>Nenhum locatário encontrado.<br><span style="font-size:12px">Processe os boletos primeiro na aba <strong>Boletos</strong> para carregar os nomes.</span>';
     sem.style.display = 'block';
     wrap.style.display = 'none';
     return;
@@ -297,7 +297,7 @@ async function salvarTodos() {
   const btn = document.querySelector('[onclick="salvarTodos()"]');
   const textoOrig = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '⏳ Salvando...';
+  btn.innerHTML = 'Salvando...';
 
   const resp = await fetch('/api/locatarios_emails/bulk', {
     method: 'POST',
@@ -433,17 +433,17 @@ function renderResultados() {
     let badgeHtml, acaoHtml;
 
     if (r.erro) {
-      badgeHtml = `<span class="badge badge-err">❌ Erro PDF</span>`;
+      badgeHtml = `<span class="badge badge-err">Erro PDF</span>`;
       acaoHtml  = `<span style="color:var(--muted);font-size:10px">—</span>`;
     } else if (enviado) {
-      badgeHtml = `<span class="badge badge-sent">✅ Enviado</span>`;
-      acaoHtml  = `<span style="color:#2A6A2A;font-size:10px;font-weight:600">✓ OK</span>`;
+      badgeHtml = `<span class="badge badge-sent">Enviado</span>`;
+      acaoHtml  = `<span style="color:#2A6A2A;font-size:10px;font-weight:600">OK</span>`;
     } else if (errEnvio) {
-      badgeHtml = `<span class="badge badge-err" title="${escHtml(errEnvio)}">❌ Erro envio</span>`;
+      badgeHtml = `<span class="badge badge-err" title="${escHtml(errEnvio)}">Erro envio</span>`;
       acaoHtml  = `<button class="btn btn-primary btn-xs" id="btnEnv_${idx}" onclick="enviarUm(${idx})">Tentar novamente</button>`;
     } else {
-      badgeHtml = `<span class="badge badge-ok">✅ Pronto</span>`;
-      acaoHtml  = `<button class="btn btn-primary btn-xs" id="btnEnv_${idx}" onclick="enviarUm(${idx})">📧 Enviar</button>`;
+      badgeHtml = `<span class="badge badge-ok">Pronto</span>`;
+      acaoHtml  = `<button class="btn btn-primary btn-xs" id="btnEnv_${idx}" onclick="enviarUm(${idx})">Enviar</button>`;
     }
 
     // Campo de email editável inline — preenchido do cadastro ou digitável
@@ -476,7 +476,7 @@ async function enviarUm(idx) {
   if (!email) { alert('Informe o e-mail antes de enviar.'); return; }
 
   const btn = document.getElementById(`btnEnv_${idx}`);
-  if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
 
   const mes = document.getElementById('inMes').value;
   const resp = await fetch('/envio_boletos/enviar', {
@@ -514,7 +514,7 @@ async function enviarTodos() {
   if (!confirm(`Enviar ${paraEnviar.length} boleto(s) por e-mail?`)) return;
 
   document.getElementById('btnEnviarTodos').disabled = true;
-  document.getElementById('btnEnviarTodos').textContent = '⏳ Enviando...';
+  document.getElementById('btnEnviarTodos').textContent = 'Enviando...';
 
   for (const r of paraEnviar) {
     const email = r._emailFinal;
@@ -543,7 +543,7 @@ async function enviarTodos() {
   }
 
   document.getElementById('btnEnviarTodos').disabled = false;
-  document.getElementById('btnEnviarTodos').textContent = '📧 Enviar Todos com E-mail';
+  document.getElementById('btnEnviarTodos').textContent = 'Enviar Todos com E-mail';
   carregarLogEnvios();
 }
 

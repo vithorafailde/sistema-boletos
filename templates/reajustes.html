@@ -123,7 +123,7 @@ grammarly-extension,grammarly-desktop-integration,
 
 <div class="header">
   <div>
-    <h1>📈 Reajuste de Aluguel</h1>
+    <h1>Reajuste de Aluguel</h1>
     <p>Cálculo automático via índices BACEN (IPCA / IGPM) • mesma planilha do sistema de boletos</p>
   </div>
   <div class="header-actions">
@@ -135,7 +135,7 @@ grammarly-extension,grammarly-desktop-integration,
 
   <!-- Upload / Planilha -->
   <div class="card">
-    <div class="card-title">📂 Planilha de Contratos</div>
+    <div class="card-title">Planilha de Contratos</div>
 
 
     <div id="uploadHost" style="margin-bottom:0;"></div>
@@ -144,7 +144,7 @@ grammarly-extension,grammarly-desktop-integration,
     <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-primary" id="btnCalcular" onclick="calcular()">
         <div class="spinner" id="spinCalc"></div>
-        ⚡ Calcular Reajustes
+        Calcular Reajustes
       </button>
       <span id="statusMsg" style="font-size:12px;color:var(--muted);"></span>
     </div>
@@ -161,7 +161,7 @@ grammarly-extension,grammarly-desktop-integration,
 
     <!-- Painel de aplicação -->
     <div class="card" id="painelAplicar" style="display:none;">
-      <div class="card-title">✅ Aplicar Reajustes na Planilha</div>
+      <div class="card-title">Aplicar Reajustes na Planilha</div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
         Os contratos marcados abaixo terão o <strong>novo aluguel gravado diretamente na planilha</strong>.<br>
         No próximo processamento de boletos, os valores já estarão atualizados automaticamente.
@@ -169,7 +169,7 @@ grammarly-extension,grammarly-desktop-integration,
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <button class="btn btn-apply" id="btnAplicar" onclick="aplicarReajustes()">
           <div class="spinner" id="spinAplicar"></div>
-          💾 Aplicar Selecionados na Planilha
+          Aplicar Selecionados na Planilha
         </button>
         <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="chkTodos" onchange="selecionarTodos(this.checked)"> Selecionar todos aplicáveis
@@ -181,28 +181,28 @@ grammarly-extension,grammarly-desktop-integration,
 
     <!-- Botão de download — fora do painelAplicar para não sumir junto -->
     <div id="painelDownload" style="display:none;margin-bottom:16px;padding:16px;background:#D8E4F0;border:2px solid #A8C4E0;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
-      <div style="font-size:14px;font-weight:700;color:#3A5A88;margin-bottom:6px;">✅ Reajustes aplicados com sucesso!</div>
+      <div style="font-size:14px;font-weight:700;color:#3A5A88;margin-bottom:6px;">Reajustes aplicados com sucesso!</div>
       <p style="font-size:12px;color:#166534;margin-bottom:12px;">
         Baixe a planilha e <strong>substitua o arquivo original</strong> no seu computador.
         No próximo processamento de boletos os aluguéis reajustados já estarão lá.
       </p>
       <a href="/api/baixar_contratos" class="btn btn-apply" style="text-decoration:none;font-size:14px;padding:11px 22px;">
-        ⬇️ Baixar Planilha Excel Atualizada
+        Baixar Planilha Excel Atualizada
       </a>
     </div>
 
     <!-- Tabela -->
     <div class="card">
       <div class="card-title">
-        <span>📋 Contratos</span>
+        <span>Contratos</span>
       </div>
 
       <div class="filtros">
         <button class="filtro-btn active"  id="fTodos"    onclick="filtrar('TODOS')">Todos</button>
-        <button class="filtro-btn red"     id="fEsteMes"  onclick="filtrar('ESTE_MES')">🔴 Reajustar este mês</button>
-        <button class="filtro-btn yellow"  id="fFuturo"   onclick="filtrar('FUTURO')">🟡 Futuros</button>
-        <button class="filtro-btn green"   id="fOk"       onclick="filtrar('OK')">🟢 Já reajustados</button>
-        <input class="search-box" id="searchBox" type="text" placeholder="🔍 Buscar…" oninput="renderTabela()">
+        <button class="filtro-btn red"     id="fEsteMes"  onclick="filtrar('ESTE_MES')">Reajustar este mês</button>
+        <button class="filtro-btn yellow"  id="fFuturo"   onclick="filtrar('FUTURO')">Futuros</button>
+        <button class="filtro-btn green"   id="fOk"       onclick="filtrar('OK')">Já reajustados</button>
+        <input class="search-box" id="searchBox" type="text" placeholder="Buscar…" oninput="renderTabela()">
       </div>
 
       <div class="tbl-wrap">
@@ -223,7 +223,7 @@ grammarly-extension,grammarly-desktop-integration,
           <tbody id="tabelaBody"></tbody>
         </table>
         <div id="emptyState">
-          <div class="icon">🔍</div>
+          <div class="icon"></div>
           <div>Nenhum contrato encontrado com esses filtros.</div>
         </div>
       </div>
@@ -264,7 +264,7 @@ let arquivoSelecionado = null;
       .hint { font-size:11px; color:#64748b; margin-top:4px; }
     </style>
     <div class="drop" id="z">
-      <div class="ico">📊</div>
+      <div class="ico"></div>
       <div class="lbl">Clique ou arraste a planilha para atualizar</div>
       <div class="hint">Formatos: .xlsx · .xls</div>
     </div>
@@ -287,7 +287,7 @@ function pickFile() {
   inp.addEventListener('change', () => { if (inp.files[0]) setFile(inp.files[0]); document.body.removeChild(inp); });
   inp.click();
 }
-function setFile(f) { arquivoSelecionado = f; document.getElementById('fileName').textContent = '📄 ' + f.name; }
+function setFile(f) { arquivoSelecionado = f; document.getElementById('fileName').textContent = f.name; }
 
 // ── Calcular ─────────────────────────────────────────────────────────────────
 async function calcular() {
@@ -306,11 +306,11 @@ async function calcular() {
     const data = await resp.json();
     if (!data.ok) {
       msg.style.color = 'var(--red)';
-      msg.textContent = '❌ ' + data.erro;
+      msg.textContent = 'Erro: ' + data.erro;
       return;
     }
     msg.style.color = 'var(--green)';
-    msg.textContent = `✅ ${data.resumo.total} contratos — consulta em ${data.resumo.data_consulta}`;
+    msg.textContent = `${data.resumo.total} contratos — consulta em ${data.resumo.data_consulta}`;
     todosContratos = data.contratos;
     selecionados   = new Set(data.contratos.filter(c => c.aplicavel && c.status === 'ESTE_MES').map(c => c.num_linha));
     renderResumo(data.resumo);
@@ -323,7 +323,7 @@ async function calcular() {
     atualizarContador();
   } catch(e) {
     msg.style.color = 'var(--red)';
-    msg.textContent = '❌ Erro: ' + e.message;
+    msg.textContent = 'Erro: ' + e.message;
   } finally {
     btn.disabled = false; spin.style.display = 'none';
   }
@@ -355,7 +355,7 @@ function renderAvisoBacen(erros) {
   const keys = Object.keys(erros || {});
   if (!keys.length) { el.style.display = 'none'; return; }
   el.style.display = 'block';
-  el.innerHTML = '⚠️ <strong>Não foi possível buscar dados do BACEN para:</strong> ' +
+  el.innerHTML = '<strong>Não foi possível buscar dados do BACEN para:</strong> ' +
     keys.map(k => `${k} — ${erros[k]}`).join(' | ') +
     '. Contratos com esse índice aparecem sem cálculo.';
 }
@@ -418,8 +418,8 @@ async function aplicarReajustes() {
     el.style.display = 'block';
     if (data.ok) {
       el.className = 'alerta alerta-ok';
-      el.innerHTML = `✅ <strong>${data.msg}</strong>` +
-        (data.erros && data.erros.length ? '<br>⚠️ Erros: ' + data.erros.join('; ') : '');
+      el.innerHTML = `<strong>${data.msg}</strong>` +
+        (data.erros && data.erros.length ? '<br>Erros: ' + data.erros.join('; ') : '');
       // Mostrar botão de download (fora do painelAplicar, não some)
       document.getElementById('painelDownload').style.display = 'block';
       // Atualiza estado local sem re-chamar o BACEN (evita double-apply e mantém download visível)
@@ -453,13 +453,13 @@ async function aplicarReajustes() {
       atualizarContador();
     } else {
       el.className = 'alerta alerta-err';
-      el.textContent = '❌ ' + data.erro;
+      el.textContent = 'Erro: ' + data.erro;
     }
   } catch(e) {
     const el = document.getElementById('resultadoAplicacao');
     el.style.display = 'block';
     el.className = 'alerta alerta-err';
-    el.textContent = '❌ Erro de comunicação: ' + e.message;
+    el.textContent = 'Erro de comunicação: ' + e.message;
   } finally {
     btn.disabled = false; spin.style.display = 'none';
   }
@@ -518,7 +518,7 @@ function renderTabela() {
     const aviso12 = c.meses_base === 13
       ? ` <small style="color:var(--muted)">12/12m</small>`
       : (c.meses_base > 0
-          ? ` <small style="color:var(--orange)">⚠ ${c.meses_base - 1}/12m</small>`
+          ? ` <small style="color:var(--orange)">${c.meses_base - 1}/12m</small>`
           : '');
     const metodoHtml = '';
 
