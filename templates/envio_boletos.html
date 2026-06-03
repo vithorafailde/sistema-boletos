@@ -103,26 +103,34 @@ table.main-table { width: 100%; border-collapse: collapse; }
 <div class="container">
 
   <!-- ── Cadastro de e-mails ─────────────────────────────────────────── -->
-  <div class="card">
-    <div class="card-title" style="justify-content:space-between">
+  <div class="card" style="padding:0;overflow:hidden">
+    <!-- cabeçalho clicável -->
+    <div id="cadastroHeader" onclick="toggleCadastro()"
+      style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;cursor:pointer;user-select:none">
       <div style="display:flex;align-items:center;gap:8px">
         <span class="step-num">1</span>
-        Cadastro de E-mails dos Locatários
+        <span style="font-size:14px;font-weight:700">Cadastro de E-mails dos Locatários</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <span id="statusSalvo" style="font-size:11px;color:#2A6A2A;display:none">✅ Salvo!</span>
-        <button class="btn btn-primary btn-sm" onclick="salvarTodos()">💾 Salvar E-mails</button>
+        <span id="cadastroChevron" style="font-size:13px;color:var(--muted);transition:transform .2s">▼</span>
       </div>
     </div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-      Os locatários são carregados automaticamente da planilha. Preencha o e-mail de cada um e clique em <strong>Salvar E-mails</strong>.
-    </p>
-    <div id="semLocatarios" style="text-align:center;padding:24px;color:var(--muted)">
-      <div style="font-size:28px;margin-bottom:8px">⏳</div>
-      Carregando locatários...
-    </div>
-    <div id="tabelaWrap" style="display:none;max-height:420px;overflow-y:auto;padding-right:6px">
-      <div id="listaLocatarios" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 20px"></div>
+    <!-- corpo colapsável -->
+    <div id="cadastroBody" style="display:none;padding:0 20px 16px">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Os locatários são carregados automaticamente da planilha. Preencha o e-mail de cada um e clique em <strong>Salvar E-mails</strong>.
+      </p>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button class="btn btn-primary btn-sm" onclick="salvarTodos();event.stopPropagation()">💾 Salvar E-mails</button>
+      </div>
+      <div id="semLocatarios" style="text-align:center;padding:24px;color:var(--muted)">
+        <div style="font-size:28px;margin-bottom:8px">⏳</div>
+        Carregando locatários...
+      </div>
+      <div id="tabelaWrap" style="display:none;max-height:420px;overflow-y:auto;padding-right:6px">
+        <div id="listaLocatarios" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 20px"></div>
+      </div>
     </div>
   </div>
 
@@ -228,6 +236,15 @@ table.main-table { width: 100%; border-collapse: collapse; }
 
 <script>
 let resultados = [];
+
+// ─── Acordeão Cadastro ───────────────────────────────────────────────────────
+function toggleCadastro() {
+  const body    = document.getElementById('cadastroBody');
+  const chevron = document.getElementById('cadastroChevron');
+  const aberto  = body.style.display !== 'none';
+  body.style.display    = aberto ? 'none' : 'block';
+  chevron.style.transform = aberto ? '' : 'rotate(180deg)';
+}
 
 // ─── Cadastro de locatários ──────────────────────────────────────────────────
 
