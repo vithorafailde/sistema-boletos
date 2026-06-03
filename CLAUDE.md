@@ -263,6 +263,79 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 
 ---
 
+## Múltiplos proprietários por imóvel
+
+### Formato na planilha
+- Coluna D (proprietário): `"João Silva, Maria Santos"` — separados por vírgula
+- Coluna L (CPF): `"12345678900, 98765432100"` — mesma ordem
+- Coluna N (email): `"joao@email.com, maria@email.com"` — mesma ordem
+
+### Comportamento
+- `ler_excel_dimob()` detecta vírgula e gera **uma entrada por proprietário** com `aluguel / N`
+- `calcular_meses_dimob()` divide `aluguel_antigo` e multa/juros históricos por N
+- Informes mensais: `abrirInformes()` split por vírgula → grupo separado por proprietário; `applyDivisor(rd, n)` divide todos os valores monetários
+- Cada proprietário recebe seu email individual (posição correspondente na coluna N)
+- DIMOB e informes ficam corretos automaticamente — o valor manual/índice gravado na planilha é lido por ambos
+
+### Funções-chave
+- `applyDivisor(rd, n)` — divide aluguel, taxa, deduções, multa, juros, repasse por N (index.html)
+- `_num_proprietarios`, `_email_individual`, `_proprietario_individual` — campos anotados no row dentro de `abrirInformes()`
+
+---
+
+## Envio de Email DIMOB
+
+- Rota: `POST /api/dimob_enviar_email` — recebe `{proprietario, cpf_proprietario, email_dest, ano, contratos}`
+- Função: `_gerar_html_email_dimob()` — gera HTML com todos os imóveis do proprietário, tabela mês a mês
+- Email usa URL pública do Railway para logo (não base64)
+- Botão **"Enviar por E-mail"** aparece no filtro de proprietário quando um está selecionado
+- Botão **"Enviar para Todos"** na barra de ferramentas do DIMOB
+- Prioridade de email: 1) emails salvos no modal de informes mensais, 2) coluna N da planilha
+- Log gravado em `log_envios.json` com `tipo="dimob"`
+
+---
+
+## Logo nos PDFs e Emails
+
+- Todos os PDFs e emails: `width:100%` (ponta a ponta)
+- Email informes mensais (`_gerar_html_email`): `max-width:100%`
+- Email DIMOB (`_gerar_html_email_dimob`): `max-width:100%`
+- Email boletos: `max-width:220px`
+- **Não usar base64 em emails** — clientes de email bloqueiam. Usar URL pública do Railway
+
+---
+
+## Reajuste Manual (Renovação de Contrato)
+
+- Na página de reajustes, contratos com status `ESTE_MES` têm campo **"Renovação — digitar valor:"**
+- Ao digitar: contrato é selecionado automaticamente, valor calculado fica esmaecido, diferença atualiza em tempo real
+- `manuais = {}` — dict `num_linha → valor` que prevalece sobre o calculado pelo índice
+- Ao aplicar: manual > zerado (0%) > calculado pelo índice
+- O valor manual é gravado na coluna F da planilha igual ao reajuste por índice — DIMOB e informes recebem automaticamente
+
+---
+
+## Confirmação antes de salvar
+
+Todos os botões de salvar têm `confirm()` antes de executar:
+- "Salvar para próximo mês" (index.html)
+- "Salvar" emails proprietários (modal informes)
+- "Salvar Alug. Anteriores" (dimob.html)
+- "Salvar E-mails" locatários (envio_boletos.html)
+- "Salvar e Testar" API e Email (configuracoes.html)
+- "Enviar para Todos" — já tinha confirm nos três lugares (informes, DIMOB, boletos)
+- **Envios individuais NÃO pedem confirmação**
+
+---
+
+## Tamanho de fonte
+
+- **Base**: 15px em todos os templates (index, reajustes, dimob, envio_boletos, configuracoes)
+- Escala: 10px→12px, 11px→13px, 12px→14px, 13px→15px, 17px→19px
+- PDFs (gerados via window.open): usam `pt` — não alterar
+
+---
+
 ## O que NÃO adicionar sem pedido explícito
 
 - Ler/processar boletos com demonstrativo (sem cv/vm no nome do arquivo)
@@ -339,6 +412,7 @@ data/locatarios_emails.json   — emails dos locatários para envio de boletos
 | `/api/dimob_calcular` | POST | logado | Calcula informes anuais |
 | `/api/dimob_salvar_historico` | POST | logado | Salva aluguéis anteriores |
 | `/api/dimob_exportar` | POST | logado | Exporta Excel DIMOB |
+| `/api/dimob_enviar_email` | POST | logado | Envia informe DIMOB por email para um proprietário |
 | `/envio_boletos` | GET | logado | Página envio de boletos |
 | `/envio_boletos/processar` | POST | logado | Identifica locatários nos PDFs (streaming) |
 | `/envio_boletos/enviar` | POST | logado | Envia boleto por email com anexo PDF |
