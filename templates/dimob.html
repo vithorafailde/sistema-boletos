@@ -206,8 +206,20 @@ select.form-input { cursor: pointer; min-width: 100px; }
 </div><!-- /container -->
 
 <script>
-let dadosCalculados = null;
-let anoCalculado    = null;
+let dadosCalculados   = null;
+let anoCalculado      = null;
+let _emailsDimob      = {};   // emails salvos pelo modal de informes mensais
+
+function normProp(s) {
+  return (s || '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+}
+
+async function carregarEmailsDimob() {
+  try {
+    const r = await fetch('/emails_proprietarios');
+    if (r.ok) _emailsDimob = await r.json();
+  } catch(e) {}
+}
 let mesesSaida      = {};   // idx → mês (1-based) em que o locatário saiu
 let valoresManuais  = {};   // idx → { mesIdx(0-based): valor }
 
@@ -383,6 +395,7 @@ function renderizarTabela(data) {
   atualizarFiltroInfo();
 
   tabelaWrap.style.display = 'block';
+  carregarEmailsDimob();
 }
 
 function filtrarProprietario() {
@@ -698,8 +711,10 @@ function _contratosParaEnvio(propNome) {
   return cs;
 }
 
-// Busca o e-mail de um proprietário nos contratos calculados
+// Busca o e-mail de um proprietário: primeiro nos emails salvos pelo modal, depois na planilha
 function _emailDoProp(propNome) {
+  const salvo = _emailsDimob[normProp(propNome)] || '';
+  if (salvo) return salvo;
   const c = dadosCalculados.find(c => (c.proprietario || '').trim() === propNome);
   return c ? (c.email_proprietario || '') : '';
 }
@@ -739,13 +754,15 @@ async function enviarDimobEmail() {
 async function enviarDimobParaTodos() {
   if (!dadosCalculados || !dadosCalculados.length) return;
 
-  // Agrupa proprietários e seus emails
+  // Agrupa proprietários — email: primeiro dos salvos no modal, depois da planilha
   const grupos = {};
   dadosCalculados.forEach(c => {
     const prop = (c.proprietario || '').trim();
     if (!prop) return;
-    if (!grupos[prop]) grupos[prop] = { email: c.email_proprietario || '', cpf: c.cpf_proprietario || '' };
-    else if (!grupos[prop].email && c.email_proprietario) grupos[prop].email = c.email_proprietario;
+    if (!grupos[prop]) grupos[prop] = { email: '', cpf: c.cpf_proprietario || '' };
+    if (!grupos[prop].email) {
+      grupos[prop].email = _emailsDimob[normProp(prop)] || c.email_proprietario || '';
+    }
   });
 
   const comEmail  = Object.keys(grupos).filter(p => grupos[p].email.trim());
