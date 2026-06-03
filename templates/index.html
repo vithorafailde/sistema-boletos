@@ -740,7 +740,7 @@ function renderTabela(lista) {
                 oninput="recalc(${idx})" data-field="iptu" id="iptu_${idx}">
               <input class="input-sm" type="text" placeholder="parcela"
                 value="${row.iptu_parcela||row.iptu_parcela_hist||''}"
-                oninput="dados.locatarios[${idx}].iptu_parcela=this.value" id="iparc_${idx}">
+                oninput="dados.locatarios[${idx}].iptu_parcela=this.value;recalc(${idx})" id="iparc_${idx}">
             </div>
             ${fromBoleto&&iptuVal ? '<div class="from-boleto">do boleto anterior</div>' : (iptuHist&&!iptuVal ? '<div class="hist-note">historico: '+brl(iptuHist)+'</div>' : '')}
           </div>
@@ -752,7 +752,7 @@ function renderTabela(lista) {
                 oninput="recalc(${idx})" data-field="iptu_vaga" id="iptuv_${idx}">
               <input class="input-sm" type="text" placeholder="parcela"
                 value="${row.iptu_vaga_parcela||row.iptu_vaga_parcela_hist||''}"
-                oninput="dados.locatarios[${idx}].iptu_vaga_parcela=this.value" id="iparcv_${idx}">
+                oninput="dados.locatarios[${idx}].iptu_vaga_parcela=this.value;recalc(${idx})" id="iparcv_${idx}">
             </div>
             ${fromBoleto&&iptuVagaVal ? '<div class="from-boleto">do boleto anterior</div>' : (iptuVagaHist&&!iptuVagaVal ? '<div class="hist-note">historico: '+brl(iptuVagaHist)+'</div>' : '')}
           </div>
@@ -782,7 +782,7 @@ function renderTabela(lista) {
                 oninput="recalc(${idx})" data-field="abono_val">
               <input class="input-sm" type="text" placeholder="parcela"
                 value="${row.abono_parcela||row.abono_parcela_hist||''}"
-                oninput="dados.locatarios[${idx}].abono_parcela=this.value" id="abpar_${idx}">
+                oninput="dados.locatarios[${idx}].abono_parcela=this.value;recalc(${idx})" id="abpar_${idx}">
             </div>
             ${(row.abono_val_hist&&!abonoValOrig)?'<div class="hist-note">historico: '+brl(row.abono_val_hist)+(row.abono_parcela_hist?' ('+row.abono_parcela_hist+')':'')+'</div>':''}
           </div>
@@ -1220,22 +1220,25 @@ function subtrairParcelaIPTU() {
   if (!dados || !dados.locatarios) return;
   let alterados = 0;
   dados.locatarios.forEach((row, idx) => {
+    let mudou = false;
     ['iptu_parcela','iptu_parcela_hist','iptu_vaga_parcela','iptu_vaga_parcela_hist'].forEach(campo => {
       const val = row[campo];
       if (!val) return;
       const m = String(val).match(/^(\d+)\/(\d+)$/);
       if (!m) return;
-      const num   = parseInt(m[1]);
-      const total = parseInt(m[2]);
+      const num = parseInt(m[1]);
       if (num <= 1) return;
       const novo = String(num - 1).padStart(m[1].length >= 2 ? 2 : 1, '0') + '/' + m[2];
       dados.locatarios[idx][campo] = novo;
       // Atualiza input na tela se existir
-      const inputId = campo === 'iptu_parcela' || campo === 'iptu_parcela_hist' ? `iparc_${idx}` : `iparcv_${idx}`;
+      const inputId = (campo === 'iptu_parcela' || campo === 'iptu_parcela_hist') ? `iparc_${idx}` : `iparcv_${idx}`;
       const el = document.getElementById(inputId);
       if (el) el.value = novo;
       alterados++;
+      mudou = true;
     });
+    // Atualiza o discriminativo do total para esta linha
+    if (mudou) recalc(idx);
   });
   alert(`Parcela IPTU subtraída em 1 em ${alterados} campo(s). Clique novamente para subtrair mais 1.`);
 }
