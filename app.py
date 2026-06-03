@@ -1796,7 +1796,7 @@ def _gerar_html_email(proprietario, mes, rows, total, hoje):
         logo_url = _req.host_url.rstrip('/') + '/static/logo.png'
     except Exception:
         logo_url = ''
-    logo_tag = f'<img src="{logo_url}" style="max-width:100%;height:auto;display:block;margin-bottom:12px" alt="Funchal Imóveis">' if logo_url else ''
+    logo_tag = f'<img src="{logo_url}" style="max-width:160px;height:auto;display:block;margin-bottom:12px" alt="Funchal Imóveis">' if logo_url else ''
 
     def fmt(v):
         return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -2795,7 +2795,7 @@ def _gerar_html_email_dimob(proprietario, cpf_prop, ano, contratos, hoje):
         logo_url = _req.host_url.rstrip('/') + '/static/logo.png'
     except Exception:
         logo_url = ''
-    logo_tag = f'<img src="{logo_url}" style="max-width:280px;height:auto;display:block;margin-bottom:10px" alt="Funchal Imóveis">' if logo_url else ''
+    logo_tag = f'<img src="{logo_url}" style="max-width:160px;height:auto;display:block;margin-bottom:10px" alt="Funchal Imóveis">' if logo_url else ''
 
     MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
