@@ -22,6 +22,7 @@ HISTORICO_FILE = DATA_DIR / "historico.json"
 
 DIMOB_HISTORICO_FILE = DATA_DIR / "dimob_historico.json"
 LOCATARIOS_EMAILS_FILE = DATA_DIR / "locatarios_emails.json"
+LOG_ENVIOS_FILE = DATA_DIR / "log_envios.json"
 
 MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -1821,6 +1822,40 @@ def _gerar_html_email(proprietario, mes, rows, total, hoje):
   </div>
 </body></html>"""
 
+def gravar_log_envio(proprietario, email, mes, status, erro=""):
+    """Acrescenta uma entrada no log de envios de informes."""
+    import datetime as _dt
+    try:
+        log = []
+        if LOG_ENVIOS_FILE.exists():
+            with open(LOG_ENVIOS_FILE, encoding="utf-8") as f:
+                log = json.load(f)
+        log.insert(0, {
+            "timestamp": _dt.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            "proprietario": proprietario,
+            "email": email,
+            "mes": mes,
+            "status": status,   # "enviado" | "erro"
+            "detalhe": erro,
+        })
+        log = log[:200]  # mantém só os últimos 200
+        tmp = str(LOG_ENVIOS_FILE) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(log, f, ensure_ascii=False, indent=2)
+        import os; os.replace(tmp, LOG_ENVIOS_FILE)
+    except Exception:
+        pass
+
+
+@app.route("/api/log_envios", methods=["GET"])
+@login_required
+def api_log_envios():
+    if not LOG_ENVIOS_FILE.exists():
+        return jsonify([])
+    with open(LOG_ENVIOS_FILE, encoding="utf-8") as f:
+        return jsonify(json.load(f))
+
+
 @app.route("/enviar_informe", methods=["POST"])
 @login_required
 def enviar_informe():
@@ -1848,8 +1883,10 @@ def enviar_informe():
         reply_to  = smtp["user"] or None
         try:
             _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body, reply_to=reply_to)
+            gravar_log_envio(proprietario, email_dest, mes, "enviado")
             return jsonify({"ok": True})
         except Exception as ex:
+            gravar_log_envio(proprietario, email_dest, mes, "erro", str(ex))
             return jsonify({"ok": False, "erro": str(ex)})
 
     # Senão usa SMTP
@@ -1862,8 +1899,10 @@ def enviar_informe():
     try:
         with _smtp_connect(smtp, timeout=15) as s:
             s.sendmail(remetente, [email_dest], msg.as_string())
+        gravar_log_envio(proprietario, email_dest, mes, "enviado")
         return jsonify({"ok": True})
     except Exception as ex:
+        gravar_log_envio(proprietario, email_dest, mes, "erro", str(ex))
         return jsonify({"ok": False, "erro": str(ex)})
 
 
