@@ -549,9 +549,18 @@ async function carregarLogEnvios() {
     tbody.innerHTML = log.map((e, i) => {
       const bg = i % 2 === 0 ? '#fff' : '#f7fafb';
       const ok = e.status === 'enviado';
-      const badge = ok
-        ? '<span class="badge badge-sent">✓ Enviado</span>'
-        : `<span class="badge badge-err" title="${escHtml(e.detalhe||'')}">✗ Erro</span>`;
+      const BADGES = {
+        sent:      ['#D8E4F0','#1A4A6E','📤 Enviado'],
+        delivered: ['#D0F0D8','#155724','✅ Entregue'],
+        delayed:   ['#FFF3CD','#856404','⏳ Atrasado'],
+        bounced:   ['#F8D7DA','#721C24','❌ Devolvido'],
+        complained:['#F5D5F5','#5A1A6E','🚫 Spam'],
+        opened:    ['#D8EFF8','#0C5D8A','👁 Aberto'],
+        clicked:   ['#E8F0D0','#3A5A00','🔗 Clicado'],
+        erro:      ['#F8D7DA','#721C24','⚠ Erro'],
+      };
+      const b = BADGES[e.status] || ['#EEE','#555', e.status];
+      const badge = `<span style="background:${b[0]};color:${b[1]};padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700" title="${escHtml(e.detalhe||'')}">${b[2]}</span>`;
       return `<tr style="background:${bg};border-top:1px solid var(--border)">
         <td style="padding:8px 12px;white-space:nowrap;color:var(--muted)">${e.timestamp}</td>
         <td style="padding:8px 12px;font-weight:600">${escHtml(e.nome||'')}</td>

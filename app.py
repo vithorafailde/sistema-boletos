@@ -1661,7 +1661,7 @@ def ler_smtp():
     }
 
 def _enviar_via_resend(api_key, de, para, assunto, html_body, reply_to=None):
-    """Envia email usando a API HTTP do Resend (sem SMTP)."""
+    """Envia email usando a API HTTP do Resend. Retorna o resend_id ou lança exceção."""
     data = {
         "from": de,
         "to": [para],
@@ -1683,7 +1683,8 @@ def _enviar_via_resend(api_key, de, para, assunto, html_body, reply_to=None):
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
-            return resp.status == 200
+            body = _json.loads(resp.read().decode("utf-8"))
+            return body.get("id", "")   # ex: "re_abc123"
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="ignore")
         raise Exception(f"HTTP {e.code}: {body}")
@@ -1822,7 +1823,7 @@ def _gerar_html_email(proprietario, mes, rows, total, hoje):
   </div>
 </body></html>"""
 
-def gravar_log_envio(nome, email, mes, status, erro="", tipo="informe"):
+def gravar_log_envio(nome, email, mes, status, erro="", tipo="informe", resend_id=""):
     """Acrescenta uma entrada no log de envios (tipo='informe' ou 'boleto')."""
     import datetime as _dt
     try:
@@ -1836,16 +1837,64 @@ def gravar_log_envio(nome, email, mes, status, erro="", tipo="informe"):
             "nome": nome,
             "email": email,
             "mes": mes,
-            "status": status,   # "enviado" | "erro"
+            "status": status,
             "detalhe": erro,
+            "resend_id": resend_id,
         })
-        log = log[:500]  # mantém só os últimos 500
+        log = log[:500]
         tmp = str(LOG_ENVIOS_FILE) + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(log, f, ensure_ascii=False, indent=2)
         import os; os.replace(tmp, LOG_ENVIOS_FILE)
     except Exception:
         pass
+
+
+def atualizar_status_resend(resend_id, novo_status):
+    """Atualiza o status de um registro do log pelo resend_id."""
+    if not resend_id or not LOG_ENVIOS_FILE.exists():
+        return
+    try:
+        with open(LOG_ENVIOS_FILE, encoding="utf-8") as f:
+            log = json.load(f)
+        alterado = False
+        for entry in log:
+            if entry.get("resend_id") == resend_id:
+                entry["status"] = novo_status
+                alterado = True
+                break
+        if alterado:
+            tmp = str(LOG_ENVIOS_FILE) + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(log, f, ensure_ascii=False, indent=2)
+            import os; os.replace(tmp, LOG_ENVIOS_FILE)
+    except Exception:
+        pass
+
+
+@app.route("/api/resend_webhook", methods=["POST"])
+def resend_webhook():
+    """Recebe eventos de status do Resend (delivered, bounced, complained, etc.)."""
+    # Mapa de evento Resend → status interno
+    STATUS_MAP = {
+        "email.sent":             "sent",
+        "email.delivered":        "delivered",
+        "email.delivery_delayed": "delayed",
+        "email.bounced":          "bounced",
+        "email.complained":       "complained",
+        "email.opened":           "opened",
+        "email.clicked":          "clicked",
+    }
+    try:
+        data = request.get_json(force=True) or {}
+        event_type = data.get("type", "")
+        resend_id  = (data.get("data") or {}).get("email_id", "")
+        novo_status = STATUS_MAP.get(event_type)
+        if resend_id and novo_status:
+            atualizar_status_resend(resend_id, novo_status)
+    except Exception:
+        pass
+    return jsonify({"ok": True})
 
 
 @app.route("/api/log_envios", methods=["GET"])
@@ -1887,8 +1936,8 @@ def enviar_informe():
         remetente = "Funchal Imoveis <noreply@funchalimoveis.com.br>"
         reply_to  = smtp["user"] or None
         try:
-            _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body, reply_to=reply_to)
-            gravar_log_envio(proprietario, email_dest, mes, "enviado", tipo="informe")
+            rid = _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body, reply_to=reply_to)
+            gravar_log_envio(proprietario, email_dest, mes, "sent", tipo="informe", resend_id=rid)
             return jsonify({"ok": True})
         except Exception as ex:
             gravar_log_envio(proprietario, email_dest, mes, "erro", str(ex), tipo="informe")
@@ -1904,7 +1953,7 @@ def enviar_informe():
     try:
         with _smtp_connect(smtp, timeout=15) as s:
             s.sendmail(remetente, [email_dest], msg.as_string())
-        gravar_log_envio(proprietario, email_dest, mes, "enviado", tipo="informe")
+        gravar_log_envio(proprietario, email_dest, mes, "sent", tipo="informe")
         return jsonify({"ok": True})
     except Exception as ex:
         gravar_log_envio(proprietario, email_dest, mes, "erro", str(ex), tipo="informe")
@@ -2965,9 +3014,10 @@ def enviar_boleto_locatario():
         )
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
-                ok = resp.status in (200, 201)
-                gravar_log_envio(locatario or nome_anexo, email_dest, mes, "enviado" if ok else "erro", tipo="boleto")
-                return jsonify({"ok": ok})
+                body_r = _json.loads(resp.read().decode("utf-8"))
+                rid = body_r.get("id", "")
+                gravar_log_envio(locatario or nome_anexo, email_dest, mes, "sent", tipo="boleto", resend_id=rid)
+                return jsonify({"ok": True})
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="ignore")
             gravar_log_envio(locatario or nome_anexo, email_dest, mes, "erro", f"HTTP {e.code}: {body[:200]}", tipo="boleto")
