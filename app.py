@@ -664,8 +664,9 @@ def ler_excel_dimob(path):
             if s.endswith('.0') and s[:-2].isdigit():
                 s = s[:-2]
             return s
-        cpf_prop_raw = str(row[11]).strip() if len(row) > 11 and row[11] else ''
-        cpf_loc  = _cpf(row[12] if len(row) > 12 else None)
+        cpf_prop_raw   = str(row[11]).strip() if len(row) > 11 and row[11] else ''
+        cpf_loc        = _cpf(row[12] if len(row) > 12 else None)
+        email_prop_raw = str(row[13]).strip() if len(row) > 13 and row[13] else ''
 
         if not locatario or aluguel == 0:
             continue
@@ -674,27 +675,30 @@ def ler_excel_dimob(path):
         mes_aplicacao = (mes_rej % 12 + 1) if mes_rej else None
 
         # Suporte a múltiplos proprietários separados por vírgula
-        props = [p.strip() for p in proprietario.split(',') if p.strip()] or [proprietario]
-        cpfs  = [_cpf(c.strip()) for c in cpf_prop_raw.split(',')]
-        n = len(props)
-        aluguel_div = round(aluguel / n, 2) if n > 1 else aluguel
+        props        = [p.strip() for p in proprietario.split(',') if p.strip()] or [proprietario]
+        cpfs         = [_cpf(c.strip()) for c in cpf_prop_raw.split(',')]
+        emails_prop  = [e.strip() for e in email_prop_raw.split(',') if e.strip()]
+        n            = len(props)
+        aluguel_div  = round(aluguel / n, 2) if n > 1 else aluguel
 
         for i, prop_nome in enumerate(props):
-            cpf = cpfs[i] if i < len(cpfs) else ''
+            cpf        = cpfs[i] if i < len(cpfs) else ''
+            email_prop = emails_prop[i] if i < len(emails_prop) else (emails_prop[0] if emails_prop else '')
             contratos.append({
-                'num_linha':        row_idx,
-                'locatario':        locatario,
-                'proprietario':     prop_nome,
-                'endereco':         endereco,
-                'aluguel':          aluguel_div,
-                'percentual_imob':  perc_imob,
-                'mes_reajuste':     mes_rej,
-                'mes_aplicacao':    mes_aplicacao,
-                'data_inicio':      data_ini,
-                'data_fim':         data_fim,
-                'cpf_proprietario': cpf,
-                'cpf_locatario':    cpf_loc,
+                'num_linha':         row_idx,
+                'locatario':         locatario,
+                'proprietario':      prop_nome,
+                'endereco':          endereco,
+                'aluguel':           aluguel_div,
+                'percentual_imob':   perc_imob,
+                'mes_reajuste':      mes_rej,
+                'mes_aplicacao':     mes_aplicacao,
+                'data_inicio':       data_ini,
+                'data_fim':          data_fim,
+                'cpf_proprietario':  cpf,
+                'cpf_locatario':     cpf_loc,
                 'num_proprietarios': n,
+                'email_proprietario': email_prop,
             })
     return contratos
 
@@ -2547,14 +2551,15 @@ def api_dimob_calcular():
             'cpf_locatario':    c['cpf_locatario'],
             'aluguel_atual':    c['aluguel'],
             'aluguel_antigo':   aluguel_antigo,
-            'mes_aplicacao':    c['mes_aplicacao'],
-            'meses':            meses,
-            'total':            total,
-            'comissao':         comissao,
-            'tem_historico':    tem_historico,
-            'percentual_imob':  c['percentual_imob'],
-            'data_inicio_str':  d_ini.strftime('%d/%m/%Y') if d_ini else None,
-            'data_fim_str':     d_fim.strftime('%d/%m/%Y') if d_fim else None,
+            'mes_aplicacao':     c['mes_aplicacao'],
+            'meses':             meses,
+            'total':             total,
+            'comissao':          comissao,
+            'tem_historico':     tem_historico,
+            'percentual_imob':   c['percentual_imob'],
+            'data_inicio_str':   d_ini.strftime('%d/%m/%Y') if d_ini else None,
+            'data_fim_str':      d_fim.strftime('%d/%m/%Y') if d_fim else None,
+            'email_proprietario': c.get('email_proprietario', ''),
         })
 
     return jsonify({
@@ -2781,6 +2786,137 @@ Instruções:
 - Procure campos: "Locatário:", "Inquilino:", "Sacado:", "Nome do Locatário:", "Pagador:"
 - Para o mês procure: "Referente a:", "Competência:", "Vencimento:", "Mês/Ano"
 - Retorne null se não encontrar o campo"""
+
+
+def _gerar_html_email_dimob(proprietario, cpf_prop, ano, contratos, hoje):
+    """Gera HTML do email DIMOB com todos os imóveis do proprietário."""
+    try:
+        from flask import request as _req
+        logo_url = _req.host_url.rstrip('/') + '/static/logo.png'
+    except Exception:
+        logo_url = ''
+    logo_tag = f'<img src="{logo_url}" style="max-width:280px;height:auto;display:block;margin-bottom:10px" alt="Funchal Imóveis">' if logo_url else ''
+
+    MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+    def fmt(v):
+        if v is None: return '—'
+        return f"R$ {float(v or 0):,.2f}".replace(",","X").replace(".",",").replace("X",".")
+
+    imoveis_html = ''
+    total_geral_bruto  = 0.0
+    total_geral_liquido = 0.0
+
+    for i, c in enumerate(contratos):
+        perc = c.get('percentual_imob') or 0
+        meses = c.get('meses') or []
+        total_bruto = sum(v for v in meses if v is not None)
+        total_com   = total_bruto * perc / 100 if perc else 0
+        total_liq   = total_bruto - total_com
+        total_geral_bruto  += total_bruto
+        total_geral_liquido += total_liq
+
+        linhas_mes = ''
+        for mi, val in enumerate(meses):
+            if val is None:
+                linhas_mes += f'<tr><td style="padding:4px 8px;color:#aaa;font-style:italic">{MESES_NOMES[mi]}</td><td style="padding:4px 8px;text-align:right;color:#aaa">—</td><td style="padding:4px 8px;text-align:right;color:#aaa">—</td><td style="padding:4px 8px;text-align:right;color:#aaa">—</td></tr>'
+            else:
+                com = val * perc / 100 if perc else 0
+                liq = val - com
+                bg  = '#f9fbfc' if mi % 2 == 0 else '#ffffff'
+                linhas_mes += f'<tr style="background:{bg}"><td style="padding:4px 8px">{MESES_NOMES[mi]}</td><td style="padding:4px 8px;text-align:right">{fmt(val)}</td><td style="padding:4px 8px;text-align:right">{fmt(com) if perc else "—"}</td><td style="padding:4px 8px;text-align:right">{fmt(liq)}</td></tr>'
+
+        sep = '<tr><td colspan="4" style="height:14px;border:none;padding:0"></td></tr>' if i > 0 else ''
+        imoveis_html += f'''
+        {sep}
+        <tr><td colspan="4" style="padding:7px 10px;font-weight:bold;font-size:11pt;text-transform:uppercase;background:#2A4A52;color:#fff;letter-spacing:.4px">
+          Im&oacute;vel {i+1}: {c.get("endereco","")}<br>
+          <span style="font-weight:normal;font-size:9pt;opacity:.85">Locat&aacute;rio: {c.get("locatario","")}</span>
+        </td></tr>
+        <tr style="background:#3B7A8E;color:#fff">
+          <td style="padding:5px 8px;font-weight:700">M&ecirc;s</td>
+          <td style="padding:5px 8px;text-align:right;font-weight:700">Aluguel Bruto</td>
+          <td style="padding:5px 8px;text-align:right;font-weight:700">Tx. Administra&ccedil;&atilde;o</td>
+          <td style="padding:5px 8px;text-align:right;font-weight:700">Valor L&iacute;quido</td>
+        </tr>
+        {linhas_mes}
+        <tr style="background:#EFF5F7;border-top:2px solid #2A4A52">
+          <td style="padding:6px 8px;font-weight:bold">Subtotal Im&oacute;vel {i+1}</td>
+          <td style="padding:6px 8px;text-align:right;font-weight:bold">{fmt(total_bruto)}</td>
+          <td style="padding:6px 8px;text-align:right;font-weight:bold">{fmt(total_com) if perc else "—"}</td>
+          <td style="padding:6px 8px;text-align:right;font-weight:bold">{fmt(total_liq)}</td>
+        </tr>'''
+
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="font-family:'Times New Roman',Times,serif;color:#000;background:#fff;max-width:750px;margin:0 auto;padding:24px">
+  {logo_tag}
+  <div style="border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:18px">
+    <div style="font-size:15pt;font-weight:bold;text-transform:uppercase;letter-spacing:1px;text-align:center">Informe de Rendimentos — Ano-Calendário {ano}</div>
+    <div style="font-size:10pt;text-align:center;margin-top:3px">Data de emissão: {hoje} &nbsp;|&nbsp; Documento de uso interno</div>
+  </div>
+  <table style="width:100%;border:1px solid #000;margin-bottom:18px;border-collapse:collapse">
+    <tr><td style="padding:6px 10px;font-weight:bold;width:130px">Proprietário:</td>
+        <td style="padding:6px 10px"><strong>{proprietario}</strong></td>
+        <td style="padding:6px 10px;font-weight:bold;width:100px">CPF / CNPJ:</td>
+        <td style="padding:6px 10px">{cpf_prop or '—'}</td></tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;font-size:10.5pt">
+    {imoveis_html}
+    <tr style="background:#1A2C30;color:#fff">
+      <td style="padding:8px 10px;font-weight:bold;font-size:12pt">TOTAL GERAL {ano}</td>
+      <td style="padding:8px 10px;text-align:right;font-weight:bold;font-size:12pt">{fmt(total_geral_bruto)}</td>
+      <td style="padding:8px 10px;text-align:right;font-weight:bold;font-size:12pt"></td>
+      <td style="padding:8px 10px;text-align:right;font-weight:bold;font-size:12pt">{fmt(total_geral_liquido)}</td>
+    </tr>
+  </table>
+  <p style="margin-top:20px;font-size:9pt;color:#555;border-top:1px solid #ccc;padding-top:10px;line-height:1.5">
+    <strong>Proprietário:</strong> declare o valor <strong>Líquido</strong> como rendimento recebido de pessoa jurídica
+    (carnê-leão, código 95, ou na ficha "Rendimentos Recebidos de PJ").<br>
+    Fonte pagadora: <strong>Funchal Negócios Imobiliários Ltda. — CNPJ 11.514.872/0001-94</strong>.<br><br>
+    <em>Este documento é emitido pela administradora do imóvel e não substitui documentos fiscais oficiais.</em>
+  </p>
+</body></html>"""
+
+
+@app.route("/api/dimob_enviar_email", methods=["POST"])
+@login_required
+def api_dimob_enviar_email():
+    """Envia informe DIMOB por email para um proprietário (todos os seus imóveis)."""
+    d          = request.get_json(silent=True) or {}
+    proprietario = d.get("proprietario", "")
+    cpf_prop   = d.get("cpf_proprietario", "")
+    email_dest = d.get("email_dest", "").strip()
+    ano        = d.get("ano", "")
+    contratos  = d.get("contratos", [])
+    hoje       = date.today().strftime("%d/%m/%Y")
+
+    if not email_dest:
+        return jsonify({"ok": False, "erro": "E-mail do destinatário não informado."})
+    if not contratos:
+        return jsonify({"ok": False, "erro": "Nenhum contrato informado."})
+
+    html_body = _gerar_html_email_dimob(proprietario, cpf_prop, ano, contratos, hoje)
+    assunto   = f"Informe de Rendimentos {ano} — {proprietario}"
+
+    cfg = ler_config()
+    resend_key = os.environ.get("RESEND_API_KEY") or cfg.get("resend_api_key", "")
+    smtp_user  = os.environ.get("SMTP_USER") or cfg.get("smtp_user", "")
+
+    if resend_key:
+        ok, err, rid = _enviar_via_resend(
+            resend_key, email_dest, assunto, html_body,
+            reply_to=smtp_user or None
+        )
+        if ok:
+            gravar_log_envio(proprietario, email_dest, str(ano), "sent", tipo="dimob", resend_id=rid)
+            return jsonify({"ok": True})
+        else:
+            gravar_log_envio(proprietario, email_dest, str(ano), "erro", err, tipo="dimob")
+            return jsonify({"ok": False, "erro": err})
+    else:
+        return jsonify({"ok": False, "erro": "Resend não configurado. Configure em Configuracoes."})
 
 
 @app.route("/envio_boletos")

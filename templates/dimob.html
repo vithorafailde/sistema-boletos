@@ -162,6 +162,11 @@ select.form-input { cursor: pointer; min-width: 100px; }
         <select id="filtroProp" class="form-input" style="min-width:240px;max-width:400px;" onchange="filtrarProprietario()">
           <option value="">— Todos —</option>
         </select>
+        <button id="btnEnviarProp" class="btn btn-sm" onclick="enviarDimobEmail()"
+          style="background:#4A8A4A;color:#fff;font-weight:700;border:none;display:none;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Enviar por E-mail
+        </button>
         <span id="filtroInfo" style="font-size:11px;color:var(--muted);"></span>
       </div>
     </div>
@@ -176,14 +181,21 @@ select.form-input { cursor: pointer; min-width: 100px; }
           <span style="background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">2</span>
           Informes por Unidade — <span id="labelAno" style="color:var(--accent)"></span>
         </div>
-        <button class="btn btn-primary" id="btnSalvarHist" onclick="salvarHistoricoManual()" style="display:none;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          Salvar Alug. Anteriores
-        </button>
-        <button class="btn btn-green" onclick="exportar(this)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar Excel (Informes)
-        </button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-primary" id="btnSalvarHist" onclick="salvarHistoricoManual()" style="display:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Salvar Alug. Anteriores
+          </button>
+          <button class="btn" id="btnEnviarTodosDimob" onclick="enviarDimobParaTodos()"
+            style="background:#4A8A4A;color:#fff;font-weight:700;border:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Enviar para Todos
+          </button>
+          <button class="btn btn-green" onclick="exportar(this)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar Excel (Informes)
+          </button>
+        </div>
       </div>
     </div>
 
@@ -379,6 +391,8 @@ function filtrarProprietario() {
   cards.forEach(c => {
     c.style.display = (!val || c.dataset.prop === val) ? '' : 'none';
   });
+  // Mostra botão de envio individual só quando um proprietário está selecionado
+  document.getElementById('btnEnviarProp').style.display = val ? '' : 'none';
   atualizarFiltroInfo();
 }
 
@@ -674,6 +688,106 @@ function gerarInformeHTML(c, ano) {
 
 </body>
 </html>`;
+}
+
+// ─── Envio de E-mail DIMOB ────────────────────────────────────────────────────
+
+// Retorna os contratos efetivos de um proprietário agrupados para envio
+function _contratosParaEnvio(propNome) {
+  const cs = getContratosEfetivos().filter(c => (c.proprietario || '').trim() === propNome);
+  return cs;
+}
+
+// Busca o e-mail de um proprietário nos contratos calculados
+function _emailDoProp(propNome) {
+  const c = dadosCalculados.find(c => (c.proprietario || '').trim() === propNome);
+  return c ? (c.email_proprietario || '') : '';
+}
+
+// Envia informe DIMOB para o proprietário selecionado no filtro
+async function enviarDimobEmail() {
+  const propNome = document.getElementById('filtroProp').value;
+  if (!propNome) return;
+
+  const emailDest = prompt(`E-mail para enviar a ${propNome}:`, _emailDoProp(propNome));
+  if (emailDest === null) return;
+  if (!emailDest.trim()) { alert('E-mail não informado.'); return; }
+
+  const cs = _contratosParaEnvio(propNome);
+  if (!cs.length) { alert('Nenhum contrato encontrado para este proprietário.'); return; }
+  const cpfProp = cs[0].cpf_proprietario || '';
+
+  const btn = document.getElementById('btnEnviarProp');
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  try {
+    const r = await fetch('/api/dimob_enviar_email', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ proprietario: propNome, cpf_proprietario: cpfProp,
+        email_dest: emailDest.trim(), ano: anoCalculado, contratos: cs })
+    });
+    const j = await r.json();
+    if (j.ok) alert(`Informe enviado com sucesso para ${emailDest.trim()}!`);
+    else alert('Erro ao enviar: ' + j.erro);
+  } catch(e) { alert('Erro de comunicação: ' + e.message); }
+
+  btn.disabled = false; btn.innerHTML = orig;
+}
+
+// Envia informes DIMOB para todos os proprietários com e-mail cadastrado
+async function enviarDimobParaTodos() {
+  if (!dadosCalculados || !dadosCalculados.length) return;
+
+  // Agrupa proprietários e seus emails
+  const grupos = {};
+  dadosCalculados.forEach(c => {
+    const prop = (c.proprietario || '').trim();
+    if (!prop) return;
+    if (!grupos[prop]) grupos[prop] = { email: c.email_proprietario || '', cpf: c.cpf_proprietario || '' };
+    else if (!grupos[prop].email && c.email_proprietario) grupos[prop].email = c.email_proprietario;
+  });
+
+  const comEmail  = Object.keys(grupos).filter(p => grupos[p].email.trim());
+  const semEmail  = Object.keys(grupos).filter(p => !grupos[p].email.trim());
+
+  if (!comEmail.length) {
+    alert('Nenhum proprietário tem e-mail cadastrado na planilha (coluna N).');
+    return;
+  }
+
+  let msg = `Enviar informes DIMOB ${anoCalculado} para ${comEmail.length} proprietário(s)?`;
+  if (semEmail.length) msg += `\n\nSem e-mail (serão ignorados): ${semEmail.join(', ')}`;
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById('btnEnviarTodosDimob');
+  btn.disabled = true;
+  let ok = 0, erro = 0, erros = [];
+
+  for (let i = 0; i < comEmail.length; i++) {
+    const propNome  = comEmail[i];
+    const emailDest = grupos[propNome].email.trim();
+    const cpfProp   = grupos[propNome].cpf;
+    btn.textContent = `Enviando ${i+1}/${comEmail.length}...`;
+
+    const cs = _contratosParaEnvio(propNome);
+    try {
+      const r = await fetch('/api/dimob_enviar_email', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ proprietario: propNome, cpf_proprietario: cpfProp,
+          email_dest: emailDest, ano: anoCalculado, contratos: cs })
+      });
+      const j = await r.json();
+      if (j.ok) ok++; else { erro++; erros.push(`${propNome}: ${j.erro}`); }
+    } catch(e) { erro++; erros.push(`${propNome}: ${e.message}`); }
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar para Todos`;
+
+  let resultado = `${ok} informe(s) enviado(s) com sucesso!`;
+  if (erro) resultado += `\n\n${erro} erro(s):\n` + erros.join('\n');
+  alert(resultado);
 }
 
 async function exportar(btn) {
