@@ -2522,6 +2522,12 @@ def dimob_page():
     return render_template('dimob.html')
 
 
+@app.route('/informe_anual')
+@login_required
+def informe_anual_page():
+    return render_template('informe_anual.html')
+
+
 @app.route('/api/dimob_calcular', methods=['POST'])
 @login_required
 def api_dimob_calcular():

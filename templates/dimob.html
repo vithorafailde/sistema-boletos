@@ -97,10 +97,11 @@ select.form-input { cursor: pointer; min-width: 100px; }
 
 <div class="header">
   <div>
-    <h1>DIMOB — Informes de Pagamentos</h1>
-    <p>Declaração de Informações sobre Atividades Imobili&aacute;rias</p>
+    <h1>DIMOB</h1>
+    <p>Envio ao contador &rarr; recebimento dos PDFs &rarr; envio aos propriet&aacute;rios</p>
   </div>
   <div class="header-actions">
+    <a href="/informe_anual" class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);">Informe Anual</a>
     <a href="/" class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);">&#8592; In&iacute;cio</a>
     <a href="/logout" class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);">Sair</a>
   </div>
@@ -225,11 +226,6 @@ select.form-input { cursor: pointer; min-width: 100px; }
         <select id="filtroProp" class="form-input" style="min-width:240px;max-width:400px;" onchange="filtrarProprietario()">
           <option value="">— Todos —</option>
         </select>
-        <button id="btnEnviarProp" class="btn btn-sm" onclick="enviarDimobEmail()"
-          style="background:#4A8A4A;color:#fff;font-weight:700;border:none;display:none;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          Enviar por E-mail
-        </button>
         <span id="filtroInfo" style="font-size:11px;color:var(--muted);"></span>
       </div>
     </div>
@@ -248,11 +244,6 @@ select.form-input { cursor: pointer; min-width: 100px; }
           <button class="btn btn-primary" id="btnSalvarHist" onclick="salvarHistoricoManual()" style="display:none;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             Salvar Alug. Anteriores
-          </button>
-          <button class="btn" id="btnEnviarTodosDimob" onclick="enviarDimobParaTodos()"
-            style="background:#4A8A4A;color:#fff;font-weight:700;border:none;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            Enviar para Todos
           </button>
           <button class="btn btn-green" onclick="exportar(this)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe de Rendimento Anual — Funchal</title>
+<style>
+:root {
+  --bg: #D6E3E8; --card: #fff; --border: #B8CECE; --text: #1A2C30; --muted: #4A6668;
+  --accent: #3B7A8E; --green: #4A6E9A; --red: #B84545; --yellow: #8C6C1F;
+  --orange: #B86030; --header: #2A4A52; --purple: #6A4F8A;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+
+.header { background: var(--header); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+.header h1 { font-size: 17px; font-weight: 700; }
+.header p { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+.container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.card-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+.form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.form-input { padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; outline: none; background: #fff; }
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,122,142,.15); }
+select.form-input { cursor: pointer; min-width: 100px; }
+
+.btn { padding: 8px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2A6A7E; }
+.btn-primary:disabled { background: #8AABAB; cursor: not-allowed; }
+.btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.btn-outline:hover { background: #DDE8EC; }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { background: #3A5A88; }
+.btn-sm { padding: 5px 12px; font-size: 11px; }
+
+.file-btn { position: relative; display: inline-flex; align-items: center; }
+.file-btn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+
+.stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.stat { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; min-width: 130px; }
+.stat .num { font-size: 20px; font-weight: 700; }
+.stat .lbl { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+.aviso-hist { background: #FFF8EC; border: 1px solid #E8D280; border-radius: 7px; padding: 10px 14px; font-size: 12px; color: #8C6C1F; margin-bottom: 14px; display: none; }
+.aviso-hist.show { display: block; }
+
+#tabelaWrap { display: none; }
+.contratos-lista { display: flex; flex-direction: column; gap: 12px; }
+
+.cc { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.cc-header { background: var(--header); color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.cc-locatario { font-size: 16px; font-weight: 700; }
+.cc-sub { font-size: 12px; opacity: .75; margin-top: 3px; }
+.cc-prop { font-size: 13px; font-weight: 600; text-align: right; }
+
+.cc-body { padding: 14px 16px; }
+.meses-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.mes-cell { background: #f2f6f8; border-radius: 8px; padding: 8px 6px; text-align: center; }
+.mes-nome { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+.mes-valor { font-size: 14px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.val-antigo { color: var(--muted); }
+.val-novo   { color: var(--text); font-weight: 700; }
+.val-inativo { color: #ccc; }
+.val-saida input[type=number] { width: 100%; font-size: 13px; text-align: center; border: 1px solid #ddd; border-radius: 4px; padding: 2px 4px; background: #fafafa; color: var(--muted); font-style: italic; }
+
+.cc-footer { border-top: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cc-total { font-size: 17px; font-weight: 700; color: var(--accent); }
+.cc-comissao { font-size: 14px; font-weight: 600; color: var(--purple); }
+.cc-lbl { font-size: 11px; color: var(--muted); display: block; margin-bottom: 1px; }
+.cc-sep { width: 1px; height: 28px; background: var(--border); }
+
+.badge-hist { font-size: 11px; padding: 3px 8px; border-radius: 9px; font-weight: 700; }
+.badge-ok   { background: #D8E8F8; color: var(--green); }
+.badge-aprox { background: #FFF0D0; color: var(--orange); }
+.sel-saida { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+
+.loading { display: none; align-items: center; gap: 10px; padding: 20px; color: var(--muted); }
+.loading.show { display: flex; }
+.spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.erro-box { background: #FBEEEE; border: 1px solid #E8C0C0; border-radius: 7px; padding: 12px 16px; color: var(--red); display: none; margin-bottom: 12px; }
+.erro-box.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Informe de Rendimento Anual</h1>
+    <p>Gera&ccedil;&atilde;o e envio direto dos informes aos propriet&aacute;rios</p>
+  </div>
+  <div class="header-actions">
+    <a href="/dimob" class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);">DIMOB</a>
+    <a href="/" class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);">&#8592; In&iacute;cio</a>
+    <a href="/logout" class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);">Sair</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">
+      <span style="background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">1</span>
+      Selecione o Ano e a Planilha de Contratos
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Ano de Refer&ecirc;ncia</label>
+        <select id="selectAno" class="form-input"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Planilha (opcional — usa existente se em branco)</label>
+        <div class="file-btn">
+          <button class="btn btn-outline" id="btnFileLabel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Selecionar contratos.xlsx
+          </button>
+          <input type="file" id="inputExcel" accept=".xlsx,.xls" onchange="atualizarBotaoArquivo()">
+        </div>
+      </div>
+      <div class="form-group" style="justify-content:flex-end;">
+        <button class="btn btn-primary" id="btnCalcular" onclick="calcular()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Calcular
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading" id="loading"><div class="spinner"></div><span>Calculando informes...</span></div>
+  <div class="erro-box" id="erroBox"></div>
+
+  <div id="tabelaWrap">
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="card" style="padding:12px 16px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <label class="form-label" style="margin:0;white-space:nowrap;">Filtrar por Propriet&aacute;rio</label>
+        <select id="filtroProp" class="form-input" style="min-width:240px;max-width:400px;" onchange="filtrarProprietario()">
+          <option value="">— Todos —</option>
+        </select>
+        <button id="btnEnviarProp" class="btn btn-sm" onclick="enviarInformeEmail()"
+          style="background:#4A8A4A;color:#fff;font-weight:700;border:none;display:none;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Enviar por E-mail
+        </button>
+        <span id="filtroInfo" style="font-size:11px;color:var(--muted);"></span>
+      </div>
+    </div>
+
+    <div class="aviso-hist" id="avisoHist">
+      &#9888; Alguns contratos n&atilde;o possuem hist&oacute;rico de reajuste registrado. Para esses, todos os meses aparecem com o valor atual do aluguel.
+    </div>
+
+    <div class="card" style="padding:14px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div class="card-title" style="margin-bottom:0;">
+          <span style="background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">2</span>
+          Informes por Unidade — <span id="labelAno" style="color:var(--accent)"></span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-primary" id="btnSalvarHist" onclick="salvarHistoricoManual()" style="display:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Salvar Alug. Anteriores
+          </button>
+          <button class="btn" id="btnEnviarTodos" onclick="enviarParaTodos()"
+            style="background:#4A8A4A;color:#fff;font-weight:700;border:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Enviar para Todos
+          </button>
+          <button class="btn btn-green" onclick="exportar(this)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar Excel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="contratosLista" class="contratos-lista"></div>
+  </div>
+
+</div>
+
+<script>
+let dadosCalculados = null;
+let anoCalculado    = null;
+let _emailsAnual    = {};
+let mesesSaida      = {};
+let valoresManuais  = {};
+
+function normProp(s) {
+  return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+}
+
+async function carregarEmails() {
+  try { const r = await fetch('/emails_proprietarios'); if (r.ok) _emailsAnual = await r.json(); } catch(e) {}
+}
+
+(function() {
+  const sel = document.getElementById('selectAno');
+  const hoje = new Date().getFullYear();
+  for (let a = hoje; a >= hoje - 5; a--) {
+    const op = document.createElement('option');
+    op.value = a; op.text = a;
+    if (a === hoje - 1) op.selected = true;
+    sel.appendChild(op);
+  }
+})();
+
+function atualizarBotaoArquivo() {
+  const inp = document.getElementById('inputExcel');
+  const btn = document.getElementById('btnFileLabel');
+  btn.childNodes[btn.childNodes.length-1].textContent = ' ' + (inp.files[0]?.name || 'Selecionar contratos.xlsx');
+}
+
+function brl(v) {
+  if (v === null || v === undefined) return '—';
+  return v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+async function calcular() {
+  const btn = document.getElementById('btnCalcular');
+  btn.disabled = true;
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('erroBox').classList.remove('show');
+  document.getElementById('tabelaWrap').style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('ano', document.getElementById('selectAno').value);
+  const excelFile = document.getElementById('inputExcel').files[0];
+  if (excelFile) fd.append('excel', excelFile);
+
+  try {
+    const resp = await fetch('/api/dimob_calcular', {method:'POST', body:fd});
+    const data = await resp.json();
+    if (!data.ok) { mostrarErro(data.erro || 'Erro ao calcular.'); return; }
+    dadosCalculados = data.contratos;
+    anoCalculado    = data.ano;
+    mesesSaida = {}; valoresManuais = {};
+    renderizarTabela(data);
+  } catch(e) { mostrarErro('Falha na comunicação: ' + e.message); }
+  finally { btn.disabled = false; document.getElementById('loading').classList.remove('show'); }
+}
+
+function mostrarErro(msg) {
+  const box = document.getElementById('erroBox');
+  box.textContent = msg; box.classList.add('show');
+}
+
+function renderizarTabela(data) {
+  document.getElementById('labelAno').textContent = data.ano;
+  const semHist = data.contratos.filter(c => !c.tem_historico).length;
+  document.getElementById('avisoHist').classList.toggle('show', semHist > 0);
+
+  const totalGeral = data.contratos.reduce((s,c) => s+(c.total||0), 0);
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat"><div class="num">${data.contratos.length}</div><div class="lbl">Unidades</div></div>
+    <div class="stat"><div class="num">${brl(totalGeral)}</div><div class="lbl">Total Geral (R$)</div></div>
+    <div class="stat"><div class="num">${data.contratos.filter(c=>c.tem_historico).length}</div><div class="lbl">Com hist. reajuste</div></div>
+    <div class="stat"><div class="num" style="color:var(--orange)">${semHist}</div><div class="lbl">Sem hist. (valor atual)</div></div>
+    <div class="stat"><div class="num">${data.ano}</div><div class="lbl">Ano de refer&ecirc;ncia</div></div>`;
+
+  const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const lista = document.getElementById('contratosLista');
+  lista.innerHTML = '';
+
+  for (const c of data.contratos) {
+    const idx = data.contratos.indexOf(c);
+    let mesesHtml = '';
+    for (let i = 0; i < 12; i++) {
+      const val = c.meses[i];
+      const isAntigo = c.tem_historico && c.mes_aplicacao && (i+1) < c.mes_aplicacao;
+      const vHtml = val === null
+        ? `<div id="mc-${idx}-${i}" class="mes-valor val-inativo">—</div>`
+        : `<div id="mc-${idx}-${i}" class="mes-valor ${isAntigo?'val-antigo':'val-novo'}">${brl(val)}</div>`;
+      mesesHtml += `<div class="mes-cell"><div class="mes-nome">${MESES[i]}</div>${vHtml}</div>`;
+    }
+
+    const alugAntHtml = c.tem_historico
+      ? `<div><span class="cc-lbl">Alug. anterior</span><span style="color:var(--muted);font-weight:600;">${brl(c.aluguel_antigo)}</span></div>`
+      : `<div><span class="cc-lbl">Alug. anterior</span><input type="number" step="0.01" min="0" placeholder="0,00" style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;" onchange="marcarAlterado(${idx},this.value)"></div>`;
+
+    const saidaOpts = '<option value="0">—</option>' + MESES.map((m,i) => `<option value="${i+1}">${m}</option>`).join('');
+    const badgeHtml = c.tem_historico
+      ? '<span class="badge-hist badge-ok">OK</span>'
+      : '<span class="badge-hist badge-aprox" title="Sem reajuste registrado">aprox.</span>';
+
+    const card = document.createElement('div');
+    card.className = 'cc';
+    card.dataset.prop = (c.proprietario||'').trim();
+    card.innerHTML = `
+      <div class="cc-header">
+        <div>
+          <div class="cc-locatario">${escHtml(c.locatario)}</div>
+          <div class="cc-sub">${c.cpf_locatario?'CPF: '+escHtml(c.cpf_locatario)+' &nbsp;·&nbsp; ':''}${escHtml(c.endereco||'')}</div>
+        </div>
+        <div>
+          <div class="cc-prop">${escHtml(c.proprietario||'—')}</div>
+          <div class="cc-sub" style="text-align:right">${c.cpf_proprietario?'CPF: '+escHtml(c.cpf_proprietario):''}</div>
+        </div>
+      </div>
+      <div class="cc-body"><div class="meses-grid">${mesesHtml}</div></div>
+      <div class="cc-footer">
+        <div><span class="cc-lbl">Total anual</span><div id="tot-${idx}" class="cc-total">${brl(c.total)}</div></div>
+        <div class="cc-sep"></div>
+        <div><span class="cc-lbl">Comiss&atilde;o</span><div id="com-${idx}" class="cc-comissao">${c.comissao>0?brl(c.comissao):'—'}</div></div>
+        <div class="cc-sep"></div>
+        ${alugAntHtml}
+        <div class="cc-sep"></div>
+        <div>${badgeHtml}</div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+          <div><span class="cc-lbl">Sa&iacute;da</span><select class="sel-saida" onchange="atualizarSaida(${idx},this.value)">${saidaOpts}</select></div>
+          <button class="btn btn-outline btn-sm" onclick="abrirInforme(${idx})" style="height:36px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+            PDF
+          </button>
+        </div>
+      </div>`;
+    lista.appendChild(card);
+  }
+
+  const sel = document.getElementById('filtroProp');
+  sel.innerHTML = '<option value="">— Todos —</option>';
+  [...new Set(data.contratos.map(c=>(c.proprietario||'').trim()))].filter(Boolean).sort()
+    .forEach(p => { const op=document.createElement('option'); op.value=p; op.textContent=p; sel.appendChild(op); });
+  atualizarFiltroInfo();
+  document.getElementById('tabelaWrap').style.display = 'block';
+  carregarEmails();
+}
+
+function filtrarProprietario() {
+  const val = document.getElementById('filtroProp').value;
+  document.querySelectorAll('#contratosLista .cc').forEach(c => {
+    c.style.display = (!val || c.dataset.prop===val) ? '' : 'none';
+  });
+  document.getElementById('btnEnviarProp').style.display = val ? '' : 'none';
+  atualizarFiltroInfo();
+}
+
+function atualizarFiltroInfo() {
+  const val = document.getElementById('filtroProp').value;
+  const cards = document.querySelectorAll('#contratosLista .cc');
+  const total = cards.length;
+  const vis = val ? [...cards].filter(c=>c.dataset.prop===val).length : total;
+  document.getElementById('filtroInfo').textContent = val ? `${vis} unidade(s) de ${total}` : `${total} unidades`;
+}
+
+let alteracoesHist = {};
+function marcarAlterado(idx, valor) {
+  const v = parseFloat(String(valor).replace(',','.'));
+  if (!isNaN(v) && v>0) alteracoesHist[idx]=v; else delete alteracoesHist[idx];
+  document.getElementById('btnSalvarHist').style.display = Object.keys(alteracoesHist).length>0?'':'none';
+}
+
+async function salvarHistoricoManual() {
+  if (!dadosCalculados || Object.keys(alteracoesHist).length===0) return;
+  if (!confirm('Confirma o salvamento dos aluguéis anteriores?\n\nOs valores serão gravados no histórico e os informes serão recalculados.')) return;
+  const btn = document.getElementById('btnSalvarHist');
+  btn.disabled=true; btn.textContent='Salvando...';
+  const payload = Object.entries(alteracoesHist).map(([idx,aluguel_antigo]) => {
+    const c = dadosCalculados[idx];
+    return {locatario:c.locatario, aluguel_antigo, aluguel_novo:c.aluguel_atual, mes_aplicacao:c.mes_aplicacao};
+  });
+  try {
+    const resp = await fetch('/api/dimob_salvar_historico', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ano:anoCalculado,contratos:payload})});
+    const data = await resp.json();
+    if (!data.ok) { mostrarErro(data.erro||'Erro ao salvar.'); return; }
+    alteracoesHist = {};
+    document.getElementById('btnSalvarHist').style.display='none';
+    await calcular();
+  } catch(e) { mostrarErro('Falha ao salvar: '+e.message); }
+  finally {
+    btn.disabled=false;
+    btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar Alug. Anteriores`;
+  }
+}
+
+function atualizarSaida(idx,val) { mesesSaida[idx]=parseInt(val)||0; _rerenderMeses(idx); }
+function atualizarManual(idx,mesIdx,valor) {
+  if (!valoresManuais[idx]) valoresManuais[idx]={};
+  const v=parseFloat(String(valor).replace(',','.'));
+  if (!isNaN(v)&&v>0) valoresManuais[idx][mesIdx]=v; else delete valoresManuais[idx][mesIdx];
+  _atualizarTotal(idx);
+}
+function _rerenderMeses(idx) {
+  const c=dadosCalculados[idx]; const saida=mesesSaida[idx]||0;
+  for (let i=0;i<12;i++) {
+    const cell=document.getElementById(`mc-${idx}-${i}`); if (!cell) continue;
+    const mesNum=i+1;
+    if (saida>0&&mesNum>=saida) {
+      const mv=valoresManuais[idx]?.[i];
+      cell.className='mes-valor val-saida';
+      cell.innerHTML=`<input type="number" step="0.01" min="0" placeholder="—" value="${mv!=null?mv.toFixed(2):''}" oninput="atualizarManual(${idx},${i},this.value)">`;
+    } else {
+      const val=c.meses[i];
+      if (val===null) { cell.className='mes-valor val-inativo'; cell.innerHTML='—'; }
+      else { const isA=c.tem_historico&&c.mes_aplicacao&&mesNum<c.mes_aplicacao; cell.className=`mes-valor ${isA?'val-antigo':'val-novo'}`; cell.innerHTML=brl(val); }
+    }
+  }
+  _atualizarTotal(idx);
+}
+function _atualizarTotal(idx) {
+  const c=dadosCalculados[idx]; const saida=mesesSaida[idx]||0; const perc=c.percentual_imob||0;
+  let total=0;
+  for (let i=0;i<12;i++) { const mesNum=i+1; total+=saida>0&&mesNum>=saida?(valoresManuais[idx]?.[i]||0):(c.meses[i]||0); }
+  const com=perc?total*perc/100:0;
+  const t=document.getElementById(`tot-${idx}`); const cm=document.getElementById(`com-${idx}`);
+  if (t) t.textContent=brl(total); if (cm) cm.textContent=com>0?brl(com):'—';
+}
+
+function getContratosEfetivos() {
+  return dadosCalculados.map((c,idx) => {
+    const saida=mesesSaida[idx]||0; if (!saida) return c;
+    const meses=c.meses.map((val,i)=>{ const mesNum=i+1; return mesNum>=saida?(valoresManuais[idx]?.[i]??null):val; });
+    return {...c,meses};
+  });
+}
+
+function abrirInforme(idx) {
+  if (!dadosCalculados) return;
+  const w=window.open('','_blank');
+  w.document.write(gerarInformeHTML(getContratosEfetivos()[idx], anoCalculado));
+  w.document.close();
+  setTimeout(()=>w.print(),600);
+}
+
+function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function gerarInformeHTML(c, ano) {
+  const mesesNomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  const fmt=v=>v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const perc=c.percentual_imob||0;
+  let totalBruto=0,totalComissao=0,totalLiquido=0;
+  const linhasMeses=mesesNomes.map((nome,i)=>{
+    const val=c.meses[i];
+    if (val===null) return `<tr class="inativo"><td>${nome}</td><td class="right">—</td><td class="right">—</td><td class="right">—</td></tr>`;
+    const com=perc?val*perc/100:0; const liq=val-com;
+    totalBruto+=val; totalComissao+=com; totalLiquido+=liq;
+    return `<tr><td>${nome}</td><td class="right">${fmt(val)}</td><td class="right">${perc?fmt(com):'—'}</td><td class="right">${fmt(liq)}</td></tr>`;
+  }).join('');
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Informe ${ano} — ${escHtml(c.proprietario)}</title>
+<style>@page{size:A4 portrait;margin:18mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11pt;color:#111;background:#fff}
+.topo{margin-bottom:16px;border-bottom:2px solid #2A4A52;padding-bottom:12px}.topo-meta{display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px}
+.logo-bloco img{width:100%;height:auto;display:block}.titulo-bloco{text-align:right}.emissao{font-size:9pt;color:#777;margin-top:3px}
+.info-grid{width:100%;border-collapse:collapse;margin-bottom:14px}.info-grid td{padding:5px 8px;border:1px solid #ccc;font-size:10.5pt;vertical-align:middle}
+.info-grid td.lbl{font-weight:700;background:#f0f4f5;width:130px;white-space:nowrap;color:#2A4A52}.info-grid td.lbl2{font-weight:700;background:#f0f4f5;width:110px;white-space:nowrap;color:#2A4A52}
+table.meses{width:100%;border-collapse:collapse;margin-top:4px;font-size:10.5pt}table.meses thead tr{background:#2A4A52;color:#fff}table.meses thead td{padding:7px 10px;font-weight:700}
+table.meses thead td.right{text-align:right}table.meses tbody td{padding:5px 10px;border-bottom:1px solid #e0e0e0}table.meses tbody td.right{text-align:right;font-variant-numeric:tabular-nums}
+table.meses tbody tr:nth-child(even) td{background:#f7fafa}table.meses tbody tr.inativo td{color:#aaa;font-style:italic}
+.total-row td{font-weight:700;font-size:11pt;border-top:2px solid #2A4A52;background:#EFF5F7!important;padding:7px 10px}.total-row td.right{text-align:right}
+.nota{margin-top:20px;font-size:9pt;color:#555;border-top:1px solid #ccc;padding-top:10px;line-height:1.5}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="topo"><div class="logo-bloco"><img src="${window.location.origin}/static/logo.png" alt="Funchal Imóveis"></div>
+<div class="topo-meta"><div></div><div class="titulo-bloco"><div style="font-size:15pt;font-weight:700;color:#2A4A52">INFORME DE RENDIMENTOS</div>
+<div style="font-size:13pt;font-weight:700;color:#3B7A8E">Ano-Calendário ${ano}</div><div class="emissao">Emitido em ${hoje}</div></div></div></div>
+<table class="info-grid"><tr><td class="lbl">Proprietário</td><td><strong>${escHtml(c.proprietario)||'—'}</strong></td><td class="lbl2">CPF / CNPJ</td><td>${escHtml(c.cpf_proprietario)||'<em style="color:#aaa">não informado</em>'}</td></tr>
+<tr><td class="lbl">Imóvel</td><td colspan="3">${escHtml(c.endereco)||'—'}</td></tr>
+<tr><td class="lbl">Locatário</td><td><strong>${escHtml(c.locatario)}</strong></td><td class="lbl2">CPF</td><td>${escHtml(c.cpf_locatario)||'<em style="color:#aaa">não informado</em>'}</td></tr>
+<tr><td class="lbl">Taxa de Administração</td><td colspan="3">${perc?perc+'%':'—'}</td></tr></table>
+<table class="meses"><thead><tr><td style="width:30%">Mês</td><td class="right" style="width:23%">Aluguel Bruto (R$)</td><td class="right" style="width:23%">Tx. Administração (R$)</td><td class="right" style="width:24%">Valor Líquido (R$)</td></tr></thead>
+<tbody>${linhasMeses}<tr class="total-row"><td>TOTAL ${ano}</td><td class="right">${fmt(totalBruto)}</td><td class="right">${perc?fmt(totalComissao):'—'}</td><td class="right">${fmt(totalLiquido)}</td></tr></tbody></table>
+<div class="nota"><strong>Locatário:</strong> utilize o valor de <strong>Aluguel Bruto</strong> na sua Declaração de Ajuste Anual (ficha "Pagamentos Efetuados", código 70 — Aluguéis de imóveis). Fonte pagadora: <strong>Funchal Negócios Imobiliários Ltda. — CNPJ 11.514.872/0001-94</strong>.<br><br>
+<strong>Proprietário:</strong> declare o valor <strong>Líquido</strong> como rendimento recebido de pessoa jurídica (carnê-leão, código 95, ou na ficha "Rendimentos Recebidos de PJ"). Fonte pagadora: <strong>Funchal Negócios Imobiliários Ltda. — CNPJ 11.514.872/0001-94</strong>.<br><br>
+<em>Este documento é emitido pela administradora do imóvel e não substitui documentos fiscais oficiais.</em></div>
+</body></html>`;
+}
+
+// ─── Envio direto aos proprietários ──────────────────────────────────────────
+
+function _emailDoProp(propNome) {
+  const salvo = _emailsAnual[normProp(propNome)] || '';
+  if (salvo) return salvo;
+  const c = dadosCalculados && dadosCalculados.find(x => (x.proprietario||'').trim()===propNome);
+  return c ? (c.email_proprietario||'') : '';
+}
+
+function _contratosParaEnvio(propNome) {
+  return getContratosEfetivos().filter(c => (c.proprietario||'').trim()===propNome);
+}
+
+async function enviarInformeEmail() {
+  const propNome = document.getElementById('filtroProp').value;
+  if (!propNome) return;
+  const emailDest = prompt(`E-mail para enviar a ${propNome}:`, _emailDoProp(propNome));
+  if (emailDest===null) return;
+  if (!emailDest.trim()) { alert('E-mail não informado.'); return; }
+
+  const cs = _contratosParaEnvio(propNome);
+  if (!cs.length) { alert('Nenhum contrato encontrado.'); return; }
+  const btn = document.getElementById('btnEnviarProp');
+  const orig = btn.innerHTML; btn.disabled=true; btn.textContent='Enviando...';
+  try {
+    const r = await fetch('/api/dimob_enviar_email', {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({proprietario:propNome, cpf_proprietario:cs[0].cpf_proprietario||'', email_dest:emailDest.trim(), ano:anoCalculado, contratos:cs})});
+    const j = await r.json();
+    if (j.ok) alert(`Informe enviado com sucesso para ${emailDest.trim()}!`);
+    else alert('Erro ao enviar: '+j.erro);
+  } catch(e) { alert('Erro de comunicação: '+e.message); }
+  btn.disabled=false; btn.innerHTML=orig;
+}
+
+async function enviarParaTodos() {
+  if (!dadosCalculados||!dadosCalculados.length) return;
+  const grupos = {};
+  dadosCalculados.forEach(c => {
+    const prop=(c.proprietario||'').trim(); if (!prop) return;
+    if (!grupos[prop]) grupos[prop]={email:'',cpf:c.cpf_proprietario||''};
+    if (!grupos[prop].email) grupos[prop].email=_emailsAnual[normProp(prop)]||c.email_proprietario||'';
+  });
+  const comEmail=Object.keys(grupos).filter(p=>grupos[p].email.trim());
+  const semEmail=Object.keys(grupos).filter(p=>!grupos[p].email.trim());
+  if (!comEmail.length) { alert('Nenhum proprietário tem e-mail cadastrado.'); return; }
+  let msg=`Enviar informes de rendimento ${anoCalculado} para ${comEmail.length} proprietário(s)?`;
+  if (semEmail.length) msg+=`\n\nSem e-mail (serão ignorados): ${semEmail.join(', ')}`;
+  if (!confirm(msg)) return;
+
+  const btn=document.getElementById('btnEnviarTodos'); btn.disabled=true;
+  let ok=0,erro=0,erros=[];
+  for (let i=0;i<comEmail.length;i++) {
+    const prop=comEmail[i]; btn.textContent=`Enviando ${i+1}/${comEmail.length}...`;
+    const cs=_contratosParaEnvio(prop);
+    try {
+      const r=await fetch('/api/dimob_enviar_email',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({proprietario:prop,cpf_proprietario:grupos[prop].cpf,email_dest:grupos[prop].email.trim(),ano:anoCalculado,contratos:cs})});
+      const j=await r.json(); if (j.ok) ok++; else {erro++;erros.push(`${prop}: ${j.erro}`);}
+    } catch(e) {erro++;erros.push(`${prop}: ${e.message}`);}
+  }
+  btn.disabled=false;
+  btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar para Todos`;
+  let resultado=`${ok} informe(s) enviado(s) com sucesso!`;
+  if (erro) resultado+=`\n\n${erro} erro(s):\n`+erros.join('\n');
+  alert(resultado);
+}
+
+async function exportar(btn) {
+  if (!dadosCalculados) return;
+  btn.disabled=true; btn.textContent='Gerando...';
+  try {
+    const resp=await fetch('/api/dimob_exportar',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ano:anoCalculado,contratos:getContratosEfetivos()})});
+    if (!resp.ok) { mostrarErro('Erro ao gerar exportação.'); return; }
+    const blob=await resp.blob(); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=`informes_${anoCalculado}.xlsx`; a.click(); URL.revokeObjectURL(url);
+  } catch(e) { mostrarErro('Falha ao exportar: '+e.message); }
+  finally { btn.disabled=false; btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar Excel`; }
+}
+</script>
+</body>
+</html>
