@@ -1209,7 +1209,17 @@ def logout():
 @app.route("/")
 @login_required
 def home():
-    return render_template("home.html")
+    return render_template("home.html", is_admin=is_admin())
+
+@app.route("/configuracoes")
+@admin_required
+def configuracoes():
+    cfg = ler_config()
+    smtp = ler_smtp()
+    tem_api_key = bool(os.environ.get("ANTHROPIC_API_KEY") or cfg.get("api_key"))
+    tem_smtp    = bool(smtp.get("resend_key") or (smtp.get("user") and smtp.get("passw")))
+    return render_template("configuracoes.html", tem_api_key=tem_api_key, tem_smtp=tem_smtp)
+
 
 @app.route("/boletos")
 @login_required

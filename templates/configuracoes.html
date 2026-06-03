@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configurações — Funchal Imóveis</title>
+<style>
+:root {
+  --bg:#D6E3E8; --card:#fff; --border:#B8CECE; --text:#1A2C30; --muted:#4A6668;
+  --accent:#3B7A8E; --green:#4A6E9A; --red:#B84545; --header:#2A4A52;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(--text); font-size:13px; }
+.header { background:var(--header); color:#fff; padding:14px 24px; display:flex; align-items:center; gap:16px; }
+.header h1 { font-size:17px; font-weight:700; }
+.header p  { font-size:11px; color:#94a3b8; margin-top:2px; }
+.header-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
+.btn { padding:8px 18px; border-radius:7px; border:none; cursor:pointer; font-size:12px; font-weight:600; transition:all .15s; display:inline-flex; align-items:center; gap:6px; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:#2A6A7E; }
+.btn-primary:disabled { background:#8AABAB; cursor:not-allowed; }
+.btn-outline { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+.btn-outline:hover { background:#DDE8EC; }
+.btn-sm { padding:4px 12px; font-size:11px; }
+.container { max-width:860px; margin:0 auto; padding:28px 20px; display:flex; flex-direction:column; gap:20px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.card-title { font-size:15px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
+.card-desc { font-size:12px; color:var(--muted); margin-bottom:20px; }
+.form-label { display:block; font-size:11px; font-weight:600; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.5px; }
+.form-input { width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:7px; font-size:13px; outline:none; }
+.form-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(59,122,142,.15); }
+.form-group { margin-bottom:14px; }
+.status-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+.badge-ok  { background:#D8EFD8; color:#155724; }
+.badge-nok { background:#F5EAD5; color:#8C5A00; }
+.badge-api-ok  { background:#D8E4F0; color:#1A4A6E; }
+.badge-api-nok { background:#F5D5D5; color:#721C24; }
+.msg-ok  { color:#155724; font-size:12px; display:none; padding:8px 12px; background:#D8EFD8; border-radius:6px; }
+.msg-err { color:#721C24; font-size:12px; display:none; padding:8px 12px; background:#F8D7DA; border-radius:6px; }
+.resend-box { border:1px solid #A8D4A8; border-radius:8px; padding:14px 16px; background:#F0FAF0; margin-bottom:14px; }
+.resend-box-title { font-size:12px; font-weight:700; color:#2A6A2A; margin-bottom:10px; }
+.resend-hint { font-size:10px; color:#2A6A2A; margin-top:6px; }
+.divider { border:none; border-top:1px solid var(--border); margin:16px 0; }
+.grid-2 { display:grid; grid-template-columns:1fr 100px; gap:10px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>⚙️ Configurações</h1>
+    <p>API Anthropic e E-mail</p>
+  </div>
+  <div class="header-actions">
+    <a href="/" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">← Início</a>
+    <a href="/logout" class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8;text-decoration:none">Sair</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ── API Anthropic ──────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">
+      🤖 API Anthropic
+      <span id="apiStatusBadge" class="status-badge {% if tem_api_key %}badge-api-ok{% else %}badge-api-nok{% endif %}">
+        {% if tem_api_key %}API configurada{% else %}Sem API{% endif %}
+      </span>
+    </div>
+    <div class="card-desc">
+      Necessária para leitura automática dos PDFs de boletos.<br>
+      Obtenha em: <strong>console.anthropic.com → API Keys</strong>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Chave API (sk-ant-...)</label>
+      <input type="password" id="inputApiKey" class="form-input" placeholder="sk-ant-api03-...">
+    </div>
+    <div id="apiMsgErr" class="msg-err"></div>
+    <div id="apiMsgOk"  class="msg-ok">✓ API configurada com sucesso!</div>
+    <div style="display:flex;justify-content:flex-end;margin-top:4px">
+      <button class="btn btn-primary" id="btnSalvarApi" onclick="salvarApi()">Salvar e Testar</button>
+    </div>
+  </div>
+
+  <!-- ── E-mail ─────────────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">
+      📧 E-mail
+      <span id="smtpStatusBadge" class="status-badge {% if tem_smtp %}badge-ok{% else %}badge-nok{% endif %}">
+        {% if tem_smtp %}E-mail configurado{% else %}E-mail não configurado{% endif %}
+      </span>
+    </div>
+    <div class="card-desc">
+      Configure o envio de e-mails para informes mensais e boletos.
+    </div>
+
+    <!-- Resend (recomendado) -->
+    <div class="resend-box">
+      <div class="resend-box-title">✅ Recomendado: Resend (grátis, funciona no Railway)</div>
+      <div class="form-group" style="margin-bottom:4px">
+        <label class="form-label">Chave API do Resend (re_...)</label>
+        <input type="password" id="smtpResendKey" class="form-input" placeholder="re_xxxxxxxxxxxxxxxxxxxx">
+      </div>
+      <div class="resend-hint">
+        Crie sua conta grátis em <strong>resend.com</strong> → API Keys → Create API Key.<br>
+        Preencha apenas essa chave — os campos SMTP abaixo não são necessários com Resend.
+      </div>
+    </div>
+
+    <hr class="divider">
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Ou configure SMTP manualmente</div>
+
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Servidor SMTP</label>
+        <input type="text" id="smtpHost" class="form-input" placeholder="smtp.gmail.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Porta</label>
+        <input type="number" id="smtpPort" class="form-input" value="587">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Usuário / E-mail remetente</label>
+      <input type="email" id="smtpUser" class="form-input" placeholder="seu@email.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Senha</label>
+      <input type="password" id="smtpPass" class="form-input" placeholder="Senha ou App Password">
+    </div>
+    <div class="form-group">
+      <label class="form-label">E-mail de envio (From) — deixe em branco para usar o usuário</label>
+      <input type="email" id="smtpFrom" class="form-input" placeholder="noreply@dominio.com">
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:14px">
+      💡 Gmail requer <strong>App Password</strong> em myaccount.google.com → Segurança → Senhas de app.
+    </div>
+
+    <div id="smtpMsgErr" class="msg-err"></div>
+    <div id="smtpMsgOk"  class="msg-ok">✓ Conexão testada com sucesso! E-mail configurado.</div>
+    <div style="display:flex;justify-content:flex-end;margin-top:4px">
+      <button class="btn btn-primary" id="btnSalvarSmtp" onclick="salvarSmtp()">Salvar e Testar</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── API Anthropic ────────────────────────────────────────────────────────────
+async function salvarApi() {
+  const key = document.getElementById('inputApiKey').value.trim();
+  if (!key) return;
+  const btn = document.getElementById('btnSalvarApi');
+  btn.disabled = true; btn.textContent = 'Testando...';
+  document.getElementById('apiMsgErr').style.display = 'none';
+  document.getElementById('apiMsgOk').style.display  = 'none';
+  try {
+    const r = await fetch('/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({api_key:key})});
+    const j = await r.json();
+    if (j.ok) {
+      const b = document.getElementById('apiStatusBadge');
+      b.className = 'status-badge badge-api-ok'; b.textContent = 'API configurada';
+      document.getElementById('apiMsgOk').style.display = 'block';
+    } else {
+      document.getElementById('apiMsgErr').textContent = j.erro;
+      document.getElementById('apiMsgErr').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('apiMsgErr').textContent = 'Erro de comunicação: ' + e.message;
+    document.getElementById('apiMsgErr').style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Salvar e Testar';
+}
+
+// ─── E-mail / SMTP ────────────────────────────────────────────────────────────
+async function salvarSmtp() {
+  const host      = document.getElementById('smtpHost').value.trim();
+  const port      = parseInt(document.getElementById('smtpPort').value) || 587;
+  const user      = document.getElementById('smtpUser').value.trim();
+  const pass      = document.getElementById('smtpPass').value;
+  const from_     = document.getElementById('smtpFrom').value.trim();
+  const resendKey = document.getElementById('smtpResendKey').value.trim();
+
+  if (!resendKey && (!host || !user || !pass)) {
+    document.getElementById('smtpMsgErr').textContent = 'Preencha a chave Resend ou os campos SMTP (servidor, usuário e senha).';
+    document.getElementById('smtpMsgErr').style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('btnSalvarSmtp');
+  btn.disabled = true; btn.textContent = 'Testando...';
+  document.getElementById('smtpMsgErr').style.display = 'none';
+  document.getElementById('smtpMsgOk').style.display  = 'none';
+  try {
+    const r = await fetch('/configurar_smtp', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({host, port, user, passw:pass, from_addr:from_, resend_api_key:resendKey})
+    });
+    const j = await r.json();
+    if (j.ok) {
+      const b = document.getElementById('smtpStatusBadge');
+      b.className = 'status-badge badge-ok'; b.textContent = 'E-mail configurado';
+      document.getElementById('smtpMsgOk').style.display = 'block';
+    } else {
+      document.getElementById('smtpMsgErr').textContent = j.erro || 'Erro ao testar conexão.';
+      document.getElementById('smtpMsgErr').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('smtpMsgErr').textContent = 'Erro de comunicação: ' + e.message;
+    document.getElementById('smtpMsgErr').style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Salvar e Testar';
+}
+
+// Carrega config atual de e-mail ao abrir
+fetch('/get_smtp').then(r=>r.json()).then(j=>{
+  document.getElementById('smtpHost').value = j.host || '';
+  document.getElementById('smtpPort').value = j.port || 587;
+  document.getElementById('smtpUser').value = j.user || '';
+  document.getElementById('smtpFrom').value = j.from_addr || '';
+}).catch(()=>{});
+</script>
+</body>
+</html>
