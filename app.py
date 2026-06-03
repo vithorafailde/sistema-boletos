@@ -1711,8 +1711,10 @@ def ler_smtp():
         "resend_key": os.environ.get("RESEND_API_KEY", cfg.get("resend_api_key", "")),
     }
 
-def _enviar_via_resend(api_key, de, para, assunto, html_body, reply_to=None):
-    """Envia email usando a API HTTP do Resend. Retorna o resend_id ou lança exceção."""
+def _enviar_via_resend(api_key, de, para, assunto, html_body, reply_to=None, attachments=None):
+    """Envia email usando a API HTTP do Resend. Retorna o resend_id ou lança exceção.
+    attachments: lista de dicts {"filename": "arq.pdf", "content": "<base64>"}
+    """
     data = {
         "from": de,
         "to": [para],
@@ -1721,6 +1723,8 @@ def _enviar_via_resend(api_key, de, para, assunto, html_body, reply_to=None):
     }
     if reply_to:
         data["reply_to"] = [reply_to]
+    if attachments:
+        data["attachments"] = attachments
     payload = _json.dumps(data).encode("utf-8")
     req = urllib.request.Request(
         "https://api.resend.com/emails",
@@ -2928,6 +2932,86 @@ def api_dimob_enviar_email():
     reply_to  = smtp["user"] or None
     try:
         rid = _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body, reply_to=reply_to)
+        gravar_log_envio(proprietario, email_dest, str(ano), "sent", tipo="dimob", resend_id=rid)
+        return jsonify({"ok": True})
+    except Exception as ex:
+        gravar_log_envio(proprietario, email_dest, str(ano), "erro", str(ex), tipo="dimob")
+        return jsonify({"ok": False, "erro": str(ex)})
+
+
+@app.route("/api/dimob_config_contador", methods=["GET", "POST"])
+@login_required
+def api_dimob_config_contador():
+    """GET: retorna email do contador. POST: salva email do contador."""
+    cfg = ler_config()
+    if request.method == "POST":
+        d = request.get_json(silent=True) or {}
+        cfg["dimob_email_contador"] = d.get("email", "").strip()
+        salvar_config(cfg)
+        return jsonify({"ok": True})
+    return jsonify({"email": cfg.get("dimob_email_contador", "")})
+
+
+@app.route("/api/dimob_enviar_pdf_proprietario", methods=["POST"])
+@login_required
+def api_dimob_enviar_pdf_proprietario():
+    """Envia um PDF (informe DIMOB do contador) para o email do proprietário.
+    Recebe multipart/form-data: pdf (arquivo), email_dest, proprietario, ano.
+    """
+    email_dest   = (request.form.get("email_dest") or "").strip()
+    proprietario = request.form.get("proprietario") or ""
+    ano          = request.form.get("ano") or ""
+    pdf_file     = request.files.get("pdf")
+
+    if not email_dest:
+        return jsonify({"ok": False, "erro": "E-mail do destinatário não informado."})
+    if not pdf_file:
+        return jsonify({"ok": False, "erro": "Arquivo PDF não recebido."})
+
+    pdf_bytes = pdf_file.read()
+    pdf_b64   = base64.b64encode(pdf_bytes).decode("utf-8")
+    filename  = pdf_file.filename or f"informe_{proprietario}_{ano}.pdf"
+
+    smtp     = ler_smtp()
+    if not smtp["resend_key"]:
+        return jsonify({"ok": False, "erro": "Resend não configurado."})
+
+    remetente = "Funchal Imoveis <noreply@funchalimoveis.com.br>"
+    reply_to  = smtp["user"] or None
+    assunto   = f"Informe de Rendimentos {ano} — {proprietario}"
+
+    try:
+        from flask import request as _req
+        logo_url = _req.host_url.rstrip('/') + '/static/logo.png'
+    except Exception:
+        logo_url = ''
+    logo_tag = f'<img src="{logo_url}" style="max-width:100%;height:auto;display:block;margin-bottom:12px" alt="Funchal Imóveis">' if logo_url else ''
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="font-family:'Times New Roman',Times,serif;color:#000;background:#fff;max-width:700px;margin:0 auto;padding:24px">
+  {logo_tag}
+  <div style="border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:18px">
+    <div style="font-size:15pt;font-weight:bold;text-transform:uppercase;text-align:center">Informe de Rendimentos — Ano-Calendário {ano}</div>
+    <div style="font-size:10pt;text-align:center;margin-top:3px">Data de emissão: {date.today().strftime('%d/%m/%Y')}</div>
+  </div>
+  <p style="font-size:11pt;line-height:1.6">Prezado(a) <strong>{proprietario}</strong>,</p>
+  <p style="font-size:11pt;line-height:1.6;margin-top:10px">
+    Segue em anexo o seu Informe de Rendimentos referente ao ano-calendário <strong>{ano}</strong>,
+    emitido pela Funchal Negócios Imobiliários Ltda.
+  </p>
+  <p style="margin-top:20px;font-size:9pt;color:#555;border-top:1px solid #ccc;padding-top:10px">
+    <strong>Proprietário:</strong> declare o valor <strong>Líquido</strong> como rendimento recebido de pessoa jurídica.<br>
+    Fonte pagadora: <strong>Funchal Negócios Imobiliários Ltda. — CNPJ 11.514.872/0001-94</strong>.
+  </p>
+</body></html>"""
+
+    try:
+        rid = _enviar_via_resend(
+            smtp["resend_key"], remetente, email_dest, assunto, html_body,
+            reply_to=reply_to,
+            attachments=[{"filename": filename, "content": pdf_b64}]
+        )
         gravar_log_envio(proprietario, email_dest, str(ano), "sent", tipo="dimob", resend_id=rid)
         return jsonify({"ok": True})
     except Exception as ex:

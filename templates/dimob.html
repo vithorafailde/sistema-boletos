@@ -150,6 +150,69 @@ select.form-input { cursor: pointer; min-width: 100px; }
   <!-- Erro -->
   <div class="erro-box" id="erroBox"></div>
 
+  <!-- Seção: Envio de PDFs aos Proprietários (sempre visível) -->
+  <div class="card" id="secaoPdfs">
+    <div class="card-title">
+      <span style="background:var(--purple);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">2</span>
+      Envio de Informes (PDF) aos Propriet&aacute;rios
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+      Ap&oacute;s receber os PDFs do contador, fa&ccedil;a o upload abaixo. O sistema identifica o propriet&aacute;rio pelo nome do arquivo e envia para o e-mail cadastrado.
+    </p>
+
+    <!-- Email do contador -->
+    <div style="background:#F0F5F7;border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--header)">E-mail do Contador</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input type="email" id="inputEmailContador" class="form-input" style="max-width:320px;"
+          placeholder="contador@escritorio.com.br">
+        <button class="btn btn-primary btn-sm" onclick="salvarEmailContador()">Salvar</button>
+        <button class="btn btn-sm" onclick="enviarTodosAoContador()"
+          style="background:#4A8A4A;color:#fff;font-weight:700;border:none;" id="btnEnviarContador" disabled>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Enviar todos os informes ao Contador
+        </button>
+        <span id="msgContador" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+    </div>
+
+    <!-- Upload de PDFs -->
+    <div id="pdfDropZone" style="border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;background:#EFF2F2;transition:all .18s;"
+      onclick="document.getElementById('inputPdfs').click()"
+      ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+      ondragleave="this.style.borderColor='var(--border)'"
+      ondrop="event.preventDefault();this.style.borderColor='var(--border)';processarPdfs(event.dataTransfer.files)">
+      <div style="font-size:28px;margin-bottom:6px;">&#128196;</div>
+      <div style="font-weight:600;font-size:14px;">Clique ou arraste os PDFs dos informes</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">O nome do arquivo deve conter o nome do propriet&aacute;rio</div>
+      <input type="file" id="inputPdfs" multiple accept=".pdf" style="display:none"
+        onchange="processarPdfs(this.files)">
+    </div>
+
+    <!-- Tabela de correspondências -->
+    <div id="pdfTabelaWrap" style="display:none;margin-top:14px;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:var(--header);color:#fff;">
+            <th style="padding:8px 10px;text-align:left;">Arquivo PDF</th>
+            <th style="padding:8px 10px;text-align:left;">Propriet&aacute;rio identificado</th>
+            <th style="padding:8px 10px;text-align:left;">E-mail</th>
+            <th style="padding:8px 10px;text-align:center;">Status</th>
+          </tr>
+        </thead>
+        <tbody id="pdfTabelaBody"></tbody>
+      </table>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;">
+        <button class="btn" id="btnEnviarPdfs" onclick="enviarPdfsProprietarios()"
+          style="background:#4A8A4A;color:#fff;font-weight:700;border:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Enviar para Propriet&aacute;rios
+        </button>
+        <span id="pdfMsgEnvio" style="font-size:13px;color:var(--muted)"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- Resultados -->
   <div id="tabelaWrap">
 
@@ -178,7 +241,7 @@ select.form-input { cursor: pointer; min-width: 100px; }
     <div class="card" style="padding:14px 16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
         <div class="card-title" style="margin-bottom:0;">
-          <span style="background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">2</span>
+          <span style="background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">3</span>
           Informes por Unidade — <span id="labelAno" style="color:var(--accent)"></span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -702,6 +765,203 @@ function gerarInformeHTML(c, ano) {
 
 </body>
 </html>`;
+}
+
+// ─── Contador ─────────────────────────────────────────────────────────────────
+
+async function carregarEmailContador() {
+  try {
+    const r = await fetch('/api/dimob_config_contador');
+    const j = await r.json();
+    if (j.email) {
+      document.getElementById('inputEmailContador').value = j.email;
+      document.getElementById('btnEnviarContador').disabled = false;
+    }
+  } catch(e) {}
+}
+carregarEmailContador();
+
+async function salvarEmailContador() {
+  if (!confirm('Confirma o salvamento do e-mail do contador?')) return;
+  const email = document.getElementById('inputEmailContador').value.trim();
+  if (!email) { alert('Digite o e-mail do contador.'); return; }
+  const r = await fetch('/api/dimob_config_contador', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({email})
+  });
+  const j = await r.json();
+  if (j.ok) {
+    document.getElementById('btnEnviarContador').disabled = false;
+    document.getElementById('msgContador').textContent = 'E-mail salvo!';
+    setTimeout(() => document.getElementById('msgContador').textContent = '', 3000);
+  }
+}
+
+async function enviarTodosAoContador() {
+  if (!dadosCalculados || !dadosCalculados.length) {
+    alert('Calcule os informes primeiro (passo 1) antes de enviar ao contador.'); return;
+  }
+  const emailContador = document.getElementById('inputEmailContador').value.trim();
+  if (!emailContador) { alert('Cadastre o e-mail do contador antes de enviar.'); return; }
+  if (!confirm(`Enviar todos os informes ao contador (${emailContador})?`)) return;
+
+  const btn = document.getElementById('btnEnviarContador');
+  btn.disabled = true;
+  const grupos = {};
+  dadosCalculados.forEach(c => {
+    const prop = (c.proprietario || '').trim();
+    if (!prop) return;
+    if (!grupos[prop]) grupos[prop] = { cpf: c.cpf_proprietario || '', cs: [] };
+    grupos[prop].cs.push(c);
+  });
+  const props = Object.keys(grupos);
+  let ok = 0, erro = 0, erros = [];
+
+  for (let i = 0; i < props.length; i++) {
+    const prop = props[i];
+    btn.textContent = `Enviando ${i+1}/${props.length}...`;
+    const g = grupos[prop];
+    const cs = getContratosEfetivos().filter(c => (c.proprietario||'').trim() === prop);
+    try {
+      const r = await fetch('/api/dimob_enviar_email', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          proprietario: prop, cpf_proprietario: g.cpf,
+          email_dest: emailContador, ano: anoCalculado, contratos: cs
+        })
+      });
+      const j = await r.json();
+      if (j.ok) ok++; else { erro++; erros.push(`${prop}: ${j.erro}`); }
+    } catch(e) { erro++; erros.push(`${prop}: ${e.message}`); }
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar todos os informes ao Contador`;
+  let msg = `${ok} informe(s) enviado(s) ao contador!`;
+  if (erro) msg += `\n\n${erro} erro(s):\n` + erros.join('\n');
+  alert(msg);
+}
+
+// ─── Upload de PDFs e envio aos proprietários ─────────────────────────────────
+
+let _pdfsCarregados = [];  // [{file, nome, prop, email, status}]
+
+function normFilename(s) {
+  return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+function matchPropPorArquivo(filename) {
+  // Remove extensão e normaliza
+  const base = normFilename(filename.replace(/\.[^.]+$/, ''));
+  // Candidatos: proprietários de dadosCalculados + chaves dos emails salvos
+  const candidatos = new Set();
+  if (dadosCalculados) dadosCalculados.forEach(c => { if (c.proprietario) candidatos.add(c.proprietario.trim()); });
+  Object.keys(_emailsDimob).forEach(k => {
+    // tenta achar nome correspondente em dadosCalculados
+    if (dadosCalculados) {
+      const c = dadosCalculados.find(x => normProp(x.proprietario) === k);
+      if (c) candidatos.add(c.proprietario.trim());
+    }
+  });
+  let melhor = null, melhorScore = 0;
+  for (const prop of candidatos) {
+    const np = normFilename(prop);
+    if (!np) continue;
+    // Score: quantas palavras do nome do proprietário aparecem no filename
+    const palavras = np.split(' ').filter(w => w.length > 2);
+    const matches  = palavras.filter(w => base.includes(w)).length;
+    const score    = palavras.length > 0 ? matches / palavras.length : 0;
+    if (score > melhorScore) { melhorScore = score; melhor = prop; }
+  }
+  return melhorScore >= 0.5 ? melhor : null;
+}
+
+function getEmailProp(propNome) {
+  if (!propNome) return '';
+  const salvo = _emailsDimob[normProp(propNome)] || '';
+  if (salvo) return salvo;
+  if (dadosCalculados) {
+    const c = dadosCalculados.find(x => (x.proprietario||'').trim() === propNome);
+    return c ? (c.email_proprietario || '') : '';
+  }
+  return '';
+}
+
+function processarPdfs(files) {
+  if (!files || !files.length) return;
+  _pdfsCarregados = [];
+  for (const f of files) {
+    if (!f.name.toLowerCase().endsWith('.pdf')) continue;
+    const prop  = matchPropPorArquivo(f.name);
+    const email = getEmailProp(prop);
+    _pdfsCarregados.push({ file: f, nome: f.name, prop: prop || '', email: email, status: 'aguardando' });
+  }
+  renderPdfTabela();
+  document.getElementById('pdfTabelaWrap').style.display = _pdfsCarregados.length ? '' : 'none';
+}
+
+function renderPdfTabela() {
+  const tbody = document.getElementById('pdfTabelaBody');
+  tbody.innerHTML = _pdfsCarregados.map((item, i) => {
+    const semEmail = !item.email;
+    const semProp  = !item.prop;
+    const badge = item.status === 'enviado'
+      ? `<span style="background:#D0F0D8;color:#2A6A2A;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">Enviado</span>`
+      : item.status === 'erro'
+        ? `<span style="background:#F8D7DA;color:#721C24;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">Erro</span>`
+        : semEmail
+          ? `<span style="background:#FFF3CD;color:#856404;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">Sem e-mail</span>`
+          : `<span style="background:#D8E4F0;color:#1A4A6E;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">Pronto</span>`;
+    return `<tr style="border-top:1px solid var(--border);${i%2===0?'background:#fff':'background:#f7fafb'}">
+      <td style="padding:8px 10px;font-size:13px">${escHtml(item.nome)}</td>
+      <td style="padding:8px 10px">
+        <input type="text" value="${escHtml(item.prop)}" placeholder="Nome do proprietário"
+          style="width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px"
+          onchange="_pdfsCarregados[${i}].prop=this.value;_pdfsCarregados[${i}].email=getEmailProp(this.value);renderPdfTabela()">
+      </td>
+      <td style="padding:8px 10px">
+        <input type="email" value="${escHtml(item.email)}" placeholder="email@exemplo.com"
+          style="width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px${semEmail?';border-color:#ffc107':''}"
+          onchange="_pdfsCarregados[${i}].email=this.value;renderPdfTabela()">
+      </td>
+      <td style="padding:8px 10px;text-align:center">${badge}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function enviarPdfsProprietarios() {
+  const paraEnviar = _pdfsCarregados.filter(x => x.email && x.status !== 'enviado');
+  if (!paraEnviar.length) { alert('Nenhum PDF com e-mail válido para enviar.'); return; }
+  if (!confirm(`Enviar ${paraEnviar.length} PDF(s) para os proprietários?`)) return;
+
+  const btn = document.getElementById('btnEnviarPdfs');
+  btn.disabled = true;
+  let ok = 0, erro = 0;
+
+  for (let i = 0; i < _pdfsCarregados.length; i++) {
+    const item = _pdfsCarregados[i];
+    if (!item.email || item.status === 'enviado') continue;
+    btn.textContent = `Enviando ${ok+erro+1}/${paraEnviar.length}...`;
+
+    const fd = new FormData();
+    fd.append('pdf', item.file);
+    fd.append('email_dest', item.email);
+    fd.append('proprietario', item.prop || item.nome);
+    fd.append('ano', anoCalculado || new Date().getFullYear() - 1);
+
+    try {
+      const r = await fetch('/api/dimob_enviar_pdf_proprietario', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (j.ok) { _pdfsCarregados[i].status = 'enviado'; ok++; }
+      else       { _pdfsCarregados[i].status = 'erro';    erro++; }
+    } catch(e)   { _pdfsCarregados[i].status = 'erro';    erro++; }
+    renderPdfTabela();
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar para Proprietários`;
+  document.getElementById('pdfMsgEnvio').textContent = `${ok} enviado(s)${erro ? ', '+erro+' erro(s)' : ''}.`;
 }
 
 // ─── Envio de E-mail DIMOB ────────────────────────────────────────────────────
