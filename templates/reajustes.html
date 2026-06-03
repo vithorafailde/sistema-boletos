@@ -596,6 +596,16 @@ function renderTabela() {
         ? `<span class="val-na">R$ 0,00</span>`
         : diff(c.diferenca);
 
+    // Badge do índice — para MAIOR_IPCA_IGPM mostra qual foi escolhido
+    let indiceBadge;
+    if (c.indice_norm === 'MAIOR_IPCA_IGPM') {
+      const aplicado = c.indice_aplicado || '—';
+      indiceBadge = `<span class="badge badge-idx" title="Contrato: maior entre IPCA e IGPM">${esc(c.indice)}</span>
+        ${c.indice_aplicado ? `<br><small style="color:var(--purple);font-weight:700">${esc(aplicado)} (maior)</small>` : ''}`;
+    } else {
+      indiceBadge = `<span class="badge badge-idx">${esc(c.indice)}</span>`;
+    }
+
     return `<tr data-nl="${c.num_linha}">
       <td style="text-align:center">${chkHtml}</td>
       <td>
@@ -603,7 +613,7 @@ function renderTabela() {
         <div class="name-sub">${esc(c.endereco)}</div>
       </td>
       <td style="white-space:nowrap">${brl(c.aluguel)}</td>
-      <td><span class="badge badge-idx">${esc(c.indice)}</span></td>
+      <td>${indiceBadge}</td>
       <td style="white-space:nowrap">${esc(c.data_reajuste)}</td>
       <td>${c.vigencia_ok === false ? `<span class="badge" style="background:#D8E4E4;color:#6B8585;border:1px solid #C8D4D4">Menos de 1 ano</span>` : badgeStatus(c.status)}</td>
       <td style="white-space:nowrap">${pct(c.acumulado_pct)}${aviso12}${metodoHtml}</td>

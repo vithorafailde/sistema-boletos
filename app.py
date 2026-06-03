@@ -216,11 +216,18 @@ def safe_float(val):
 # ─── Reajuste de Aluguel ──────────────────────────────────────────────────────
 
 def normalizar_indice(s):
-    """Normaliza o texto do índice para uma das chaves de BACEN_SERIES."""
+    """Normaliza o texto do índice para uma das chaves de BACEN_SERIES.
+    Quando o texto contém IPCA e IGPM ao mesmo tempo (ex: 'IPCA/IGPM acumulado'),
+    retorna 'MAIOR_IPCA_IGPM' — o sistema calculará os dois e usará o maior.
+    """
     s = (s or '').upper().strip()
-    if 'IPCA' in s:
+    tem_ipca = 'IPCA' in s
+    tem_igpm = 'IGP' in s or 'IGPM' in s
+    if tem_ipca and tem_igpm:
+        return 'MAIOR_IPCA_IGPM'
+    if tem_ipca:
         return 'IPCA'
-    if 'IGP' in s or 'IGPM' in s:
+    if tem_igpm:
         return 'IGPM'
     if 'INPC' in s:
         return 'INPC'
@@ -2298,11 +2305,19 @@ def api_calcular_reajustes():
     indices_necessarios = set(c['indice_norm'] for c in contratos)
     tem_este_mes = any(c['status'] == 'ESTE_MES' for c in contratos)
 
+    # MAIOR_IPCA_IGPM requer dados de ambos os índices
+    indices_busca = set()
+    for idx in indices_necessarios:
+        if idx == 'MAIOR_IPCA_IGPM':
+            indices_busca.update(['IPCA', 'IGPM'])
+        elif idx:
+            indices_busca.add(idx)
+
     historicos_mensal  = {}   # % mensal — IGPM usa série 28655 (alta precisão), demais série padrão
     historicos_indice  = {}   # número-índice — para ESTE_MES IPCA/INPC (precisão máxima)
     erros_bacen        = {}
 
-    for idx in indices_necessarios:
+    for idx in indices_busca:
         # ── % mensal (BACEN SGS) — sempre busca; IGPM usa série 28655 alta precisão ──
         sid_mensal = BACEN_SERIES.get(idx)
         if sid_mensal:
@@ -2362,31 +2377,48 @@ def api_calcular_reajustes():
             continue
 
         metodo = 'mensal'
+        indice_aplicado = None  # qual índice foi efetivamente usado (para MAIOR_IPCA_IGPM)
         try:
             data_rej = date.fromisoformat(c['data_reajuste_iso'])
             idx = c['indice_norm']
-            if c['status'] == 'ESTE_MES':
-                if idx == 'IGPM':
-                    # Série 28655 (alta precisão) já está em historicos_mensal['IGPM']
-                    acum, meses = calcular_acumulado_12m(
-                        historicos_mensal.get('IGPM', {}), data_rej)
-                elif idx in historicos_indice:
-                    # IPCA / INPC — BACEN 1737/1617: número-índice real (base dez/1993=100)
-                    acum, meses = calcular_por_numero_indice(
-                        historicos_indice[idx], data_rej)
-                    if acum is None:
-                        acum, meses = calcular_acumulado_12m(
-                            historicos_mensal.get(idx, {}), data_rej)
+
+            def _calcular_um(nome_idx):
+                """Calcula acumulado para um índice específico."""
+                if c['status'] == 'ESTE_MES':
+                    if nome_idx == 'IGPM':
+                        return calcular_acumulado_12m(historicos_mensal.get('IGPM', {}), data_rej)
+                    elif nome_idx in historicos_indice:
+                        r, m = calcular_por_numero_indice(historicos_indice[nome_idx], data_rej)
+                        if r is None:
+                            return calcular_acumulado_12m(historicos_mensal.get(nome_idx, {}), data_rej)
+                        return r, m
+                    else:
+                        return calcular_acumulado_12m(historicos_mensal.get(nome_idx, {}), data_rej)
                 else:
-                    acum, meses = calcular_acumulado_12m(
-                        historicos_mensal.get(idx, {}), data_rej)
+                    return calcular_acumulado_12m(historicos_mensal.get(nome_idx, {}), data_rej)
+
+            if idx == 'MAIOR_IPCA_IGPM':
+                acum_ipca, meses_ipca = _calcular_um('IPCA')
+                acum_igpm, meses_igpm = _calcular_um('IGPM')
+                # Usa o maior; se um falhar, usa o outro
+                if acum_ipca is not None and acum_igpm is not None:
+                    if acum_ipca >= acum_igpm:
+                        acum, meses, indice_aplicado = acum_ipca, meses_ipca, 'IPCA'
+                    else:
+                        acum, meses, indice_aplicado = acum_igpm, meses_igpm, 'IGPM'
+                elif acum_ipca is not None:
+                    acum, meses, indice_aplicado = acum_ipca, meses_ipca, 'IPCA'
+                elif acum_igpm is not None:
+                    acum, meses, indice_aplicado = acum_igpm, meses_igpm, 'IGPM'
+                else:
+                    acum, meses = None, 0
             else:
-                # FUTURO — % mensal composto (dados parciais)
-                acum, meses = calcular_acumulado_12m(
-                    historicos_mensal.get(idx, {}), data_rej)
+                acum, meses = _calcular_um(idx)
+
         except Exception:
             acum, meses = None, 0
         c['metodo_calculo'] = metodo
+        c['indice_aplicado'] = indice_aplicado  # None para índices simples
 
         c['acumulado_pct'] = acum
         c['meses_base']    = meses
