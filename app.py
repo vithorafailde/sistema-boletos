@@ -1822,8 +1822,8 @@ def _gerar_html_email(proprietario, mes, rows, total, hoje):
   </div>
 </body></html>"""
 
-def gravar_log_envio(proprietario, email, mes, status, erro=""):
-    """Acrescenta uma entrada no log de envios de informes."""
+def gravar_log_envio(nome, email, mes, status, erro="", tipo="informe"):
+    """Acrescenta uma entrada no log de envios (tipo='informe' ou 'boleto')."""
     import datetime as _dt
     try:
         log = []
@@ -1832,13 +1832,14 @@ def gravar_log_envio(proprietario, email, mes, status, erro=""):
                 log = json.load(f)
         log.insert(0, {
             "timestamp": _dt.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-            "proprietario": proprietario,
+            "tipo": tipo,
+            "nome": nome,
             "email": email,
             "mes": mes,
             "status": status,   # "enviado" | "erro"
             "detalhe": erro,
         })
-        log = log[:200]  # mantém só os últimos 200
+        log = log[:500]  # mantém só os últimos 500
         tmp = str(LOG_ENVIOS_FILE) + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(log, f, ensure_ascii=False, indent=2)
@@ -1850,10 +1851,14 @@ def gravar_log_envio(proprietario, email, mes, status, erro=""):
 @app.route("/api/log_envios", methods=["GET"])
 @login_required
 def api_log_envios():
+    tipo = request.args.get("tipo")  # ?tipo=informe ou ?tipo=boleto
     if not LOG_ENVIOS_FILE.exists():
         return jsonify([])
     with open(LOG_ENVIOS_FILE, encoding="utf-8") as f:
-        return jsonify(json.load(f))
+        log = json.load(f)
+    if tipo:
+        log = [e for e in log if e.get("tipo") == tipo]
+    return jsonify(log)
 
 
 @app.route("/enviar_informe", methods=["POST"])
@@ -1883,10 +1888,10 @@ def enviar_informe():
         reply_to  = smtp["user"] or None
         try:
             _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body, reply_to=reply_to)
-            gravar_log_envio(proprietario, email_dest, mes, "enviado")
+            gravar_log_envio(proprietario, email_dest, mes, "enviado", tipo="informe")
             return jsonify({"ok": True})
         except Exception as ex:
-            gravar_log_envio(proprietario, email_dest, mes, "erro", str(ex))
+            gravar_log_envio(proprietario, email_dest, mes, "erro", str(ex), tipo="informe")
             return jsonify({"ok": False, "erro": str(ex)})
 
     # Senão usa SMTP
@@ -1899,10 +1904,10 @@ def enviar_informe():
     try:
         with _smtp_connect(smtp, timeout=15) as s:
             s.sendmail(remetente, [email_dest], msg.as_string())
-        gravar_log_envio(proprietario, email_dest, mes, "enviado")
+        gravar_log_envio(proprietario, email_dest, mes, "enviado", tipo="informe")
         return jsonify({"ok": True})
     except Exception as ex:
-        gravar_log_envio(proprietario, email_dest, mes, "erro", str(ex))
+        gravar_log_envio(proprietario, email_dest, mes, "erro", str(ex), tipo="informe")
         return jsonify({"ok": False, "erro": str(ex)})
 
 
@@ -2960,11 +2965,15 @@ def enviar_boleto_locatario():
         )
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
-                return jsonify({"ok": resp.status in (200, 201)})
+                ok = resp.status in (200, 201)
+                gravar_log_envio(locatario or nome_anexo, email_dest, mes, "enviado" if ok else "erro", tipo="boleto")
+                return jsonify({"ok": ok})
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="ignore")
+            gravar_log_envio(locatario or nome_anexo, email_dest, mes, "erro", f"HTTP {e.code}: {body[:200]}", tipo="boleto")
             return jsonify({"ok": False, "erro": f"HTTP {e.code}: {body[:300]}"})
         except Exception as e:
+            gravar_log_envio(locatario or nome_anexo, email_dest, mes, "erro", str(e), tipo="boleto")
             return jsonify({"ok": False, "erro": str(e)})
 
     # SMTP com anexo
@@ -2983,8 +2992,10 @@ def enviar_boleto_locatario():
     try:
         with _smtp_connect(smtp, timeout=15) as s:
             s.sendmail(remetente, [email_dest], msg.as_string())
+        gravar_log_envio(locatario or nome_anexo, email_dest, mes, "enviado", tipo="boleto")
         return jsonify({"ok": True})
     except Exception as e:
+        gravar_log_envio(locatario or nome_anexo, email_dest, mes, "erro", str(e), tipo="boleto")
         return jsonify({"ok": False, "erro": str(e)})
 
 

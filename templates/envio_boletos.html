@@ -161,6 +161,30 @@ table.main-table { width: 100%; border-collapse: collapse; }
     <div class="log-box" id="logBox"></div>
   </div>
 
+  <!-- ── Auditoria de Envios ───────────────────────────────────────── -->
+  <div class="card" id="secaoAuditoria" style="margin-top:4px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">📋 Auditoria de Envios</div>
+      <button class="btn btn-outline btn-sm" onclick="carregarLogEnvios()">↻ Atualizar</button>
+    </div>
+    <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--header);color:#fff">
+            <th style="padding:9px 12px;text-align:left;font-weight:600;white-space:nowrap">Data / Hora</th>
+            <th style="padding:9px 12px;text-align:left;font-weight:600">Locatário</th>
+            <th style="padding:9px 12px;text-align:left;font-weight:600">E-mail</th>
+            <th style="padding:9px 12px;text-align:left;font-weight:600">Mês Ref.</th>
+            <th style="padding:9px 12px;text-align:center;font-weight:600">Status</th>
+          </tr>
+        </thead>
+        <tbody id="logEnviosBody">
+          <tr><td colspan="5" style="padding:18px;text-align:center;color:var(--muted)">Nenhum envio registrado ainda.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- ── Resultados ─────────────────────────────────────────────────── -->
   <div id="secaoResultados">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
@@ -453,6 +477,7 @@ async function enviarUm(idx) {
     alert('Erro ao enviar: ' + (result.erro || 'Erro desconhecido'));
   }
   renderResultados();
+  carregarLogEnvios();
 }
 
 async function enviarTodos() {
@@ -497,6 +522,7 @@ async function enviarTodos() {
 
   document.getElementById('btnEnviarTodos').disabled = false;
   document.getElementById('btnEnviarTodos').textContent = '📧 Enviar Todos com E-mail';
+  carregarLogEnvios();
 }
 
 function novoProcessamento() {
@@ -509,6 +535,34 @@ function novoProcessamento() {
   document.getElementById('btnProcessar').disabled = true;
 }
 
+// ─── Auditoria de Envios ──────────────────────────────────────────────────────
+async function carregarLogEnvios() {
+  try {
+    const r = await fetch('/api/log_envios?tipo=boleto');
+    const log = await r.json();
+    const tbody = document.getElementById('logEnviosBody');
+    if (!tbody) return;
+    if (!log || log.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="padding:18px;text-align:center;color:var(--muted)">Nenhum envio registrado ainda.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = log.map((e, i) => {
+      const bg = i % 2 === 0 ? '#fff' : '#f7fafb';
+      const ok = e.status === 'enviado';
+      const badge = ok
+        ? '<span class="badge badge-sent">✓ Enviado</span>'
+        : `<span class="badge badge-err" title="${escHtml(e.detalhe||'')}">✗ Erro</span>`;
+      return `<tr style="background:${bg};border-top:1px solid var(--border)">
+        <td style="padding:8px 12px;white-space:nowrap;color:var(--muted)">${e.timestamp}</td>
+        <td style="padding:8px 12px;font-weight:600">${escHtml(e.nome||'')}</td>
+        <td style="padding:8px 12px;color:var(--accent)">${escHtml(e.email||'')}</td>
+        <td style="padding:8px 12px">${escHtml(e.mes||'')}</td>
+        <td style="padding:8px 12px;text-align:center">${badge}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {}
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function escHtml(s) {
@@ -517,6 +571,7 @@ function escHtml(s) {
 
 // Inicialização
 carregarLocatarios();
+carregarLogEnvios();
 </script>
 </body>
 </html>
