@@ -1861,7 +1861,6 @@ document.getElementById('inMes').value=`${M[now.getMonth()]}/${now.getFullYear()
     if (!salvoEm) return;
     const raw = localStorage.getItem('boletos_dados');
     if (!raw) return;
-    // Aceita dados do mês atual OU do mês anterior (permite usar depois da virada)
     const [anoS, mesS] = salvoEm.split('-').map(Number);
     const [anoA, mesA] = anoMesAtual.split('-').map(Number);
     const diffMeses = (anoA - anoS) * 12 + (mesA - mesS);
@@ -1877,8 +1876,11 @@ document.getElementById('inMes').value=`${M[now.getMonth()]}/${now.getFullYear()
     document.getElementById('secaoUpload').style.display = 'none';
     if (mes) document.getElementById('inMes').value = mes;
     mostrar(d, mes);
+    // Se veio da home com ?informes=1, abre direto na seção de informes
+    if (new URLSearchParams(window.location.search).get('informes') === '1') {
+      setTimeout(() => abrirInformes(), 100);
+    }
   } catch(e) {
-    // Falha silenciosa — mostra tela de upload normalmente
     try { document.getElementById('secaoUpload').style.display = 'block'; } catch(_) {}
   }
 })();
