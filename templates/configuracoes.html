@@ -148,6 +148,7 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(
 <script>
 // ─── API Anthropic ────────────────────────────────────────────────────────────
 async function salvarApi() {
+  if (!confirm('Confirma o salvamento da chave da API Anthropic?')) return;
   const key = document.getElementById('inputApiKey').value.trim();
   if (!key) return;
   const btn = document.getElementById('btnSalvarApi');
@@ -174,6 +175,7 @@ async function salvarApi() {
 
 // ─── E-mail / SMTP ────────────────────────────────────────────────────────────
 async function salvarSmtp() {
+  if (!confirm('Confirma o salvamento das configurações de e-mail?')) return;
   const host      = document.getElementById('smtpHost').value.trim();
   const port      = parseInt(document.getElementById('smtpPort').value) || 587;
   const user      = document.getElementById('smtpUser').value.trim();

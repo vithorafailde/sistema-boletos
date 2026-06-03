@@ -433,6 +433,7 @@ function marcarAlterado(idx, valor) {
 
 async function salvarHistoricoManual() {
   if (!dadosCalculados || Object.keys(alteracoesHist).length === 0) return;
+  if (!confirm('Confirma o salvamento dos aluguéis anteriores?\n\nOs valores serão gravados no histórico e os informes serão recalculados.')) return;
 
   const btn = document.getElementById('btnSalvarHist');
   btn.disabled = true;

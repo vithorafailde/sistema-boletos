@@ -1214,6 +1214,7 @@ function filtrar(tipo, btn) {
 
 // ─── Salvar e Exportar ────────────────────────────────────────────────────────
 async function salvarExtras() {
+  if (!confirm('Confirma o salvamento para o próximo mês?\n\nOs dados de multa, juros e extras serão gravados no histórico DIMOB.')) return;
   const payload = Object.assign({}, dados, {mes: document.getElementById('inMes').value || ''});
   const r = await fetch('/salvar_extras',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   const j = await r.json();
@@ -1856,6 +1857,7 @@ function fecharModalEmails() {
 }
 
 async function salvarEmailsProprietarios() {
+  if (!confirm('Confirma o salvamento dos e-mails dos proprietários?')) return;
   const inputs = document.querySelectorAll('#emailsListaModal input[data-ekey]');
   const emails = {};
   inputs.forEach(inp => { if (inp.value.trim()) emails[inp.dataset.ekey] = inp.value.trim(); });
