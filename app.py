@@ -2900,23 +2900,19 @@ def api_dimob_enviar_email():
     html_body = _gerar_html_email_dimob(proprietario, cpf_prop, ano, contratos, hoje)
     assunto   = f"Informe de Rendimentos {ano} — {proprietario}"
 
-    cfg = ler_config()
-    resend_key = os.environ.get("RESEND_API_KEY") or cfg.get("resend_api_key", "")
-    smtp_user  = os.environ.get("SMTP_USER") or cfg.get("smtp_user", "")
-
-    if resend_key:
-        ok, err, rid = _enviar_via_resend(
-            resend_key, email_dest, assunto, html_body,
-            reply_to=smtp_user or None
-        )
-        if ok:
-            gravar_log_envio(proprietario, email_dest, str(ano), "sent", tipo="dimob", resend_id=rid)
-            return jsonify({"ok": True})
-        else:
-            gravar_log_envio(proprietario, email_dest, str(ano), "erro", err, tipo="dimob")
-            return jsonify({"ok": False, "erro": err})
-    else:
+    smtp = ler_smtp()
+    if not smtp["resend_key"]:
         return jsonify({"ok": False, "erro": "Resend não configurado. Configure em Configuracoes."})
+
+    remetente = "Funchal Imoveis <noreply@funchalimoveis.com.br>"
+    reply_to  = smtp["user"] or None
+    try:
+        rid = _enviar_via_resend(smtp["resend_key"], remetente, email_dest, assunto, html_body, reply_to=reply_to)
+        gravar_log_envio(proprietario, email_dest, str(ano), "sent", tipo="dimob", resend_id=rid)
+        return jsonify({"ok": True})
+    except Exception as ex:
+        gravar_log_envio(proprietario, email_dest, str(ano), "erro", str(ex), tipo="dimob")
+        return jsonify({"ok": False, "erro": str(ex)})
 
 
 @app.route("/envio_boletos")
