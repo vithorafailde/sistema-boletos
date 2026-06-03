@@ -237,6 +237,7 @@ grammarly-extension,grammarly-desktop-integration,
 let todosContratos = [];
 let selecionados   = new Set();   // num_linha dos marcados
 let zerados        = new Set();   // num_linha marcados para aplicar 0%
+let manuais        = {};          // num_linha → valor manual digitado (renovação)
 let filtroAtivo    = 'TODOS';
 
 // ── Upload area em Shadow DOM (extensões do Chrome não conseguem injetar aqui) ──
@@ -384,6 +385,40 @@ function toggleZerado(num_linha) {
   atualizarContador();
 }
 
+function setManual(num_linha, valor) {
+  const v = parseFloat(String(valor).replace(',', '.'));
+  if (!isNaN(v) && v > 0) {
+    manuais[num_linha] = v;
+    selecionados.add(num_linha);  // seleciona automaticamente ao digitar
+    zerados.delete(num_linha);    // manual prevalece sobre 0%
+  } else {
+    delete manuais[num_linha];
+  }
+  // Atualiza só a linha afetada sem re-renderizar tudo
+  const row = document.querySelector(`tr[data-nl="${num_linha}"]`);
+  if (row) {
+    const tdNovo = row.querySelector('.td-novo');
+    const tdDif  = row.querySelector('.td-dif');
+    const c = todosContratos.find(x => x.num_linha === num_linha);
+    if (c && tdNovo && tdDif) {
+      const v2 = manuais[num_linha];
+      if (v2) {
+        const dif = v2 - c.aluguel;
+        const sinal = dif >= 0 ? '+' : '-';
+        const cls   = dif >= 0 ? 'val-pos' : 'val-neg';
+        tdNovo.querySelector('.novo-calc').style.opacity = '.35';
+        tdNovo.querySelector('.novo-manual-label').style.display = '';
+        tdDif.innerHTML = `<span class="${cls}">${sinal}R$ ${Math.abs(dif).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+      } else {
+        tdNovo.querySelector('.novo-calc').style.opacity = '1';
+        tdNovo.querySelector('.novo-manual-label').style.display = 'none';
+        tdDif.innerHTML = diff(c.diferenca);
+      }
+    }
+  }
+  atualizarContador();
+}
+
 function atualizarContador() {
   document.getElementById('countSelecionados').textContent =
     `${selecionados.size} selecionado(s)`;
@@ -405,7 +440,11 @@ async function aplicarReajustes() {
 
   const para_aplicar = todosContratos
     .filter(c => selecionados.has(c.num_linha))
-    .map(c => zerados.has(c.num_linha) ? {...c, novo_aluguel: c.aluguel} : c);
+    .map(c => {
+      if (manuais[c.num_linha])       return {...c, novo_aluguel: manuais[c.num_linha]};
+      if (zerados.has(c.num_linha))   return {...c, novo_aluguel: c.aluguel};
+      return c;
+    });
 
   try {
     const resp = await fetch('/api/aplicar_reajustes', {
@@ -438,6 +477,7 @@ async function aplicarReajustes() {
       });
       selecionados.clear();
       zerados.clear();
+      manuais = {};
       arquivoSelecionado = null;
       document.getElementById('fileName').textContent = '';
       // Recalcula contadores localmente
@@ -532,15 +572,31 @@ function renderTabela() {
         <span style="color:var(--muted);">Aplicar 0% (manter ${brl(c.aluguel)})</span>
       </div>` : '';
 
-    const novoValor = negativo && zerados.has(c.num_linha)
+    const valManual = manuais[c.num_linha];
+    const novoCalcHtml = negativo && zerados.has(c.num_linha)
       ? `<span style="font-weight:700;color:var(--muted);">${brl(c.aluguel)} <small>(0%)</small></span>`
       : `<span style="font-weight:700;color:var(--green);">${brl(c.novo_aluguel)}</span>`;
 
-    const difValor = negativo && zerados.has(c.num_linha)
-      ? `<span class="val-na">R$ 0,00</span>`
-      : diff(c.diferenca);
+    // Campo de valor manual — disponível para todos os contratos aplicáveis (ESTE_MES)
+    const manualHtml = c.aplicavel && c.status === 'ESTE_MES' ? `
+      <div style="margin-top:6px;font-size:10px;color:var(--muted);">
+        <div style="margin-bottom:2px;">Renovação — digitar valor:</div>
+        <input type="number" step="0.01" min="0" placeholder="ex: 2.500,00"
+          value="${valManual || ''}"
+          oninput="setManual(${c.num_linha}, this.value)"
+          style="width:110px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:#fff;">
+        ${valManual ? `<span class="novo-manual-label" style="color:var(--purple);font-weight:700;margin-left:4px;">manual</span>` : `<span class="novo-manual-label" style="display:none;color:var(--purple);font-weight:700;margin-left:4px;">manual</span>`}
+      </div>` : '';
 
-    return `<tr>
+    const novoValorWrap = `<div class="novo-calc" style="opacity:${valManual ? '.35' : '1'}">${novoCalcHtml}${zero0Html}</div>${manualHtml}`;
+
+    const difValor = valManual
+      ? (() => { const d = valManual - c.aluguel; const s = d>=0?'+':'-'; const cls = d>=0?'val-pos':'val-neg'; return `<span class="${cls}">${s}R$ ${Math.abs(d).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`; })()
+      : negativo && zerados.has(c.num_linha)
+        ? `<span class="val-na">R$ 0,00</span>`
+        : diff(c.diferenca);
+
+    return `<tr data-nl="${c.num_linha}">
       <td style="text-align:center">${chkHtml}</td>
       <td>
         <div class="name-main">${esc(c.locatario)}</div>
@@ -551,8 +607,8 @@ function renderTabela() {
       <td style="white-space:nowrap">${esc(c.data_reajuste)}</td>
       <td>${c.vigencia_ok === false ? `<span class="badge" style="background:#D8E4E4;color:#6B8585;border:1px solid #C8D4D4">Menos de 1 ano</span>` : badgeStatus(c.status)}</td>
       <td style="white-space:nowrap">${pct(c.acumulado_pct)}${aviso12}${metodoHtml}</td>
-      <td style="white-space:nowrap">${novoValor}${zero0Html}</td>
-      <td style="white-space:nowrap">${difValor}</td>
+      <td class="td-novo">${novoValorWrap}</td>
+      <td class="td-dif" style="white-space:nowrap">${difValor}</td>
     </tr>`;
   }).join('');
 }
