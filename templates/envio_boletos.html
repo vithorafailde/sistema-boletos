@@ -517,6 +517,8 @@ async function enviarTodos() {
   document.getElementById('btnEnviarTodos').disabled = true;
   document.getElementById('btnEnviarTodos').textContent = 'Enviando...';
 
+  let ok = 0, erro = 0, erros = [];
+
   for (const r of paraEnviar) {
     const email = r._emailFinal;
     if (!email) continue;
@@ -534,9 +536,12 @@ async function enviarTodos() {
     if (result.ok) {
       resultados[r._idx]._enviado = true;
       resultados[r._idx]._erroEnvio = null;
+      ok++;
     } else {
       resultados[r._idx]._enviado = false;
       resultados[r._idx]._erroEnvio = result.erro || 'Erro';
+      erro++;
+      erros.push(`${r.locatario_match || r.locatario_pdf || email}: ${result.erro || 'Erro'}`);
     }
     renderResultados();
     // Pequena pausa para não sobrecarregar a API
@@ -546,6 +551,10 @@ async function enviarTodos() {
   document.getElementById('btnEnviarTodos').disabled = false;
   document.getElementById('btnEnviarTodos').textContent = 'Enviar Todos com E-mail';
   carregarLogEnvios();
+
+  let msg = `${ok} boleto(s) enviado(s) com sucesso!`;
+  if (erro > 0) msg += `\n\n${erro} erro(s):\n` + erros.join('\n');
+  alert(msg);
 }
 
 function novoProcessamento() {
