@@ -1841,7 +1841,7 @@ def gravar_log_envio(nome, email, mes, status, erro="", tipo="informe", resend_i
             "detalhe": erro,
             "resend_id": resend_id,
         })
-        log = log[:500]
+        log = log[:2000]
         tmp = str(LOG_ENVIOS_FILE) + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(log, f, ensure_ascii=False, indent=2)

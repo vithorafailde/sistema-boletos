@@ -423,9 +423,14 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
 
     <!-- ── Auditoria de Envios ──────────────────────────────────────────── -->
     <div id="secaoAuditoria" style="margin-top:32px;display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="font-size:15px;font-weight:700;color:var(--text)">📋 Auditoria de Envios</div>
-        <button class="btn btn-outline btn-sm" onclick="carregarLogEnvios()" style="font-size:12px;padding:4px 12px">↻ Atualizar</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="filtroMesLog" class="form-input" style="font-size:12px;padding:5px 10px;width:auto" onchange="renderLogFiltrado()">
+            <option value="">Todos os meses</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="carregarLogEnvios()" style="font-size:12px;padding:4px 12px">↻ Atualizar</button>
+        </div>
       </div>
       <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -1736,42 +1741,56 @@ async function enviarInforme(propKey) {
 }
 
 // ─── Auditoria de Envios ──────────────────────────────────────────────────────
+let _logEnviosCache = [];
+const AUDIT_BADGES = {
+  sent:      ['#D8E4F0','#1A4A6E','Enviado'],
+  delivered: ['#D0F0D8','#155724','Entregue'],
+  delayed:   ['#FFF3CD','#856404','Atrasado'],
+  bounced:   ['#F8D7DA','#721C24','Devolvido'],
+  complained:['#F5D5F5','#5A1A6E','Spam'],
+  opened:    ['#D8EFF8','#0C5D8A','Aberto'],
+  clicked:   ['#E8F0D0','#3A5A00','Clicado'],
+  erro:      ['#F8D7DA','#721C24','Erro'],
+};
+
 async function carregarLogEnvios() {
   try {
     const r = await fetch('/api/log_envios?tipo=informe');
-    const log = await r.json();
+    _logEnviosCache = await r.json();
     const sec = document.getElementById('secaoAuditoria');
-    const tbody = document.getElementById('logEnviosBody');
-    if (!sec || !tbody) return;
-    sec.style.display = 'block';
-    if (!log || log.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--muted)">Nenhum envio registrado ainda.</td></tr>';
-      return;
+    if (sec) sec.style.display = 'block';
+    const sel = document.getElementById('filtroMesLog');
+    if (sel) {
+      const meses = [...new Set(_logEnviosCache.map(e => e.mes).filter(Boolean))];
+      const atual = sel.value;
+      sel.innerHTML = '<option value="">Todos os meses</option>' +
+        meses.map(m => `<option value="${m}"${m===atual?' selected':''}>${m}</option>`).join('');
     }
-    tbody.innerHTML = log.map((e, i) => {
-      const bg = i % 2 === 0 ? '#fff' : '#f7fafb';
-      const ok = e.status === 'enviado';
-        const BADGES = {
-        sent:      ['#D8E4F0','#1A4A6E','Enviado'],
-        delivered: ['#D0F0D8','#155724','Entregue'],
-        delayed:   ['#FFF3CD','#856404','Atrasado'],
-        bounced:   ['#F8D7DA','#721C24','Devolvido'],
-        complained:['#F5D5F5','#5A1A6E','Spam'],
-        opened:    ['#D8EFF8','#0C5D8A','Aberto'],
-        clicked:   ['#E8F0D0','#3A5A00','Clicado'],
-        erro:      ['#F8D7DA','#721C24','Erro'],
-      };
-      const b = BADGES[e.status] || ['#EEE','#555', e.status];
-      const badge = `<span style="background:${b[0]};color:${b[1]};padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700" title="${e.detalhe||''}">${b[2]}</span>`;
-      return `<tr style="background:${bg};border-top:1px solid var(--border)">
-        <td style="padding:9px 14px;white-space:nowrap;color:var(--muted)">${e.timestamp}</td>
-        <td style="padding:9px 14px;font-weight:600">${e.nome||e.proprietario||''}</td>
-        <td style="padding:9px 14px;color:var(--accent)">${e.email}</td>
-        <td style="padding:9px 14px">${e.mes}</td>
-        <td style="padding:9px 14px;text-align:center">${badge}</td>
-      </tr>`;
-    }).join('');
+    renderLogFiltrado();
   } catch(e) {}
+}
+
+function renderLogFiltrado() {
+  const tbody = document.getElementById('logEnviosBody');
+  if (!tbody) return;
+  const filtro = (document.getElementById('filtroMesLog')?.value || '').trim();
+  const log = filtro ? _logEnviosCache.filter(e => e.mes === filtro) : _logEnviosCache;
+  if (!log || log.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--muted)">Nenhum envio registrado ainda.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = log.map((e, i) => {
+    const bg = i % 2 === 0 ? '#fff' : '#f7fafb';
+    const b = AUDIT_BADGES[e.status] || ['#EEE','#555', e.status];
+    const badge = `<span style="background:${b[0]};color:${b[1]};padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700" title="${e.detalhe||''}">${b[2]}</span>`;
+    return `<tr style="background:${bg};border-top:1px solid var(--border)">
+      <td style="padding:9px 14px;white-space:nowrap;color:var(--muted)">${e.timestamp}</td>
+      <td style="padding:9px 14px;font-weight:600">${e.nome||e.proprietario||''}</td>
+      <td style="padding:9px 14px;color:var(--accent)">${e.email}</td>
+      <td style="padding:9px 14px">${e.mes}</td>
+      <td style="padding:9px 14px;text-align:center">${badge}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ─── E-mails dos Proprietários ────────────────────────────────────────────────
