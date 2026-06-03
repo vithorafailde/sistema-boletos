@@ -126,7 +126,8 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 ## Informes Mensais ao Proprietário
 
 ### Como funciona
-- Botão **"📄 Informes ao Proprietário"** na tela de resultados abre a seção de informes
+- Card **"Informes"** na home page (`/`) leva para `/boletos?informes=1` — se houver dados em localStorage, abre direto na seção de informes; caso contrário mostra tela de upload
+- Botão **"📄 Informes ao Proprietário"** na tela de resultados também abre a seção de informes
 - Select dropdown filtra por proprietário (ordem alfabética)
 - Card mostra todas as unidades do proprietário com discriminação completa do repasse
 - Botão **"📄 Gerar PDF"** → abre janela com PDF profissional (Times New Roman, P&B, logo Funchal)
