@@ -315,7 +315,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick="novoProcessamento()">Novo processamento</button>
-        <button class="btn btn-outline btn-sm" onclick="salvarExtras()">Salvar para proximo mes</button>
+        <button class="btn btn-outline btn-sm" onclick="salvarExtras()">Salvar</button>
         <button class="btn btn-outline btn-sm" onclick="subtrairParcelaIPTU()"
           title="Subtrai 1 do numerador de todas as parcelas IPTU exibidas (clique 2x para subtrair 2)"
           style="border-color:var(--orange);color:var(--orange)">- 1 Parcela IPTU (todos)</button>
@@ -1241,7 +1241,7 @@ function subtrairParcelaIPTU() {
 }
 
 async function salvarExtras() {
-  if (!confirm('Confirma o salvamento para o próximo mês?\n\nOs dados de multa, juros e extras serão gravados no histórico DIMOB.')) return;
+  if (!confirm('Confirma o salvamento?\n\nOs dados serão gravados no histórico. A parcela do IPTU só avança quando o mês real mudar.')) return;
   const payload = Object.assign({}, dados, {mes: document.getElementById('inMes').value || ''});
   const r = await fetch('/salvar_extras',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   const j = await r.json();

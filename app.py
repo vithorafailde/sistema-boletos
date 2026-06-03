@@ -1380,18 +1380,31 @@ def processar():
             resultado = montar_resultado(contratos, condos_lidos, boletos_extras)
 
             historico = ler_historico()
+            mes_atual = date.today().strftime("%Y-%m")
             for row in resultado["locatarios"]:
                 h = historico.get(row["chave"], {})
+                # Só incrementa parcela se o mês real mudou desde o último salvamento
+                mesmo_mes = h.get("saved_month", "") == mes_atual
                 if not row.get("iptu") and h.get("iptu"):
-                    nova_parc = incrementar_parcela(h.get("iptu_parcela", ""))
-                    if nova_parc is not None:
+                    parc = h.get("iptu_parcela", "")
+                    if mesmo_mes:
                         row["iptu_hist"] = h["iptu"]
-                        row["iptu_parcela_hist"] = nova_parc
+                        row["iptu_parcela_hist"] = parc
+                    else:
+                        nova_parc = incrementar_parcela(parc)
+                        if nova_parc is not None:
+                            row["iptu_hist"] = h["iptu"]
+                            row["iptu_parcela_hist"] = nova_parc
                 if not row.get("iptu_vaga") and h.get("iptu_vaga"):
-                    nova_parc_v = incrementar_parcela(h.get("iptu_vaga_parcela", ""))
-                    if nova_parc_v is not None:
+                    parc_v = h.get("iptu_vaga_parcela", "")
+                    if mesmo_mes:
                         row["iptu_vaga_hist"] = h["iptu_vaga"]
-                        row["iptu_vaga_parcela_hist"] = nova_parc_v
+                        row["iptu_vaga_parcela_hist"] = parc_v
+                    else:
+                        nova_parc_v = incrementar_parcela(parc_v)
+                        if nova_parc_v is not None:
+                            row["iptu_vaga_hist"] = h["iptu_vaga"]
+                            row["iptu_vaga_parcela_hist"] = nova_parc_v
                 if not row.get("seg_fianca") and h.get("seg_fianca"):
                     row["seg_fianca_hist"] = h["seg_fianca"]
                 if not row.get("seg_incendio") and h.get("seg_incendio"):
@@ -1402,13 +1415,19 @@ def processar():
                     if h.get(k):
                         row[f"extras_fixo{_n}_val_hist"]  = h[k]
                         row[f"extras_fixo{_n}_desc_hist"] = h.get(f"extras_fixo{_n}_desc", "")
-                # Abono: replica com incremento de parcela (igual ao IPTU)
+                # Abono: replica com incremento de parcela (igual ao IPTU — só incrementa se mês mudou)
                 if h.get("abono_val"):
-                    nova_parc_ab = incrementar_parcela(h.get("abono_parcela", ""))
-                    if nova_parc_ab is not None:
+                    parc_ab = h.get("abono_parcela", "")
+                    if mesmo_mes:
                         row["abono_val_hist"] = h["abono_val"]
-                        row["abono_parcela_hist"] = nova_parc_ab
+                        row["abono_parcela_hist"] = parc_ab
                         row["abono_desc_hist"] = h.get("abono_desc", "")
+                    else:
+                        nova_parc_ab = incrementar_parcela(parc_ab)
+                        if nova_parc_ab is not None:
+                            row["abono_val_hist"] = h["abono_val"]
+                            row["abono_parcela_hist"] = nova_parc_ab
+                            row["abono_desc_hist"] = h.get("abono_desc", "")
                 # Deduções manuais do repasse: replica todo mês
                 for _n in range(1, 11):
                     if h.get(f"ded{_n}_val"):
@@ -2002,6 +2021,7 @@ def salvar_extras():
         if not chave:
             continue
         historico[chave] = {
+            "saved_month": date.today().strftime("%Y-%m"),  # mês em que foi salvo
             "iptu": row.get("iptu") or row.get("iptu_hist") or 0,
             "iptu_parcela": row.get("iptu_parcela") or row.get("iptu_parcela_hist") or "",
             "iptu_vaga": row.get("iptu_vaga") or row.get("iptu_vaga_hist") or 0,
