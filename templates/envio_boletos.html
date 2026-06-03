@@ -11,16 +11,16 @@
   --orange: #B86030; --header: #2A4A52; --purple: #6A4F8A;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
 .header { background: var(--header); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
 .header h1 { font-size: 17px; font-weight: 700; }
-.header p { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.header p { font-size: 13px; color: #94a3b8; margin-top: 2px; }
 .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 .card-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-.step-num { background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
-.btn { padding: 8px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+.step-num { background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.btn { padding: 8px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover { background: #2A6A7E; }
 .btn-primary:disabled { background: #8AABAB; cursor: not-allowed; }
@@ -30,33 +30,33 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color:
 .btn-green:hover { background: #3A5A88; }
 .btn-red { background: var(--red); color: #fff; }
 .btn-red:hover { background: #9A3535; }
-.btn-sm { padding: 4px 11px; font-size: 11px; }
-.btn-xs { padding: 2px 8px; font-size: 10px; }
-.form-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; outline: none; }
+.btn-sm { padding: 4px 11px; font-size: 13px; }
+.btn-xs { padding: 2px 8px; font-size: 12px; }
+.form-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 15px; outline: none; }
 .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,122,142,.15); }
-.form-label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
 /* File drop */
 .file-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 28px 14px; text-align: center; cursor: pointer; transition: all .18s; background: #EFF2F2; }
 .file-drop:hover, .file-drop.drag-over { border-color: var(--accent); background: #DDE8EC; }
 .file-drop .icon { font-size: 32px; margin-bottom: 8px; }
-.file-drop .lbl { font-weight: 600; font-size: 13px; }
-.file-drop .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.file-drop .lbl { font-weight: 600; font-size: 15px; }
+.file-drop .hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
 .file-drop input[type=file] { display: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
-.chip { background: #DDE8EC; border: 1px solid #A8C5CE; border-radius: 20px; padding: 2px 9px; font-size: 10px; color: var(--accent); }
+.chip { background: #DDE8EC; border: 1px solid #A8C5CE; border-radius: 20px; padding: 2px 9px; font-size: 12px; color: var(--accent); }
 /* Progress */
 .progress-bar-wrap { background: #C8D4D4; border-radius: 99px; height: 7px; margin: 10px 0; overflow: hidden; }
 .progress-bar { background: var(--accent); height: 100%; border-radius: 99px; transition: width .3s; width: 0%; }
-.log-box { background: #1A2E2E; color: #8AABAB; border-radius: 7px; padding: 10px 12px; font-family: 'Consolas', monospace; font-size: 11px; height: 130px; overflow-y: auto; margin-top: 8px; }
+.log-box { background: #1A2E2E; color: #8AABAB; border-radius: 7px; padding: 10px 12px; font-family: 'Consolas', monospace; font-size: 13px; height: 130px; overflow-y: auto; margin-top: 8px; }
 .log-ok { color: #5AD48A; } .log-warn { color: #E5B24A; } .log-err { color: #E07070; }
 /* Table */
 .table-wrap { overflow-x: auto; }
 table.main-table { width: 100%; border-collapse: collapse; }
-.main-table thead th { background: var(--header); color: #fff; padding: 9px 10px; text-align: left; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.main-table thead th { background: var(--header); color: #fff; padding: 9px 10px; text-align: left; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .main-table tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .main-table tbody tr:hover td { background: #EFF2F2; }
 /* Status badges */
-.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .badge-ok { background: #D8E4F0; color: var(--green); }
 .badge-warn { background: #FFF3CD; color: var(--yellow); }
 .badge-err { background: #F5D5D5; color: var(--red); }
@@ -67,13 +67,13 @@ table.main-table { width: 100%; border-collapse: collapse; }
 .modal { background: #fff; border-radius: 12px; padding: 24px; width: 440px; max-width: 95vw; }
 .modal h2 { font-size: 15px; margin-bottom: 14px; }
 /* API/SMTP status */
-.api-status { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 20px; }
+.api-status { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; padding: 3px 9px; border-radius: 20px; }
 .api-ok { background: #D8E4F0; color: var(--green); }
 .api-nok { background: #F5D5D5; color: var(--red); }
 .smtp-ok { background: #D8EFD8; color: #2A6A2A; }
 .smtp-nok { background: #F5EAD5; color: #8C5A00; }
 /* Email cell */
-.email-cell { font-size: 11px; color: var(--muted); }
+.email-cell { font-size: 13px; color: var(--muted); }
 /* Sections */
 #secaoProcessar { display: none; }
 #secaoResultados { display: none; }
@@ -112,13 +112,13 @@ table.main-table { width: 100%; border-collapse: collapse; }
         <span style="font-size:14px;font-weight:700">Cadastro de E-mails dos Locatários</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <span id="statusSalvo" style="font-size:11px;color:#2A6A2A;display:none">Salvo!</span>
-        <span id="cadastroChevron" style="font-size:13px;color:var(--muted);transition:transform .2s">▼</span>
+        <span id="statusSalvo" style="font-size:13px;color:#2A6A2A;display:none">Salvo!</span>
+        <span id="cadastroChevron" style="font-size:15px;color:var(--muted);transition:transform .2s">▼</span>
       </div>
     </div>
     <!-- corpo colapsável -->
     <div id="cadastroBody" style="display:none;padding:0 20px 16px">
-      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:12px">
         Os locatários são carregados automaticamente da planilha. Preencha o e-mail de cada um e clique em <strong>Salvar E-mails</strong>.
       </p>
       <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
@@ -140,7 +140,7 @@ table.main-table { width: 100%; border-collapse: collapse; }
       <span class="step-num">2</span>
       Upload dos Boletos (PDF)
     </div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+    <p style="font-size:14px;color:var(--muted);margin-bottom:14px">
       Faça o upload de todos os boletos. O sistema identifica o locatário pelo <strong>nome do arquivo</strong> automaticamente — sem precisar da IA.
     </p>
     <div id="dropBoletos" class="file-drop" onclick="document.getElementById('inBoletos').click()">
@@ -164,7 +164,7 @@ table.main-table { width: 100%; border-collapse: collapse; }
   <!-- ── Progresso ──────────────────────────────────────────────────── -->
   <div class="card" id="secaoProcessar">
     <div class="card-title"><span class="step-num">...</span> Processando PDFs...</div>
-    <div id="progTexto" style="font-size:12px;color:var(--muted)">Iniciando...</div>
+    <div id="progTexto" style="font-size:14px;color:var(--muted)">Iniciando...</div>
     <div class="progress-bar-wrap"><div class="progress-bar" id="barra"></div></div>
     <div class="log-box" id="logBox"></div>
   </div>
@@ -174,7 +174,7 @@ table.main-table { width: 100%; border-collapse: collapse; }
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin-bottom:0">Auditoria de Envios</div>
       <div style="display:flex;gap:8px;align-items:center">
-        <select id="filtroMesLog" class="form-input" style="font-size:12px;padding:5px 10px;width:auto" onchange="renderLogFiltrado()">
+        <select id="filtroMesLog" class="form-input" style="font-size:14px;padding:5px 10px;width:auto" onchange="renderLogFiltrado()">
           <option value="">Todos os meses</option>
         </select>
         <button class="btn btn-outline btn-sm" onclick="carregarLogEnvios()">↻ Atualizar</button>
@@ -203,7 +203,7 @@ table.main-table { width: 100%; border-collapse: collapse; }
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div>
         <h2 style="font-size:17px;font-weight:700">Boletos Identificados</h2>
-        <p id="subMes" style="font-size:12px;color:var(--muted)"></p>
+        <p id="subMes" style="font-size:14px;color:var(--muted)"></p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick="novoProcessamento()">Novo upload</button>
@@ -273,7 +273,7 @@ function renderLocatarios(db) {
 
   lista.innerHTML = entries.map(([chave, info]) => `
     <div style="margin-bottom:14px">
-      <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">${escHtml(info.locatario)}</label>
+      <label style="font-size:14px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">${escHtml(info.locatario)}</label>
       <input type="email" class="form-input email-loc-input"
         style="padding:6px 10px;font-size:13px"
         data-chave="${escHtml(chave)}"
@@ -438,7 +438,7 @@ function renderResultados() {
       acaoHtml  = `<span style="color:var(--muted);font-size:10px">—</span>`;
     } else if (enviado) {
       badgeHtml = `<span class="badge badge-sent">Enviado</span>`;
-      acaoHtml  = `<span style="color:#2A6A2A;font-size:10px;font-weight:600">OK</span>`;
+      acaoHtml  = `<span style="color:#2A6A2A;font-size:12px;font-weight:600">OK</span>`;
     } else if (errEnvio) {
       badgeHtml = `<span class="badge badge-err" title="${escHtml(errEnvio)}">Erro envio</span>`;
       acaoHtml  = `<button class="btn btn-primary btn-xs" id="btnEnv_${idx}" onclick="enviarUm(${idx})">Tentar novamente</button>`;
@@ -450,7 +450,7 @@ function renderResultados() {
     // Campo de email editável inline — preenchido do cadastro ou digitável
     const emailCampo = `
       <div style="display:flex;gap:4px;align-items:center">
-        <input type="email" class="form-input" style="padding:3px 6px;font-size:11px;flex:1"
+        <input type="email" class="form-input" style="padding:3px 6px;font-size:13px;flex:1"
           id="emailInp_${idx}" value="${escHtml(r.email||'')}"
           oninput="resultados[${idx}].email=this.value"
           placeholder="digitar e-mail...">
@@ -458,7 +458,7 @@ function renderResultados() {
 
     corpo.innerHTML += `
       <tr>
-        <td style="font-size:11px;color:var(--muted)">${escHtml(r.arquivo)}</td>
+        <td style="font-size:13px;color:var(--muted)">${escHtml(r.arquivo)}</td>
         <td style="font-weight:600">${escHtml(r.locatario_pdf || '—')}</td>
         <td>${r.locatario_match ? escHtml(r.locatario_match) : '<span style="color:var(--orange);font-style:italic;font-size:10px">não identificado</span>'}</td>
         <td>${emailCampo}</td>
@@ -598,7 +598,7 @@ function renderLogFiltrado() {
   tbody.innerHTML = log.map((e, i) => {
     const bg = i % 2 === 0 ? '#fff' : '#f7fafb';
     const b = AUDIT_BADGES[e.status] || ['#EEE','#555', e.status];
-    const badge = `<span style="background:${b[0]};color:${b[1]};padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700" title="${escHtml(e.detalhe||'')}">${b[2]}</span>`;
+    const badge = `<span style="background:${b[0]};color:${b[1]};padding:3px 9px;border-radius:12px;font-size:13px;font-weight:700" title="${escHtml(e.detalhe||'')}">${b[2]}</span>`;
     return `<tr style="background:${bg};border-top:1px solid var(--border)">
       <td style="padding:8px 12px;white-space:nowrap;color:var(--muted)">${e.timestamp}</td>
       <td style="padding:8px 12px;font-weight:600">${escHtml(e.nome||'')}</td>

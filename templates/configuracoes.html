@@ -10,36 +10,36 @@
   --accent:#3B7A8E; --green:#4A6E9A; --red:#B84545; --header:#2A4A52;
 }
 * { box-sizing:border-box; margin:0; padding:0; }
-body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(--text); font-size:13px; }
+body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(--text); font-size:15px; }
 .header { background:var(--header); color:#fff; padding:14px 24px; display:flex; align-items:center; gap:16px; }
 .header h1 { font-size:17px; font-weight:700; }
-.header p  { font-size:11px; color:#94a3b8; margin-top:2px; }
+.header p  { font-size:13px; color:#94a3b8; margin-top:2px; }
 .header-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
-.btn { padding:8px 18px; border-radius:7px; border:none; cursor:pointer; font-size:12px; font-weight:600; transition:all .15s; display:inline-flex; align-items:center; gap:6px; }
+.btn { padding:8px 18px; border-radius:7px; border:none; cursor:pointer; font-size:14px; font-weight:600; transition:all .15s; display:inline-flex; align-items:center; gap:6px; }
 .btn-primary { background:var(--accent); color:#fff; }
 .btn-primary:hover { background:#2A6A7E; }
 .btn-primary:disabled { background:#8AABAB; cursor:not-allowed; }
 .btn-outline { background:transparent; color:var(--accent); border:1px solid var(--accent); }
 .btn-outline:hover { background:#DDE8EC; }
-.btn-sm { padding:4px 12px; font-size:11px; }
+.btn-sm { padding:4px 12px; font-size:13px; }
 .container { max-width:860px; margin:0 auto; padding:28px 20px; display:flex; flex-direction:column; gap:20px; }
 .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
 .card-title { font-size:15px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
-.card-desc { font-size:12px; color:var(--muted); margin-bottom:20px; }
-.form-label { display:block; font-size:11px; font-weight:600; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.5px; }
-.form-input { width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:7px; font-size:13px; outline:none; }
+.card-desc { font-size:14px; color:var(--muted); margin-bottom:20px; }
+.form-label { display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.5px; }
+.form-input { width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:7px; font-size:15px; outline:none; }
 .form-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(59,122,142,.15); }
 .form-group { margin-bottom:14px; }
-.status-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+.status-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:14px; font-weight:600; }
 .badge-ok  { background:#D8EFD8; color:#155724; }
 .badge-nok { background:#F5EAD5; color:#8C5A00; }
 .badge-api-ok  { background:#D8E4F0; color:#1A4A6E; }
 .badge-api-nok { background:#F5D5D5; color:#721C24; }
-.msg-ok  { color:#155724; font-size:12px; display:none; padding:8px 12px; background:#D8EFD8; border-radius:6px; }
-.msg-err { color:#721C24; font-size:12px; display:none; padding:8px 12px; background:#F8D7DA; border-radius:6px; }
+.msg-ok  { color:#155724; font-size:14px; display:none; padding:8px 12px; background:#D8EFD8; border-radius:6px; }
+.msg-err { color:#721C24; font-size:14px; display:none; padding:8px 12px; background:#F8D7DA; border-radius:6px; }
 .resend-box { border:1px solid #A8D4A8; border-radius:8px; padding:14px 16px; background:#F0FAF0; margin-bottom:14px; }
-.resend-box-title { font-size:12px; font-weight:700; color:#2A6A2A; margin-bottom:10px; }
-.resend-hint { font-size:10px; color:#2A6A2A; margin-top:6px; }
+.resend-box-title { font-size:14px; font-weight:700; color:#2A6A2A; margin-bottom:10px; }
+.resend-hint { font-size:12px; color:#2A6A2A; margin-top:6px; }
 .divider { border:none; border-top:1px solid var(--border); margin:16px 0; }
 .grid-2 { display:grid; grid-template-columns:1fr 100px; gap:10px; }
 </style>
@@ -108,7 +108,7 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(
     </div>
 
     <hr class="divider">
-    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Ou configure SMTP manualmente</div>
+    <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Ou configure SMTP manualmente</div>
 
     <div class="grid-2">
       <div class="form-group">
@@ -132,7 +132,7 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(
       <label class="form-label">E-mail de envio (From) — deixe em branco para usar o usuário</label>
       <input type="email" id="smtpFrom" class="form-input" placeholder="noreply@dominio.com">
     </div>
-    <div style="font-size:10px;color:var(--muted);margin-bottom:14px">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
       Gmail requer <strong>App Password</strong> em myaccount.google.com → Segurança → Senhas de app.
     </div>
 

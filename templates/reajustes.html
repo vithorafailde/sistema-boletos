@@ -11,14 +11,14 @@
   --orange:#B86030; --header:#2A4A52; --purple:#6A4F8A;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:13px;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:15px;}
 
 /* ── Header ── */
 .header{background:var(--header);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;}
-.header h1{font-size:17px;font-weight:700;}
-.header p{font-size:11px;color:#94a3b8;margin-top:2px;}
+.header h1{font-size:19px;font-weight:700;}
+.header p{font-size:13px;color:#94a3b8;margin-top:2px;}
 .header-actions{margin-left:auto;display:flex;gap:8px;align-items:center;}
-.btn-header{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+.btn-header{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:14px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
 .btn-voltar{background:rgba(255,255,255,.12);color:#fff;}
 .btn-voltar:hover{background:rgba(255,255,255,.22);}
 
@@ -31,13 +31,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .file-drop{display:block;border:2px dashed var(--border);border-radius:8px;padding:24px 20px;text-align:center;cursor:pointer;transition:all .18s;background:#EFF2F2;}
 .file-drop:hover,.file-drop.drag-over{border-color:var(--accent);background:#DDE8EC;}
 .file-drop .icon{font-size:28px;margin-bottom:6px;}
-.file-drop .lbl{font-weight:600;font-size:13px;}
-.file-drop .hint{font-size:11px;color:var(--muted);margin-top:4px;}
+.file-drop .lbl{font-weight:600;font-size:15px;}
+.file-drop .hint{font-size:13px;color:var(--muted);margin-top:4px;}
 .file-drop input[type=file]{display:none;}
-#fileName{margin-top:8px;font-size:12px;font-weight:600;min-height:16px;}
+#fileName{margin-top:8px;font-size:14px;font-weight:600;min-height:16px;}
 
 /* ── Buttons ── */
-.btn{padding:9px 18px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:opacity .15s;}
+.btn{padding:9px 18px;border-radius:7px;border:none;cursor:pointer;font-size:15px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:opacity .15s;}
 .btn:disabled{opacity:.45;cursor:not-allowed;}
 .btn-primary{background:var(--accent);color:#fff;}
 .btn-primary:hover:not(:disabled){background:#2A6A7E;}
@@ -54,17 +54,17 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .stats-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
 .stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 18px;min-width:130px;border-top:3px solid var(--accent);}
 .stat .num{font-size:22px;font-weight:800;}
-.stat .lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+.stat .lbl{font-size:13px;color:var(--muted);margin-top:2px;}
 
 /* ── Alerta ── */
-.alerta{border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:14px;}
+.alerta{border-radius:8px;padding:12px 16px;font-size:14px;margin-bottom:14px;}
 .alerta-warn{background:#F5EBE0;border:1px solid #D4A87A;color:#7A3A18;}
 .alerta-ok  {background:#D8E4F0;border:1px solid #A8C4E0;color:#1A5235;}
 .alerta-err {background:#F5D5D5;border:1px solid #D4A0A0;color:#7A1B1B;}
 
 /* ── Filtros ── */
 .filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
-.filtro-btn{padding:5px 13px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;}
+.filtro-btn{padding:5px 13px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;}
 .filtro-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .filtro-btn.red{border-color:var(--red);}
 .filtro-btn.red.active{background:var(--red);color:#fff;}
@@ -72,23 +72,23 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .filtro-btn.yellow.active{background:var(--yellow);color:#fff;}
 .filtro-btn.green{border-color:var(--green);}
 .filtro-btn.green.active{background:var(--green);color:#fff;}
-.search-box{padding:6px 11px;border:1px solid var(--border);border-radius:7px;font-size:12px;outline:none;width:220px;margin-left:auto;}
+.search-box{padding:6px 11px;border:1px solid var(--border);border-radius:7px;font-size:14px;outline:none;width:220px;margin-left:auto;}
 
 /* ── Tabela ── */
 .tbl-wrap{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;}
-th{background:#D8E4E4;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:9px 10px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap;}
+th{background:#D8E4E4;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:9px 10px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap;}
 td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:#EFF2F2;}
-.name-main{font-weight:600;font-size:12px;}
-.name-sub{font-size:11px;color:var(--muted);}
+.name-main{font-weight:600;font-size:14px;}
+.name-sub{font-size:13px;color:var(--muted);}
 
 /* ── Checkbox ── */
 input[type=checkbox]{width:15px;height:15px;cursor:pointer;}
 
 /* ── Badges ── */
-.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap;}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.3px;white-space:nowrap;}
 .badge-vencido{background:#F5D5D5;color:var(--red);}
 .badge-proximo{background:#F0E8C8;color:#7A5010;}
 .badge-ok{background:#D8E4F0;color:var(--green);}
@@ -139,14 +139,14 @@ grammarly-extension,grammarly-desktop-integration,
 
 
     <div id="uploadHost" style="margin-bottom:0;"></div>
-    <div id="fileName" style="color:#2563eb;margin-top:8px;font-size:12px;font-weight:600;min-height:16px;"></div>
+    <div id="fileName" style="color:#2563eb;margin-top:8px;font-size:14px;font-weight:600;min-height:16px;"></div>
 
     <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-primary" id="btnCalcular" onclick="calcular()">
         <div class="spinner" id="spinCalc"></div>
         Calcular Reajustes
       </button>
-      <span id="statusMsg" style="font-size:12px;color:var(--muted);"></span>
+      <span id="statusMsg" style="font-size:14px;color:var(--muted);"></span>
     </div>
   </div>
 
@@ -162,7 +162,7 @@ grammarly-extension,grammarly-desktop-integration,
     <!-- Painel de aplicação -->
     <div class="card" id="painelAplicar" style="display:none;">
       <div class="card-title">Aplicar Reajustes na Planilha</div>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:14px;">
         Os contratos marcados abaixo terão o <strong>novo aluguel gravado diretamente na planilha</strong>.<br>
         No próximo processamento de boletos, os valores já estarão atualizados automaticamente.
       </p>
@@ -171,10 +171,10 @@ grammarly-extension,grammarly-desktop-integration,
           <div class="spinner" id="spinAplicar"></div>
           Aplicar Selecionados na Planilha
         </button>
-        <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <label style="font-size:14px;display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="chkTodos" onchange="selecionarTodos(this.checked)"> Selecionar todos aplicáveis
         </label>
-        <span id="countSelecionados" style="font-size:12px;color:var(--muted);"></span>
+        <span id="countSelecionados" style="font-size:14px;color:var(--muted);"></span>
       </div>
       <div id="resultadoAplicacao" style="margin-top:12px;display:none;"></div>
     </div>
@@ -182,7 +182,7 @@ grammarly-extension,grammarly-desktop-integration,
     <!-- Botão de download — fora do painelAplicar para não sumir junto -->
     <div id="painelDownload" style="display:none;margin-bottom:16px;padding:16px;background:#D8E4F0;border:2px solid #A8C4E0;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
       <div style="font-size:14px;font-weight:700;color:#3A5A88;margin-bottom:6px;">Reajustes aplicados com sucesso!</div>
-      <p style="font-size:12px;color:#166534;margin-bottom:12px;">
+      <p style="font-size:14px;color:#166534;margin-bottom:12px;">
         Baixe a planilha e <strong>substitua o arquivo original</strong> no seu computador.
         No próximo processamento de boletos os aluguéis reajustados já estarão lá.
       </p>
@@ -261,8 +261,8 @@ let arquivoSelecionado = null;
       }
       .drop:hover, .drop.over { border-color:#3B7A8E; background:#DDE8EC; }
       .ico { font-size:28px; margin-bottom:6px; }
-      .lbl { font-weight:600; font-size:13px; color:#2A3C3C; }
-      .hint { font-size:11px; color:#64748b; margin-top:4px; }
+      .lbl { font-weight:600; font-size:15px; color:#2A3C3C; }
+      .hint { font-size:13px; color:#64748b; margin-top:4px; }
     </style>
     <div class="drop" id="z">
       <div class="ico"></div>
@@ -565,7 +565,7 @@ function renderTabela() {
     // Opção "Aplicar 0%" para reajustes negativos aplicáveis
     const negativo = c.aplicavel && c.acumulado_pct != null && c.acumulado_pct < 0;
     const zero0Html = negativo ? `
-      <div style="margin-top:5px;font-size:10px;display:flex;align-items:center;gap:4px;">
+      <div style="margin-top:5px;font-size:12px;display:flex;align-items:center;gap:4px;">
         <input type="checkbox" ${zerados.has(c.num_linha)?'checked':''}
           onchange="toggleZerado(${c.num_linha});renderTabela();"
           style="width:12px;height:12px;">
@@ -579,12 +579,12 @@ function renderTabela() {
 
     // Campo de valor manual — disponível para todos os contratos aplicáveis (ESTE_MES)
     const manualHtml = c.aplicavel && c.status === 'ESTE_MES' ? `
-      <div style="margin-top:6px;font-size:10px;color:var(--muted);">
+      <div style="margin-top:6px;font-size:12px;color:var(--muted);">
         <div style="margin-bottom:2px;">Renovação — digitar valor:</div>
         <input type="number" step="0.01" min="0" placeholder="ex: 2.500,00"
           value="${valManual || ''}"
           oninput="setManual(${c.num_linha}, this.value)"
-          style="width:110px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;background:#fff;">
+          style="width:110px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:13px;background:#fff;">
         ${valManual ? `<span class="novo-manual-label" style="color:var(--purple);font-weight:700;margin-left:4px;">manual</span>` : `<span class="novo-manual-label" style="display:none;color:var(--purple);font-weight:700;margin-left:4px;">manual</span>`}
       </div>` : '';
 

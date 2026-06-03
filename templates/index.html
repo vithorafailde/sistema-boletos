@@ -11,35 +11,35 @@
   --orange: #B86030; --header: #2A4A52; --purple: #6A4F8A;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
 .header { background: var(--header); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
-.header h1 { font-size: 17px; font-weight: 700; }
-.header p { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.header h1 { font-size: 19px; font-weight: 700; }
+.header p { font-size: 13px; color: #94a3b8; margin-top: 2px; }
 .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
-.card-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-.step-num { background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.card-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.step-num { background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
 .step-num.done { background: var(--green); }
 .upload-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
 @media(max-width:900px){ .upload-grid { grid-template-columns: 1fr; } }
-.file-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; display: block; }
+.file-label { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; display: block; }
 .file-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 20px 14px; text-align: center; cursor: pointer; transition: all .18s; background: #EFF2F2; }
 .file-drop:hover, .file-drop.drag-over { border-color: var(--accent); background: #DDE8EC; }
 .file-drop .icon { font-size: 24px; margin-bottom: 6px; }
-.file-drop .lbl { font-weight: 600; font-size: 12px; }
-.file-drop .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.file-drop .opt { font-size: 10px; color: var(--orange); margin-top: 3px; font-style: italic; }
+.file-drop .lbl { font-weight: 600; font-size: 16px; }
+.file-drop .hint { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.file-drop .opt { font-size: 12px; color: var(--orange); margin-top: 3px; font-style: italic; }
 .file-drop input[type=file] { display: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
-.chip { background: #DDE8EC; border: 1px solid #A8C5CE; border-radius: 20px; padding: 2px 9px; font-size: 10px; color: var(--accent); }
+.chip { background: #DDE8EC; border: 1px solid #A8C5CE; border-radius: 20px; padding: 2px 9px; font-size: 12px; color: var(--accent); }
 .chip.green { background: #D8E4F0; border-color: #A8C4E0; color: var(--green); }
 .form-row { display: flex; gap: 12px; align-items: flex-end; margin-top: 14px; }
 .form-group { flex: 1; }
-.form-label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
-.form-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; outline: none; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+.form-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 15px; outline: none; }
 .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,122,142,.15); }
-.btn { padding: 8px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn { padding: 8px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 16px; font-weight: 600; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover { background: #2A6A7E; }
 .btn-primary:disabled { background: #8AABAB; cursor: not-allowed; }
@@ -47,59 +47,59 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color:
 .btn-outline:hover { background: #DDE8EC; }
 .btn-green { background: var(--green); color: #fff; }
 .btn-green:hover { background: #3A5A88; }
-.btn-sm { padding: 4px 11px; font-size: 11px; }
+.btn-sm { padding: 4px 11px; font-size: 13px; }
 /* Progress */
 .progress-card { display: none; }
 .progress-bar-wrap { background: #C8D4D4; border-radius: 99px; height: 7px; margin: 10px 0; overflow: hidden; }
 .progress-bar { background: var(--accent); height: 100%; border-radius: 99px; transition: width .3s; width: 0%; }
-.log-box { background: #1A2E2E; color: #8AABAB; border-radius: 7px; padding: 10px 12px; font-family: 'Consolas', monospace; font-size: 11px; height: 160px; overflow-y: auto; margin-top: 8px; }
+.log-box { background: #1A2E2E; color: #8AABAB; border-radius: 7px; padding: 10px 12px; font-family: 'Consolas', monospace; font-size: 13px; height: 160px; overflow-y: auto; margin-top: 8px; }
 .log-ok { color: #5AD48A; } .log-warn { color: #E5B24A; } .log-err { color: #E07070; }
 /* Results */
 #resultados { display: none; }
 .stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 .stat { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; min-width: 130px; }
 .stat .num { font-size: 20px; font-weight: 700; }
-.stat .lbl { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.stat .lbl { font-size: 13px; color: var(--muted); margin-top: 1px; }
 .table-wrap { overflow-x: auto; }
 table.main-table { width: 100%; border-collapse: collapse; }
-.main-table thead th { background: var(--header); color: #fff; padding: 9px 10px; text-align: left; font-size: 11px; font-weight: 600; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
+.main-table thead th { background: var(--header); color: #fff; padding: 9px 10px; text-align: left; font-size: 13px; font-weight: 600; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
 .main-table tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .main-table tbody tr:hover td { background: #EFF2F2; }
 /* Discriminated charges */
 .charge-list { display: flex; flex-direction: column; gap: 2px; }
-.charge-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 1px 0; }
+.charge-row { display: flex; justify-content: space-between; gap: 8px; font-size: 16px; padding: 1px 0; }
 .charge-name { color: var(--muted); white-space: nowrap; }
 .charge-val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; text-align: right; min-width: 72px; }
 .charge-separator { border-top: 1px dashed var(--border); margin: 3px 0; }
-.charge-total { color: var(--accent); font-weight: 700; font-size: 12px; }
-.charge-nrep { color: var(--muted); text-decoration: line-through; font-size: 10px; }
+.charge-total { color: var(--accent); font-weight: 700; font-size: 16px; }
+.charge-nrep { color: var(--muted); text-decoration: line-through; font-size: 12px; }
 #bannerCotaAlerta { display:none; background:#FFF8EC; border:1px solid #E8C97A; border-radius:8px; padding:12px 16px; margin-bottom:12px; }
 #bannerCotaAlerta.show { display:block; }
-.banner-titulo { font-weight:700; color:#7A5500; font-size:13px; margin-bottom:8px; display:flex;align-items:center;gap:6px; }
-.banner-item { font-size:12px; color:#5A3F00; padding:3px 0; border-bottom:1px solid #F0DFA0; display:flex;align-items:center;gap:8px; }
+.banner-titulo { font-weight:700; color:#7A5500; font-size:15px; margin-bottom:8px; display:flex;align-items:center;gap:6px; }
+.banner-item { font-size:14px; color:#5A3F00; padding:3px 0; border-bottom:1px solid #F0DFA0; display:flex;align-items:center;gap:8px; }
 .banner-item:last-child { border-bottom:none; }
 .banner-seta { color:#B86030; font-weight:700; }
 .banner-fechar { float:right;cursor:pointer;color:#999;font-size:16px;line-height:1; margin-left:auto; }
 .nrep-label { font-size: 9px; color: var(--muted); font-style: italic; }
 /* Input cells */
-.input-val { width: 90px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px; text-align: right; font-size: 11px; }
+.input-val { width: 90px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px; text-align: right; font-size: 13px; }
 .input-val:focus { border-color: var(--accent); outline: none; }
-.input-sm { width: 70px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 10px; }
+.input-sm { width: 70px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 12px; }
 .input-sm:focus { border-color: var(--accent); outline: none; }
-.input-desc { width: 120px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; }
+.input-desc { width: 120px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 13px; }
 .input-desc:focus { border-color: var(--accent); outline: none; }
-.hist-note { font-size: 10px; color: var(--orange); font-style: italic; margin-top: 2px; }
-.from-boleto { font-size: 10px; color: var(--green); font-style: italic; margin-top: 2px; }
+.hist-note { font-size: 12px; color: var(--orange); font-style: italic; margin-top: 2px; }
+.from-boleto { font-size: 12px; color: var(--green); font-style: italic; margin-top: 2px; }
 /* Totals column */
 .total-box { background: #E0EEF0; border: 1px solid #93C8D8; border-radius: 6px; padding: 6px 8px; min-width: 120px; }
-.total-grand { font-size: 14px; font-weight: 700; color: var(--accent); }
+.total-grand { font-size: 16px; font-weight: 700; color: var(--accent); }
 /* Name cell */
-.name-main { font-weight: 600; font-size: 12px; }
-.name-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.name-main { font-weight: 600; font-size: 16px; }
+.name-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
 /* Foot */
 tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top: 2px solid var(--border); }
 /* API status */
-.api-status { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 20px; }
+.api-status { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; padding: 3px 9px; border-radius: 20px; }
 .api-ok { background: #D8E4F0; color: var(--green); }
 .api-nok { background: #F5D5D5; color: var(--red); }
 .smtp-ok { background: #D8EFD8; color: #2A6A2A; }
@@ -116,27 +116,27 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
 #secaoInforme { display:none; }
 .inf-topo { background:var(--header); color:#fff; border-radius:12px; padding:22px 28px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
 .inf-topo-left .inf-titulo { font-size:22px; font-weight:700; letter-spacing:-.3px; }
-.inf-topo-left .inf-ref { font-size:13px; color:#94a3b8; margin-top:4px; }
+.inf-topo-left .inf-ref { font-size:15px; color:#94a3b8; margin-top:4px; }
 .inf-filtro-box { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin-bottom:20px; }
-.inf-filtro-titulo { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+.inf-filtro-titulo { font-size:13px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
 .inf-placeholder { text-align:center; padding:48px 20px; color:var(--muted); font-size:14px; }
 .inf-placeholder .ico { font-size:40px; margin-bottom:10px; }
 .inf-card { background:var(--card); border:1px solid var(--border); border-radius:12px; margin-bottom:0; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.06); }
 .inf-card-header { background:var(--header); color:#fff; padding:18px 24px; display:flex; justify-content:space-between; align-items:center; }
 .inf-prop-nome { font-size:18px; font-weight:700; }
-.inf-prop-sub { font-size:12px; color:#94a3b8; margin-top:3px; }
+.inf-prop-sub { font-size:14px; color:#94a3b8; margin-top:3px; }
 .inf-card-body { padding:20px 24px; }
 .inf-unidade { border:1px solid var(--border); border-radius:9px; margin-bottom:14px; overflow:hidden; }
 .inf-unid-h { background:#f4f7f8; padding:11px 18px; border-bottom:1px solid var(--border); }
 .inf-unid-end { font-size:14px; font-weight:700; color:var(--text); }
-.inf-unid-loc { font-size:12px; color:var(--muted); margin-top:3px; }
-.inf-unid-tipo { font-size:11px; color:var(--accent); margin-top:2px; }
+.inf-unid-loc { font-size:14px; color:var(--muted); margin-top:3px; }
+.inf-unid-tipo { font-size:13px; color:var(--accent); margin-top:2px; }
 .inf-linha { display:flex; justify-content:space-between; padding:5px 18px; font-size:14px; }
 .inf-linha.ded { color:var(--red); }
 .inf-linha.add { color:var(--green); }
 .inf-linha.rep { border-top:2px solid var(--accent); padding-top:10px; margin-top:3px; font-weight:700; font-size:16px; color:var(--accent); }
 .inf-total { background:#E8F4F0; border:2px solid var(--accent); border-radius:9px; padding:16px 22px; display:flex; justify-content:space-between; align-items:center; margin-top:6px; }
-.inf-total .tlbl { font-size:13px; color:var(--muted); font-weight:600; }
+.inf-total .tlbl { font-size:15px; color:var(--muted); font-weight:600; }
 .inf-total .tval { font-size:22px; font-weight:700; color:var(--accent); }
 </style>
 </head>
@@ -163,7 +163,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
 <div id="modalApi" class="modal-bg">
   <div class="modal">
     <h2>Chave da API Anthropic</h2>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+    <p style="font-size:14px;color:var(--muted);margin-bottom:12px">
       Necessaria para leitura automatica dos PDFs.<br>
       Obtenha em: <strong>console.anthropic.com &rarr; API Keys</strong>
     </p>
@@ -171,7 +171,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       <label class="form-label">Chave API (sk-ant-...)</label>
       <input type="password" id="inputApiKey" class="form-input" placeholder="sk-ant-api03-...">
     </div>
-    <div id="apiErro" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+    <div id="apiErro" style="color:var(--red);font-size:14px;margin-bottom:10px;display:none"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-outline btn-sm" onclick="fecharModal()">Cancelar</button>
       <button class="btn btn-primary btn-sm" onclick="salvarApi()">Salvar e Testar</button>
@@ -183,7 +183,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
 <div id="modalEmails" class="modal-bg" style="display:none">
   <div class="modal" style="width:500px;max-height:80vh;display:flex;flex-direction:column">
     <h2>E-mails dos Proprietários</h2>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Cadastre o e-mail de cada proprietário. Ficam salvos no servidor.</p>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:14px">Cadastre o e-mail de cada proprietário. Ficam salvos no servidor.</p>
     <div id="emailsListaModal" style="overflow-y:auto;flex:1;padding-right:4px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
       <button class="btn btn-outline btn-sm" onclick="fecharModalEmails()">Cancelar</button>
@@ -196,7 +196,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
 <div id="modalSmtp" class="modal-bg">
   <div class="modal" style="width:500px">
     <h2>Configuração de E-mail (SMTP)</h2>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+    <p style="font-size:14px;color:var(--muted);margin-bottom:14px">
       Configure o servidor de e-mail para envio dos informes mensais aos proprietários.
     </p>
     <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;margin-bottom:10px">
@@ -222,21 +222,21 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       <input type="email" id="smtpFrom" class="form-input" placeholder="Funchal Imóveis &lt;noreply@dominio.com&gt;">
     </div>
     <div style="border:1px solid #A8D4A8;border-radius:8px;padding:12px 14px;background:#F0FAF0;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:700;color:#2A6A2A;margin-bottom:6px">Recomendado: Resend (grátis, funciona no Railway)</div>
+      <div style="font-size:14px;font-weight:700;color:#2A6A2A;margin-bottom:6px">Recomendado: Resend (grátis, funciona no Railway)</div>
       <div class="form-group">
         <label class="form-label">Chave API do Resend (re_...)</label>
         <input type="password" id="smtpResendKey" class="form-input" placeholder="re_xxxxxxxxxxxxxxxxxxxx">
       </div>
-      <div style="font-size:10px;color:#2A6A2A;margin-top:6px">
+      <div style="font-size:12px;color:#2A6A2A;margin-top:6px">
         Crie sua conta grátis em <strong>resend.com</strong> → API Keys → Create API Key.<br>
         Preencha apenas essa chave — os campos acima não são necessários com Resend.
       </div>
     </div>
-    <p style="font-size:10px;color:var(--muted);margin-bottom:12px">
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
       Ou use SMTP: Gmail requer <strong>App Password</strong> em myaccount.google.com → Segurança → Senhas de app.
     </p>
-    <div id="smtpErro" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
-    <div id="smtpOk" style="color:green;font-size:12px;margin-bottom:10px;display:none"></div>
+    <div id="smtpErro" style="color:var(--red);font-size:14px;margin-bottom:10px;display:none"></div>
+    <div id="smtpOk" style="color:green;font-size:14px;margin-bottom:10px;display:none"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-outline btn-sm" onclick="fecharModalSmtp()">Cancelar</button>
       <button class="btn btn-primary btn-sm" id="btnSalvarSmtp" onclick="salvarSmtp()">Salvar e Testar</button>
@@ -301,7 +301,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
   <!-- Progresso -->
   <div class="card progress-card" id="secaoProgresso">
     <div class="card-title"><span class="step-num">2</span> Processando...</div>
-    <div id="progTexto" style="font-size:12px;color:var(--muted)">Iniciando...</div>
+    <div id="progTexto" style="font-size:14px;color:var(--muted)">Iniciando...</div>
     <div class="progress-bar-wrap"><div class="progress-bar" id="barra"></div></div>
     <div class="log-box" id="logBox"></div>
   </div>
@@ -311,7 +311,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div>
         <h2 style="font-size:17px;font-weight:700">Boletos</h2>
-        <p id="subMes" style="font-size:12px;color:var(--muted)"></p>
+        <p id="subMes" style="font-size:14px;color:var(--muted)"></p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick="novoProcessamento()">Novo processamento</button>
@@ -400,9 +400,9 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
         <div class="inf-filtro-titulo" style="margin-bottom:0">Selecione o Proprietário</div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-outline btn-sm" onclick="abrirModalEmails()" style="font-size:12px;padding:5px 12px">Editar E-mails</button>
+          <button class="btn btn-outline btn-sm" onclick="abrirModalEmails()" style="font-size:14px;padding:5px 12px">Editar E-mails</button>
           <button class="btn btn-sm" id="btnEnviarTodos" onclick="enviarParaTodos()"
-            style="background:#2A6A2A;color:#fff;font-weight:700;font-size:12px;padding:5px 14px;border:none">
+            style="background:#2A6A2A;color:#fff;font-weight:700;font-size:14px;padding:5px 14px;border:none">
             Enviar para Todos
           </button>
         </div>
@@ -420,10 +420,10 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="font-size:15px;font-weight:700;color:var(--text)">Auditoria de Envios</div>
         <div style="display:flex;gap:8px;align-items:center">
-          <select id="filtroMesLog" class="form-input" style="font-size:12px;padding:5px 10px;width:auto" onchange="renderLogFiltrado()">
+          <select id="filtroMesLog" class="form-input" style="font-size:14px;padding:5px 10px;width:auto" onchange="renderLogFiltrado()">
             <option value="">Todos os meses</option>
           </select>
-          <button class="btn btn-outline btn-sm" onclick="carregarLogEnvios()" style="font-size:12px;padding:4px 12px">↻ Atualizar</button>
+          <button class="btn btn-outline btn-sm" onclick="carregarLogEnvios()" style="font-size:14px;padding:4px 12px">↻ Atualizar</button>
         </div>
       </div>
       <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
@@ -672,7 +672,7 @@ function renderTabela(lista) {
     if (row.tem_cond && row.cond_info.length > 0) {
       const info = row.cond_info[0];
       charges += `<div class="charge-separator"></div>`;
-      charges += `<div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:2px">${info.edificio||'Condominio'} ${info.unidade||''}</div>`;
+      charges += `<div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:2px">${info.edificio||'Condominio'} ${info.unidade||''}</div>`;
       const itens = row.cond_itens_rep || {};
       for (const [k, v] of Object.entries(itens)) {
         if (v && k !== 'cota') charges += chargeRow(LABELS[k]||k, v);
@@ -682,7 +682,7 @@ function renderTabela(lista) {
         if (v) charges += chargeRowNR(LABELS[k]||k, v);
       }
     } else if (!row.tem_cond) {
-      charges += `<div style="font-size:10px;color:var(--muted);font-style:italic;margin-top:3px">Sem condominio</div>`;
+      charges += `<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:3px">Sem condominio</div>`;
     }
 
     // Col 3: IPTU / Seguros / Extras
@@ -723,14 +723,14 @@ function renderTabela(lista) {
       <td>
         <div style="display:flex;flex-direction:column;gap:4px">
           <div>
-            <div style="font-size:10px;color:var(--muted);font-weight:600">Cota Cond.</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:600">Cota Cond.</div>
             <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
               value="${cotaVal||''}"
               oninput="recalcCota(${idx},this.value)" id="cota_${idx}">
             ${cotaHist ? '<div class="hist-note">historico: '+brl(cotaHist)+'</div>' : ''}
           </div>
           <div>
-            <div style="font-size:10px;color:var(--muted);font-weight:600">IPTU Apto</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:600">IPTU Apto</div>
             <div style="display:flex;gap:3px;align-items:center">
               <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
                 value="${iptuVal||iptuHist||''}"
@@ -742,7 +742,7 @@ function renderTabela(lista) {
             ${fromBoleto&&iptuVal ? '<div class="from-boleto">do boleto anterior</div>' : (iptuHist&&!iptuVal ? '<div class="hist-note">historico: '+brl(iptuHist)+'</div>' : '')}
           </div>
           <div>
-            <div style="font-size:10px;color:var(--muted);font-weight:600">IPTU Vaga</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:600">IPTU Vaga</div>
             <div style="display:flex;gap:3px;align-items:center">
               <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
                 value="${iptuVagaVal||iptuVagaHist||''}"
@@ -754,14 +754,14 @@ function renderTabela(lista) {
             ${fromBoleto&&iptuVagaVal ? '<div class="from-boleto">do boleto anterior</div>' : (iptuVagaHist&&!iptuVagaVal ? '<div class="hist-note">historico: '+brl(iptuVagaHist)+'</div>' : '')}
           </div>
           <div>
-            <div style="font-size:10px;color:var(--muted);font-weight:600">Seg. Fianca</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:600">Seg. Fianca</div>
             <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
               value="${sfVal||sfHist||''}"
               oninput="recalc(${idx})" data-field="seg_fianca" id="sf_${idx}">
             ${fromBoleto&&sfVal ? '<div class="from-boleto">do boleto anterior</div>' : (sfHist&&!sfVal ? '<div class="hist-note">historico: '+brl(sfHist)+'</div>' : '')}
           </div>
           <div>
-            <div style="font-size:10px;color:var(--muted);font-weight:600">Seg. Incendio</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:600">Seg. Incendio</div>
             <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
               value="${siVal||siHist||''}"
               oninput="recalc(${idx})" data-field="seg_incendio" id="si_${idx}">
@@ -769,7 +769,7 @@ function renderTabela(lista) {
           </div>
           <div style="border-top:1px dashed #e2e8f0;margin:4px 0 2px"></div>
           <div>
-            <div style="font-size:10px;color:var(--red);font-weight:600">Abono <span style="font-weight:400;font-style:italic">(subtrai do total)</span></div>
+            <div style="font-size:12px;color:var(--red);font-weight:600">Abono <span style="font-weight:400;font-style:italic">(subtrai do total)</span></div>
             <div style="display:flex;gap:3px;align-items:center">
               <input class="input-desc" type="text" placeholder="Descricao..."
                 value="${row.abono_desc||row.abono_desc_hist||''}"
@@ -784,7 +784,7 @@ function renderTabela(lista) {
             ${(row.abono_val_hist&&!abonoValOrig)?'<div class="hist-note">historico: '+brl(row.abono_val_hist)+(row.abono_parcela_hist?' ('+row.abono_parcela_hist+')':'')+'</div>':''}
           </div>
           <div style="border-top:1px dashed #e2e8f0;margin:4px 0 2px"></div>
-          <div style="font-size:10px;color:var(--green);font-weight:700;margin-bottom:2px">Outros fixo <span style="font-weight:400;font-style:italic">(replica todo mes)</span></div>
+          <div style="font-size:12px;color:var(--green);font-weight:700;margin-bottom:2px">Outros fixo <span style="font-weight:400;font-style:italic">(replica todo mes)</span></div>
           <div>
             <div style="display:flex;gap:3px">
               <input class="input-desc" type="text" placeholder="Descricao..."
@@ -841,7 +841,7 @@ function renderTabela(lista) {
             ${(row.extras_fixo5_val_hist&&!extrasFixo5ValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo5_val_hist)+'</div>':''}
           </div>
           <div style="border-top:1px dashed #e2e8f0;margin:4px 0 2px"></div>
-          <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:2px">Outros <span style="font-weight:400;font-style:italic">(so esse mes)</span></div>
+          <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:2px">Outros <span style="font-weight:400;font-style:italic">(so esse mes)</span></div>
           <div>
             <div style="display:flex;gap:3px">
               <input class="input-desc" type="text" placeholder="Descricao..."
@@ -920,7 +920,7 @@ function renderTabela(lista) {
         <div class="total-box" style="background:#F2DADA;border-color:#D4A0A0;min-width:180px">
           <div class="charge-list" id="repaseinfo_${idx}"></div>
           <div style="border-top:1px dashed #D4A0A0;margin:5px 0 4px;padding-top:4px">
-            <label style="font-size:10px;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:5px;cursor:pointer;margin-bottom:3px">
+            <label style="font-size:12px;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:5px;cursor:pointer;margin-bottom:3px">
               <input type="checkbox" ${paChecked}
                 onchange="dados.locatarios[${idx}].primeiro_aluguel_ativo=this.checked;document.getElementById('pa_val_${idx}').style.display=this.checked?'':'none';recalcRepasse(${idx})">
               Primeiro Aluguel
@@ -1175,9 +1175,9 @@ function atualizarRodape() {
   document.getElementById('footExtras').innerHTML = `<span style="font-size:11px">IPTU+Seguros+Extras: ${brl(totEx)}</span>`;
   document.getElementById('footTotal').textContent = brl(totGeral);
   document.getElementById('footRepasse').innerHTML = `
-    <span style="font-size:11px;color:var(--muted);display:block">Total Repasse Prop.</span>
+    <span style="font-size:13px;color:var(--muted);display:block">Total Repasse Prop.</span>
     ${brl(totRepasse)}
-    <span style="font-size:11px;color:var(--purple);display:block;margin-top:4px;font-weight:600">Comissão Imob.: ${brl(totComissao)}</span>`;
+    <span style="font-size:13px;color:var(--purple);display:block;margin-top:4px;font-weight:600">Comissão Imob.: ${brl(totComissao)}</span>`;
 }
 
 function renderSemMatch(lista) {
@@ -1189,7 +1189,7 @@ function renderSemMatch(lista) {
       <td>${c.edificio||'-'}</td><td>${c.unidade||'-'}</td>
       <td>${c.pagador||'-'}</td><td>${c.ac||'-'}</td>
       <td>${c.total_boleto?brl(c.total_boleto):'-'}</td>
-      <td style="font-size:10px;color:var(--red)">${c.erro||''}</td>
+      <td style="font-size:12px;color:var(--red)">${c.erro||''}</td>
     </tr>`).join('');
 }
 
@@ -1427,7 +1427,7 @@ function filtrarInforme(propKey) {
     totalGeral += rd.repasse;
 
     const nProp = row._num_proprietarios || 1;
-    const quotaLabel = nProp > 1 ? ` <span style="font-size:11px;color:var(--muted);font-weight:400">(parte 1/${nProp})</span>` : '';
+    const quotaLabel = nProp > 1 ? ` <span style="font-size:13px;color:var(--muted);font-weight:400">(parte 1/${nProp})</span>` : '';
 
     let linhas = `<div class="inf-linha"><span>Aluguel${quotaLabel}</span><span style="font-weight:600">${brl(rd.aluguel)}</span></div>`;
     if (rd.taxaImob)
@@ -1466,10 +1466,10 @@ function filtrarInforme(propKey) {
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn btn-sm"
-            style="background:#fff;color:var(--header);font-weight:700;border:none;font-size:13px;padding:8px 16px"
+            style="background:#fff;color:var(--header);font-weight:700;border:none;font-size:15px;padding:8px 16px"
             onclick="gerarPdfProprietario('${safeKey}')">Gerar PDF</button>
           <button class="btn btn-sm"
-            style="background:#4A8A4A;color:#fff;font-weight:700;border:none;font-size:13px;padding:8px 16px"
+            style="background:#4A8A4A;color:#fff;font-weight:700;border:none;font-size:15px;padding:8px 16px"
             onclick="enviarInforme('${safeKey}')">Enviar por E-mail</button>
         </div>
       </div>
@@ -1812,7 +1812,7 @@ function renderLogFiltrado() {
   tbody.innerHTML = log.map((e, i) => {
     const bg = i % 2 === 0 ? '#fff' : '#f7fafb';
     const b = AUDIT_BADGES[e.status] || ['#EEE','#555', e.status];
-    const badge = `<span style="background:${b[0]};color:${b[1]};padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700" title="${e.detalhe||''}">${b[2]}</span>`;
+    const badge = `<span style="background:${b[0]};color:${b[1]};padding:3px 10px;border-radius:12px;font-size:13px;font-weight:700" title="${e.detalhe||''}">${b[2]}</span>`;
     return `<tr style="background:${bg};border-top:1px solid var(--border)">
       <td style="padding:9px 14px;white-space:nowrap;color:var(--muted)">${e.timestamp}</td>
       <td style="padding:9px 14px;font-weight:600">${e.nome||e.proprietario||''}</td>
@@ -1839,7 +1839,7 @@ function abrirModalEmails(focoKey) {
     const email = _emailsProprietarios[key] || '';
     const destaque = focoKey && key === focoKey ? 'border:2px solid var(--accent);' : '';
     lista.innerHTML += `<div style="margin-bottom:12px">
-      <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">${nome}</label>
+      <label style="font-size:14px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">${nome}</label>
       <input type="email" class="form-input" style="${destaque}" data-ekey="${key}" value="${email}" placeholder="email@exemplo.com">
     </div>`;
   });
