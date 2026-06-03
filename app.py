@@ -638,7 +638,10 @@ def salvar_locatarios_emails(d):
     tmp.replace(LOCATARIOS_EMAILS_FILE)
 
 def ler_excel_dimob(path):
-    """Lê contratos para DIMOB incluindo CPF/CNPJ (colunas L=11, M=12) se existirem."""
+    """Lê contratos para DIMOB incluindo CPF/CNPJ (colunas L=11, M=12) se existirem.
+    Quando a coluna D contém múltiplos proprietários separados por vírgula, gera uma
+    entrada por proprietário com aluguel dividido igualmente entre eles.
+    """
     wb = load_workbook(str(path), data_only=True)
     ws = wb.active
     contratos = []
@@ -661,7 +664,7 @@ def ler_excel_dimob(path):
             if s.endswith('.0') and s[:-2].isdigit():
                 s = s[:-2]
             return s
-        cpf_prop = _cpf(row[11] if len(row) > 11 else None)
+        cpf_prop_raw = str(row[11]).strip() if len(row) > 11 and row[11] else ''
         cpf_loc  = _cpf(row[12] if len(row) > 12 else None)
 
         if not locatario or aluguel == 0:
@@ -670,34 +673,48 @@ def ler_excel_dimob(path):
         mes_rej       = data_rej.month if data_rej else None
         mes_aplicacao = (mes_rej % 12 + 1) if mes_rej else None
 
-        contratos.append({
-            'num_linha':       row_idx,
-            'locatario':       locatario,
-            'proprietario':    proprietario,
-            'endereco':        endereco,
-            'aluguel':         aluguel,
-            'percentual_imob': perc_imob,
-            'mes_reajuste':    mes_rej,
-            'mes_aplicacao':   mes_aplicacao,
-            'data_inicio':     data_ini,
-            'data_fim':        data_fim,
-            'cpf_proprietario': cpf_prop,
-            'cpf_locatario':   cpf_loc,
-        })
+        # Suporte a múltiplos proprietários separados por vírgula
+        props = [p.strip() for p in proprietario.split(',') if p.strip()] or [proprietario]
+        cpfs  = [_cpf(c.strip()) for c in cpf_prop_raw.split(',')]
+        n = len(props)
+        aluguel_div = round(aluguel / n, 2) if n > 1 else aluguel
+
+        for i, prop_nome in enumerate(props):
+            cpf = cpfs[i] if i < len(cpfs) else ''
+            contratos.append({
+                'num_linha':        row_idx,
+                'locatario':        locatario,
+                'proprietario':     prop_nome,
+                'endereco':         endereco,
+                'aluguel':          aluguel_div,
+                'percentual_imob':  perc_imob,
+                'mes_reajuste':     mes_rej,
+                'mes_aplicacao':    mes_aplicacao,
+                'data_inicio':      data_ini,
+                'data_fim':         data_fim,
+                'cpf_proprietario': cpf,
+                'cpf_locatario':    cpf_loc,
+                'num_proprietarios': n,
+            })
     return contratos
 
 def calcular_meses_dimob(contrato, ano, historico_dimob):
     """Calcula aluguel de cada mês do ano de referência para DIMOB.
     Todos os 12 meses recebem um valor. Quando há reajuste registrado,
     meses anteriores ao mes_aplicacao usam aluguel_antigo e os demais usam aluguel_atual.
+    Quando há múltiplos proprietários (num_proprietarios > 1), os valores do histórico
+    (aluguel_antigo e multa/juros) são divididos igualmente entre eles.
     """
-    aluguel_atual = contrato['aluguel']
+    n             = contrato.get('num_proprietarios', 1) or 1
+    aluguel_atual = contrato['aluguel']  # já dividido por N em ler_excel_dimob
     mes_aplicacao = contrato.get('mes_aplicacao')
 
     chave    = norm(contrato['locatario'])
     hist_ano = historico_dimob.get(str(ano), {})
     hist_c   = hist_ano.get(chave, {})
-    aluguel_antigo = hist_c.get('aluguel_antigo')
+    aluguel_antigo_raw = hist_c.get('aluguel_antigo')
+    # Divide aluguel_antigo pelo nº de proprietários (histórico guarda valor total)
+    aluguel_antigo = round(aluguel_antigo_raw / n, 2) if aluguel_antigo_raw is not None and n > 1 else aluguel_antigo_raw
     tem_historico  = aluguel_antigo is not None and mes_aplicacao is not None
 
     multa_juros_hist = hist_c.get("multa_juros", {})
@@ -708,9 +725,10 @@ def calcular_meses_dimob(contrato, ano, historico_dimob):
             base = aluguel_antigo
         else:
             base = aluguel_atual
-        # Soma multa+juros do mês se houver
+        # Soma multa+juros do mês se houver (divididos pelo nº de proprietários)
         mj = multa_juros_hist.get(str(mes), {})
-        extra = float(mj.get("multa", 0) or 0) + float(mj.get("juros", 0) or 0)
+        extra_total = float(mj.get("multa", 0) or 0) + float(mj.get("juros", 0) or 0)
+        extra = round(extra_total / n, 2) if n > 1 else extra_total
         meses.append(round(base + extra, 2))
 
     return meses, tem_historico

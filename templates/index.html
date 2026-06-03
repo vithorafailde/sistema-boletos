@@ -1335,6 +1335,26 @@ function calcRepasseData(row) {
   return { aluguel: row.aluguel||0, taxaImob, percImob, paAtivo, paVal, dedPropItens, deds, multaBruta, jurosBruto, taxaSobRec, repasse };
 }
 
+// Divide todos os valores monetários de um rd pelo número de proprietários do imóvel.
+// percImob é mantido sem divisão (continua sendo a porcentagem do contrato).
+function applyDivisor(rd, n) {
+  if (!n || n <= 1) return rd;
+  const f = 1 / n;
+  return {
+    aluguel:       rd.aluguel * f,
+    taxaImob:      rd.taxaImob * f,
+    percImob:      rd.percImob,
+    paAtivo:       rd.paAtivo,
+    paVal:         rd.paVal * f,
+    dedPropItens:  rd.dedPropItens.map(d => Object.assign({}, d, { val: d.val * f })),
+    deds:          rd.deds.map(d => Object.assign({}, d, { val: d.val * f })),
+    multaBruta:    rd.multaBruta * f,
+    jurosBruto:    rd.jurosBruto * f,
+    taxaSobRec:    rd.taxaSobRec * f,
+    repasse:       rd.repasse * f,
+  };
+}
+
 // Grupos de proprietários (populado em abrirInformes)
 let _infGrupos = {};
 let _infOrdem  = [];
@@ -1348,13 +1368,24 @@ function abrirInformes() {
   document.getElementById('infSubMes').textContent = document.getElementById('subMes').textContent;
   carregarEmailsProprietarios();
 
-  // Monta grupos
+  // Monta grupos — suporta múltiplos proprietários separados por vírgula
   _infGrupos = {};
   _infOrdem  = [];
   dados.locatarios.forEach(row => {
-    const key = normProp(row.proprietario);
-    if (!_infGrupos[key]) { _infGrupos[key] = { nome: row.proprietario, rows: [] }; _infOrdem.push(key); }
-    _infGrupos[key].rows.push(row);
+    const props  = row.proprietario ? row.proprietario.split(',').map(p => p.trim()).filter(Boolean) : [''];
+    const emails = row.email_proprietario ? row.email_proprietario.split(',').map(e => e.trim()) : [];
+    const n = props.length || 1;
+    props.forEach((propNome, i) => {
+      const key = normProp(propNome);
+      if (!_infGrupos[key]) { _infGrupos[key] = { nome: propNome, rows: [] }; _infOrdem.push(key); }
+      // Anota o row com o email individual e o divisor para cálculo de quota
+      const rowCopy = Object.assign({}, row, {
+        _num_proprietarios: n,
+        _email_individual: emails[i] || emails[0] || '',
+        _proprietario_individual: propNome,
+      });
+      _infGrupos[key].rows.push(rowCopy);
+    });
   });
   _infOrdem.sort((a, b) => _infGrupos[a].nome.localeCompare(_infGrupos[b].nome, 'pt-BR', {sensitivity:'base'}));
 
@@ -1391,10 +1422,13 @@ function filtrarInforme(propKey) {
   let unidadesHtml = '';
 
   g.rows.forEach(row => {
-    const rd = calcRepasseData(row);
+    const rd = applyDivisor(calcRepasseData(row), row._num_proprietarios);
     totalGeral += rd.repasse;
 
-    let linhas = `<div class="inf-linha"><span>Aluguel</span><span style="font-weight:600">${brl(rd.aluguel)}</span></div>`;
+    const nProp = row._num_proprietarios || 1;
+    const quotaLabel = nProp > 1 ? ` <span style="font-size:11px;color:var(--muted);font-weight:400">(parte 1/${nProp})</span>` : '';
+
+    let linhas = `<div class="inf-linha"><span>Aluguel${quotaLabel}</span><span style="font-weight:600">${brl(rd.aluguel)}</span></div>`;
     if (rd.taxaImob)
       linhas += `<div class="inf-linha ded"><span>(-) Taxa Imobiliária ${rd.percImob}%</span><span>- ${brl(rd.taxaImob)}</span></div>`;
     if (rd.paAtivo)
@@ -1481,10 +1515,13 @@ async function gerarPdfProprietario(propKey) {
   let totalGeral = 0;
 
   g.rows.forEach((row, i) => {
-    const rd = calcRepasseData(row);
+    const rd = applyDivisor(calcRepasseData(row), row._num_proprietarios);
     totalGeral += rd.repasse;
 
-    let trs = `<tr><td class="desc">Aluguel bruto</td><td class="val">R$ ${nr(rd.aluguel)}</td></tr>`;
+    const nProp = row._num_proprietarios || 1;
+    const quotaSuffix = nProp > 1 ? ` (parte 1/${nProp})` : '';
+
+    let trs = `<tr><td class="desc">Aluguel bruto${e(quotaSuffix)}</td><td class="val">R$ ${nr(rd.aluguel)}</td></tr>`;
     if (rd.taxaImob)
       trs += `<tr class="ded"><td class="desc">(-) Taxa de administração ${rd.percImob}%</td><td class="val">(R$ ${nr(rd.taxaImob)})</td></tr>`;
     if (rd.paAtivo)
@@ -1673,14 +1710,12 @@ async function enviarInforme(propKey) {
   const g = _infGrupos[propKey];
   if (!g) return;
 
-  // Busca e-mail: primeiro no cadastro salvo, depois na planilha
+  // Busca e-mail: primeiro no cadastro salvo, depois no email individual da planilha
   let emailDest = _emailsProprietarios[propKey] || '';
   if (!emailDest) {
     for (const row of g.rows) {
-      if (row.email_proprietario && row.email_proprietario.trim()) {
-        emailDest = row.email_proprietario.trim();
-        break;
-      }
+      const ei = row._email_individual || row.email_proprietario || '';
+      if (ei.trim()) { emailDest = ei.trim(); break; }
     }
   }
 
@@ -1691,9 +1726,9 @@ async function enviarInforme(propKey) {
 
   const mes = document.getElementById('inMes').value || '';
 
-  // Monta payload de rows com dados calculados
+  // Monta payload de rows com dados calculados (quota dividida por nº de proprietários)
   const rows = g.rows.map(row => {
-    const rd = calcRepasseData(row);
+    const rd = applyDivisor(calcRepasseData(row), row._num_proprietarios);
     return {
       locatario: row.locatario || '',
       endereco:  row.endereco  || '',
@@ -1844,11 +1879,11 @@ async function enviarParaTodos() {
 
   const semEmail = _infOrdem.filter(k => {
     const g = _infGrupos[k];
-    return !g.rows.some(r => r.email_proprietario && r.email_proprietario.trim());
+    return !_emailsProprietarios[k] && !g.rows.some(r => (r._email_individual || r.email_proprietario || '').trim());
   });
   const comEmail = _infOrdem.filter(k => {
     const g = _infGrupos[k];
-    return g.rows.some(r => r.email_proprietario && r.email_proprietario.trim());
+    return !!_emailsProprietarios[k] || g.rows.some(r => (r._email_individual || r.email_proprietario || '').trim());
   });
 
   if (comEmail.length === 0) {
@@ -1874,15 +1909,16 @@ async function enviarParaTodos() {
     const g = _infGrupos[propKey];
     btn.textContent = `Enviando ${i+1}/${comEmail.length}…`;
 
-    let emailDest = '';
-    for (const row of g.rows) {
-      if (row.email_proprietario && row.email_proprietario.trim()) {
-        emailDest = row.email_proprietario.trim(); break;
+    let emailDest = _emailsProprietarios[propKey] || '';
+    if (!emailDest) {
+      for (const row of g.rows) {
+        const ei = row._email_individual || row.email_proprietario || '';
+        if (ei.trim()) { emailDest = ei.trim(); break; }
       }
     }
 
     const rows = g.rows.map(row => {
-      const rd = calcRepasseData(row);
+      const rd = applyDivisor(calcRepasseData(row), row._num_proprietarios);
       return {
         locatario: row.locatario||'', endereco: row.endereco||'', tipo: row.tipo||'',
         aluguel: rd.aluguel, taxa_imob: rd.taxaImob, perc_imob: rd.percImob,
