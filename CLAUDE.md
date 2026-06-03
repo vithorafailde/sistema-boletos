@@ -127,13 +127,13 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 
 ### Como funciona
 - Card **"Informes"** na home page (`/`) leva para `/boletos?informes=1` — se houver dados em localStorage, abre direto na seção de informes; caso contrário mostra tela de upload
-- Botão **"📄 Informes ao Proprietário"** na tela de resultados também abre a seção de informes
+- **Não há botão "Informes ao Proprietário" na tela de resultados** — acesso só pelo card da home
 - Select dropdown filtra por proprietário (ordem alfabética)
 - Card mostra todas as unidades do proprietário com discriminação completa do repasse
-- Botão **"📄 Gerar PDF"** → abre janela com PDF profissional (Times New Roman, P&B, logo Funchal)
-- Botão **"📧 Enviar por E-mail"** → envia via Resend para o email da coluna N do Excel
-- Botão **"📧 Enviar para Todos"** → envia sequencialmente para todos os proprietários com email cadastrado; mostra progresso (`⏳ Enviando X/N…`) e resumo final de sucesso/erros; proprietários sem email são listados e ignorados
-- Botão **"✏️ Editar E-mails"** → modal para editar emails dos proprietários sem precisar reupar a planilha
+- Botão **"Gerar PDF"** → abre janela com PDF profissional (Times New Roman, P&B, logo Funchal)
+- Botão **"Enviar por E-mail"** → envia via Resend para o email da coluna N do Excel
+- Botão **"Enviar para Todos"** → envia sequencialmente para todos os proprietários com email cadastrado; mostra progresso e resumo final de sucesso/erros; proprietários sem email são listados e ignorados
+- Botão **"Editar E-mails"** → modal para editar emails dos proprietários sem precisar reupar a planilha
 
 ### Cálculo do repasse (`calcRepasseData(row)`)
 ```
@@ -168,6 +168,19 @@ repasse = aluguel
 - Rota `/configurar_smtp` (POST, admin): salva config e testa conexão
 - Rota `/get_smtp` (GET): retorna config atual + flag `configurado`
 - **Railway bloqueia SMTP (465/587)** — usar sempre Resend via HTTPS
+- `_enviar_via_resend()` retorna o `resend_id` da resposta da API (usado na auditoria)
+
+### Auditoria de Envios
+- Todo envio (informe ao proprietário ou boleto ao locatário) é gravado em `data/log_envios.json`
+- Função: `gravar_log_envio(nome, email, mes, status, erro="", tipo="informe", resend_id="")`
+- Campo `tipo`: `"informe"` (página de informes) ou `"boleto"` (página envio de boletos)
+- Status iniciais: `"sent"` (Resend aceitou) ou `"erro"` (falha)
+- Status atualizados via webhook: `delivered`, `delayed`, `bounced`, `complained`, `opened`, `clicked`
+- Rota `/api/resend_webhook` (POST, sem auth) — recebe eventos do Resend e atualiza o log pelo `resend_id`
+- Rota `/api/log_envios` (GET, logado) — aceita `?tipo=informe` ou `?tipo=boleto`
+- Limite: **2000 entradas** (acumulado permanente, mês a mês)
+- Tabela de auditoria aparece nas páginas de Informes e Envio de Boletos, com filtro por mês
+- **Para ativar status automáticos:** configurar webhook no Resend → URL: `https://[railway-url]/api/resend_webhook`
 
 ### Variáveis SMTP/Resend em config.json
 ```json
@@ -252,17 +265,19 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 
 ## O que NÃO adicionar sem pedido explícito
 
-- ❌ Ler/processar boletos com demonstrativo (sem cv/vm no nome do arquivo)
-- ❌ Mover `outros` de volta para `REPASSE_ITENS`
-- ❌ Filtros "Com Cond." / "Sem Cond." na página de boletos
-- ❌ Mensagem "Planilha encontrada" na página `/reajustes`
-- ❌ Botão "Exportar CSV" na página de reajustes
-- ❌ Verificação de "vigência mínima de 12 meses"
-- ❌ Fonte alternativa de dados (IPEA, FGV) para qualquer índice
-- ❌ Janela de 12 meses (decisão: 13 meses — BACEN Cidadão)
-- ❌ Coluna "VENCIDO X dias" ou qualquer conceito de atraso
-- ❌ Alterar a coluna H (data de aniversário) ao aplicar reajuste
-- ❌ SMTP direto no Railway (portas 465/587 bloqueadas) — usar sempre Resend via HTTPS
+- Ler/processar boletos com demonstrativo (sem cv/vm no nome do arquivo)
+- Mover `outros` de volta para `REPASSE_ITENS`
+- Filtros "Com Cond." / "Sem Cond." na página de boletos
+- Mensagem "Planilha encontrada" na página `/reajustes`
+- Botão "Exportar CSV" na página de reajustes
+- Verificação de "vigência mínima de 12 meses"
+- Fonte alternativa de dados (IPEA, FGV) para qualquer índice
+- Janela de 12 meses (decisão: 13 meses — BACEN Cidadão)
+- Coluna "VENCIDO X dias" ou qualquer conceito de atraso
+- Alterar a coluna H (data de aniversário) ao aplicar reajuste
+- SMTP direto no Railway (portas 465/587 bloqueadas) — usar sempre Resend via HTTPS
+- Botão "Informes ao Proprietário" na página de boletos — acesso só pelo card da home
+- Emojis em qualquer parte da interface — o sistema não usa emojis
 
 ---
 
@@ -270,10 +285,12 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 
 ```
 app.py                        — servidor Flask, toda a lógica backend
-templates/home.html           — landing page com cards: Boletos / Reajustes / DIMOB
+templates/home.html           — landing page com cards: Reajustes / Boletos / Envio / DIMOB / Informes
 templates/index.html          — página de boletos + informes mensais
 templates/reajustes.html      — página de reajuste de aluguel
 templates/dimob.html          — página DIMOB (informes anuais)
+templates/envio_boletos.html  — página de envio de boletos por email aos locatários
+templates/configuracoes.html  — página de configurações (admin only): API Anthropic + Email/Resend
 templates/login.html          — login
 static/logo.png               — logo Funchal Imóveis (usada nos PDFs em base64)
 .railwayignore                — exclui uploads/ e data/config.json do deploy
@@ -283,6 +300,8 @@ iniciar_silencioso.vbs        — inicia o servidor local sem janela (auto-start
 data/config.json              — API key + config SMTP/Resend (criado pela UI)
 data/historico.json           — histórico de IPTU, seguros e extras por locatário
 data/dimob_historico.json     — histórico de reajustes + multa/juros para o DIMOB
+data/log_envios.json          — auditoria de todos os envios de email (informes + boletos)
+data/locatarios_emails.json   — emails dos locatários para envio de boletos
 ```
 
 ## Variáveis de ambiente no Railway
@@ -300,6 +319,7 @@ data/dimob_historico.json     — histórico de reajustes + multa/juros para o D
 | `/logout` | GET | logado | Encerra sessão |
 | `/` | GET | logado | Landing page |
 | `/boletos` | GET | logado | Página de boletos |
+| `/configuracoes` | GET | **admin** | Página de configurações (API + Email) |
 | `/config` | POST | **admin** | Salva API key |
 | `/processar` | POST | logado | Processa planilha + PDFs |
 | `/salvar_extras` | POST | logado | Salva histórico + multa/juros no DIMOB |
@@ -309,6 +329,8 @@ data/dimob_historico.json     — histórico de reajustes + multa/juros para o D
 | `/configurar_smtp` | POST | **admin** | Salva e testa config email |
 | `/get_smtp` | GET | logado | Retorna config email atual |
 | `/enviar_informe` | POST | logado | Envia informe por email (Resend) |
+| `/api/log_envios` | GET | logado | Retorna log de envios (`?tipo=informe` ou `?tipo=boleto`) |
+| `/api/resend_webhook` | POST | público | Recebe eventos de status do Resend |
 | `/reajustes` | GET | logado | Página de reajuste |
 | `/api/calcular_reajustes` | POST | logado | Calcula reajustes via BACEN |
 | `/api/aplicar_reajustes` | POST | logado | Grava novos aluguéis na planilha |
@@ -317,6 +339,11 @@ data/dimob_historico.json     — histórico de reajustes + multa/juros para o D
 | `/api/dimob_calcular` | POST | logado | Calcula informes anuais |
 | `/api/dimob_salvar_historico` | POST | logado | Salva aluguéis anteriores |
 | `/api/dimob_exportar` | POST | logado | Exporta Excel DIMOB |
+| `/envio_boletos` | GET | logado | Página envio de boletos |
+| `/envio_boletos/processar` | POST | logado | Identifica locatários nos PDFs (streaming) |
+| `/envio_boletos/enviar` | POST | logado | Envia boleto por email com anexo PDF |
+| `/api/locatarios_emails` | GET | logado | Retorna emails cadastrados dos locatários |
+| `/api/locatarios_emails/bulk` | POST | logado | Salva emails dos locatários em massa |
 
 ---
 
@@ -363,6 +390,24 @@ REPASSE_ITENS   = ["agua", "gas", "energia", "tx_leitura", "vaga_moto", "tag"]
 NAO_REPASSE     = ["fundo_reserva", "correio", "melhorias", "outros"]
 EDIFICIOS_EXCLUIDOS = ["lamelas", "paisagem", "victoria"]
 ```
+
+## Decisões de UI — não reverter
+
+### Sem emojis
+Toda a interface é sem emojis. Não adicionar emojis em nenhum template HTML, JS ou mensagem visível ao usuário.
+
+### Botão "← Início" em todas as páginas
+Todas as 5 páginas (Boletos, Reajustes, DIMOB, Envio de Boletos, Informes) têm botão "← Início" no header que volta à home.
+
+### Página de Configurações (`/configuracoes`)
+- Acessível só para admin
+- Contém: API Anthropic + configuração de Email/Resend
+- Link discreto "Configuracoes" aparece na home (admin only) e no header de Boletos
+- Os modais de config foram mantidos no index.html (para compatibilidade JS), mas os botões do header foram removidos
+
+### Cadastro de E-mails (envio_boletos.html)
+- Card colapsável — fechado por padrão, abre ao clicar no cabeçalho
+- Seta (▼/▲) indica estado aberto/fechado
 
 ## localStorage (persistência no browser)
 - `boletos_dados` — JSON dos locatários processados
