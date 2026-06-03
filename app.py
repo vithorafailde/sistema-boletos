@@ -1786,12 +1786,13 @@ def salvar_emails_proprietarios():
 
 def _gerar_html_email(proprietario, mes, rows, total, hoje):
     """Gera o corpo HTML do email do demonstrativo de repasse."""
-    logo_path = BASE / "static" / "logo.png"
-    logo_tag = ""
-    if logo_path.exists():
-        with open(logo_path, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode()
-        logo_tag = f'<img src="data:image/png;base64,{b64}" style="max-width:100%;height:auto;display:block;margin-bottom:12px" alt="Funchal Imóveis">'
+    # Usa URL pública do servidor — clientes de email bloqueiam data:base64
+    try:
+        from flask import request as _req
+        logo_url = _req.host_url.rstrip('/') + '/static/logo.png'
+    except Exception:
+        logo_url = ''
+    logo_tag = f'<img src="{logo_url}" style="max-width:100%;height:auto;display:block;margin-bottom:12px" alt="Funchal Imóveis">' if logo_url else ''
 
     def fmt(v):
         return f"R$ {float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
