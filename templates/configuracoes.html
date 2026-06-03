@@ -48,7 +48,7 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(
 
 <div class="header">
   <div>
-    <h1>⚙️ Configurações</h1>
+    <h1>Configurações</h1>
     <p>API Anthropic e E-mail</p>
   </div>
   <div class="header-actions">
@@ -62,7 +62,7 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(
   <!-- ── API Anthropic ──────────────────────────────────────────────────── -->
   <div class="card">
     <div class="card-title">
-      🤖 API Anthropic
+      API Anthropic
       <span id="apiStatusBadge" class="status-badge {% if tem_api_key %}badge-api-ok{% else %}badge-api-nok{% endif %}">
         {% if tem_api_key %}API configurada{% else %}Sem API{% endif %}
       </span>
@@ -76,7 +76,7 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(
       <input type="password" id="inputApiKey" class="form-input" placeholder="sk-ant-api03-...">
     </div>
     <div id="apiMsgErr" class="msg-err"></div>
-    <div id="apiMsgOk"  class="msg-ok">✓ API configurada com sucesso!</div>
+    <div id="apiMsgOk"  class="msg-ok">API configurada com sucesso!</div>
     <div style="display:flex;justify-content:flex-end;margin-top:4px">
       <button class="btn btn-primary" id="btnSalvarApi" onclick="salvarApi()">Salvar e Testar</button>
     </div>
@@ -85,7 +85,7 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(
   <!-- ── E-mail ─────────────────────────────────────────────────────────── -->
   <div class="card">
     <div class="card-title">
-      📧 E-mail
+      E-mail
       <span id="smtpStatusBadge" class="status-badge {% if tem_smtp %}badge-ok{% else %}badge-nok{% endif %}">
         {% if tem_smtp %}E-mail configurado{% else %}E-mail não configurado{% endif %}
       </span>
@@ -96,7 +96,7 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(
 
     <!-- Resend (recomendado) -->
     <div class="resend-box">
-      <div class="resend-box-title">✅ Recomendado: Resend (grátis, funciona no Railway)</div>
+      <div class="resend-box-title">Recomendado: Resend (grátis, funciona no Railway)</div>
       <div class="form-group" style="margin-bottom:4px">
         <label class="form-label">Chave API do Resend (re_...)</label>
         <input type="password" id="smtpResendKey" class="form-input" placeholder="re_xxxxxxxxxxxxxxxxxxxx">
@@ -133,11 +133,11 @@ body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(
       <input type="email" id="smtpFrom" class="form-input" placeholder="noreply@dominio.com">
     </div>
     <div style="font-size:10px;color:var(--muted);margin-bottom:14px">
-      💡 Gmail requer <strong>App Password</strong> em myaccount.google.com → Segurança → Senhas de app.
+      Gmail requer <strong>App Password</strong> em myaccount.google.com → Segurança → Senhas de app.
     </div>
 
     <div id="smtpMsgErr" class="msg-err"></div>
-    <div id="smtpMsgOk"  class="msg-ok">✓ Conexão testada com sucesso! E-mail configurado.</div>
+    <div id="smtpMsgOk"  class="msg-ok">Conexão testada com sucesso! E-mail configurado.</div>
     <div style="display:flex;justify-content:flex-end;margin-top:4px">
       <button class="btn btn-primary" id="btnSalvarSmtp" onclick="salvarSmtp()">Salvar e Testar</button>
     </div>
