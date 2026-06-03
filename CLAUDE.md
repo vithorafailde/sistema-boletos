@@ -315,6 +315,48 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 
 ---
 
+## Parcela IPTU — incremento por mês real
+
+- O histórico (`historico.json`) salva o campo `"saved_month": "AAAA-MM"` em cada entrada
+- No processamento, a parcela só é incrementada (+1) se o mês atual for **diferente** do `saved_month`
+- Reprocessar dentro do mesmo mês → parcela permanece igual (sobrepõe os dados)
+- O botão se chama apenas **"Salvar"** (não mais "Salvar para próximo mês")
+- Botão **"- 1 Parcela IPTU (todos)"** na barra de resultados subtrai 1 do numerador de todas as parcelas na tela e chama `recalc()` para atualizar o discriminativo imediatamente
+- Os inputs de parcela (IPTU, IPTU Vaga, Abono) chamam `recalc(idx)` no `oninput` para manter o discriminativo do Total do Boleto sincronizado
+
+---
+
+## Informe de Rendimento Anual vs DIMOB
+
+### Informe de Rendimento Anual (`/informe_anual`)
+- Fluxo direto: calcular → ver → enviar HTML por email diretamente aos proprietários
+- "Enviar por E-mail" (proprietário selecionado) e "Enviar para Todos" disponíveis
+- Usa a mesma rota `/api/dimob_calcular` do DIMOB
+- Template: `templates/informe_anual.html`
+
+### DIMOB (`/dimob`)
+- Fluxo com contador: calcular → enviar ao contador → receber PDFs → enviar PDFs aos proprietários
+- **Sem** botões de envio direto aos proprietários
+- Email do contador: salvo em `config.json["dimob_email_contador"]`, rota `GET/POST /api/dimob_config_contador`
+- Upload de PDFs: sistema lê o nome do arquivo, identifica o proprietário por similaridade de nome, busca email no cadastro
+- Rota `POST /api/dimob_enviar_pdf_proprietario` — envia PDF como anexo via Resend (base64)
+- `_enviar_via_resend` aceita parâmetro `attachments: [{"filename": "...", "content": "<base64>"}]`
+
+---
+
+## Maior índice IPCA/IGPM
+
+- `normalizar_indice()` detecta quando a coluna K contém **ambos** IPCA e IGPM no texto
+- Exemplos reconhecidos: `"IPCA/IGPM"`, `"IPCA/IGPM acumulado"`, `"maior IPCA IGPM"`
+- Retorna `'MAIOR_IPCA_IGPM'` como `indice_norm`
+- No cálculo: busca os dois índices no BACEN, calcula os dois acumulados, aplica o **maior**
+- Campo `indice_aplicado` no resultado indica qual foi escolhido ('IPCA' ou 'IGPM')
+- Na tabela de reajustes: badge mostra o texto original + `"IGPM (maior)"` em roxo abaixo
+- `indices_busca` garante que IPCA e IGPM são sempre buscados quando `MAIOR_IPCA_IGPM` está presente
+- **NÃO reverter** a ordem de verificação em `normalizar_indice` — a checagem de ambos deve vir antes das individuais
+
+---
+
 ## Confirmação antes de salvar
 
 Todos os botões de salvar têm `confirm()` antes de executar:
@@ -361,7 +403,8 @@ app.py                        — servidor Flask, toda a lógica backend
 templates/home.html           — landing page com cards: Reajustes / Boletos / Envio / DIMOB / Informes
 templates/index.html          — página de boletos + informes mensais
 templates/reajustes.html      — página de reajuste de aluguel
-templates/dimob.html          — página DIMOB (informes anuais)
+templates/dimob.html          — página DIMOB (fluxo contador: envio → PDFs → proprietários)
+templates/informe_anual.html  — página Informe de Rendimento Anual (envio direto aos proprietários)
 templates/envio_boletos.html  — página de envio de boletos por email aos locatários
 templates/configuracoes.html  — página de configurações (admin only): API Anthropic + Email/Resend
 templates/login.html          — login
@@ -413,6 +456,9 @@ data/locatarios_emails.json   — emails dos locatários para envio de boletos
 | `/api/dimob_salvar_historico` | POST | logado | Salva aluguéis anteriores |
 | `/api/dimob_exportar` | POST | logado | Exporta Excel DIMOB |
 | `/api/dimob_enviar_email` | POST | logado | Envia informe DIMOB por email para um proprietário |
+| `/api/dimob_config_contador` | GET/POST | logado | Lê/salva email do contador |
+| `/api/dimob_enviar_pdf_proprietario` | POST | logado | Envia PDF (do contador) como anexo ao proprietário |
+| `/informe_anual` | GET | logado | Página Informe de Rendimento Anual |
 | `/envio_boletos` | GET | logado | Página envio de boletos |
 | `/envio_boletos/processar` | POST | logado | Identifica locatários nos PDFs (streaming) |
 | `/envio_boletos/enviar` | POST | logado | Envia boleto por email com anexo PDF |
