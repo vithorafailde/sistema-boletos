@@ -17,8 +17,6 @@ body {
   position: relative;
   overflow: hidden;
 }
-
-/* Padrão geométrico de fundo */
 body::before {
   content: '';
   position: absolute;
@@ -35,41 +33,123 @@ body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 48px;
+  gap: 44px;
   padding: 40px 20px;
   width: 100%;
 }
 
-/* Logo / cabeçalho */
-.brand {
-  text-align: center;
-  color: #fff;
-}
+/* Marca */
+.brand { text-align: center; color: #fff; }
 .brand-name {
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 32px; font-weight: 700;
   letter-spacing: 1px;
   text-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 .brand-sub {
-  font-size: 13px;
-  color: rgba(255,255,255,0.65);
-  margin-top: 4px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-size: 13px; color: rgba(255,255,255,0.65);
+  margin-top: 4px; letter-spacing: 2px; text-transform: uppercase;
 }
 .brand-divider {
-  width: 50px;
-  height: 2px;
+  width: 50px; height: 2px;
   background: rgba(255,255,255,0.35);
-  margin: 14px auto 0;
-  border-radius: 2px;
+  margin: 14px auto 0; border-radius: 2px;
 }
 
-/* Cards */
-.cards {
+/* ── Painéis de grupo ── */
+.grupos-wrap {
   display: flex;
   gap: 28px;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 760px;
+}
+
+.grupo-panel {
+  flex: 1;
+  min-width: 280px;
+  max-width: 360px;
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: rgba(255,255,255,0.10);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 22px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.24s ease;
+  box-shadow: 0 8px 36px rgba(0,0,0,0.28);
+  text-align: center;
+  padding: 32px 24px;
+}
+.grupo-panel:hover {
+  background: rgba(255,255,255,0.20);
+  transform: translateY(-7px);
+  box-shadow: 0 18px 52px rgba(0,0,0,0.38);
+  border-color: rgba(255,255,255,0.45);
+}
+.grupo-panel:active { transform: translateY(-2px); }
+
+.grupo-icon {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  display: flex; align-items: center; justify-content: center;
+}
+.grupo-icon svg {
+  width: 44px; height: 44px;
+  stroke: #fff; stroke-width: 1.5;
+  fill: none; stroke-linecap: round; stroke-linejoin: round;
+}
+.grupo-label {
+  font-size: 22px; font-weight: 700;
+  letter-spacing: 3px; text-transform: uppercase;
+}
+.grupo-desc {
+  font-size: 12px; color: rgba(255,255,255,0.65);
+  line-height: 1.6;
+}
+.grupo-seta {
+  font-size: 20px; opacity: 0.55; margin-top: 4px;
+}
+
+/* ── Sub-cards view ── */
+.cards-view { display: none; flex-direction: column; align-items: center; gap: 32px; width: 100%; }
+.cards-view.ativo { display: flex; }
+
+.btn-voltar {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.28);
+  color: rgba(255,255,255,0.85);
+  border-radius: 10px;
+  padding: 8px 22px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.18s;
+  letter-spacing: 0.5px;
+  align-self: flex-start;
+  margin-left: 4px;
+}
+.btn-voltar:hover {
+  background: rgba(255,255,255,0.22);
+  color: #fff;
+}
+
+.grupo-titulo {
+  color: rgba(255,255,255,0.55);
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.cards {
+  display: flex;
+  gap: 26px;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -79,9 +159,9 @@ body::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  width: 230px;
-  height: 230px;
+  gap: 16px;
+  width: 220px;
+  height: 220px;
   background: rgba(255,255,255,0.10);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -99,61 +179,39 @@ body::before {
   box-shadow: 0 16px 48px rgba(0,0,0,0.35);
   border-color: rgba(255,255,255,0.45);
 }
-.card:active {
-  transform: translateY(-2px);
-}
+.card:active { transform: translateY(-2px); }
 
 .card-icon {
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 60px; height: 60px;
+  display: flex; align-items: center; justify-content: center;
   background: rgba(255,255,255,0.15);
-  border-radius: 50%;
-  padding: 14px;
+  border-radius: 50%; padding: 13px;
 }
 .card-icon svg {
-  width: 36px;
-  height: 36px;
-  stroke: #fff;
-  stroke-width: 1.5;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  width: 34px; height: 34px;
+  stroke: #fff; stroke-width: 1.5;
+  fill: none; stroke-linecap: round; stroke-linejoin: round;
 }
 .card-label {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 3px;
-  text-transform: uppercase;
+  font-size: 14px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase; text-align: center;
 }
 .card-desc {
-  font-size: 11px;
-  color: rgba(255,255,255,0.65);
-  text-align: center;
-  padding: 0 18px;
-  line-height: 1.5;
+  font-size: 11px; color: rgba(255,255,255,0.65);
+  text-align: center; padding: 0 16px; line-height: 1.5;
 }
 
 /* Rodapé */
 .footer {
-  color: rgba(255,255,255,0.45);
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
+  color: rgba(255,255,255,0.45); font-size: 11px;
+  display: flex; align-items: center; gap: 16px;
 }
-.footer a {
-  color: rgba(255,255,255,0.55);
-  text-decoration: none;
-  transition: color .15s;
-}
-.footer a:hover {
-  color: rgba(255,255,255,0.9);
-}
+.footer a { color: rgba(255,255,255,0.55); text-decoration: none; transition: color .15s; }
+.footer a:hover { color: rgba(255,255,255,0.9); }
 
-@media(max-width: 520px) {
+@media(max-width: 600px) {
+  .grupos-wrap { flex-direction: column; align-items: center; }
+  .grupo-panel { width: 85vw; max-width: 340px; height: 240px; }
   .cards { flex-direction: column; align-items: center; }
   .card { width: 85vw; max-width: 300px; height: 200px; }
 }
@@ -168,90 +226,126 @@ body::before {
     <div class="brand-divider"></div>
   </div>
 
-  <div class="cards">
+  <!-- ── Vista principal: dois painéis ── -->
+  <div id="viewGrupos" class="grupos-wrap">
 
-    <!-- REAJUSTES -->
-    <a href="/reajustes" class="card">
-      <div class="card-icon">
-        <svg viewBox="0 0 24 24">
-          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-          <polyline points="17 6 23 6 23 12"/>
-        </svg>
-      </div>
-      <div class="card-label">Reajustes</div>
-      <div class="card-desc">Calcular e aplicar reajuste de aluguel via BACEN</div>
-    </a>
-
-    <!-- BOLETOS -->
-    <a href="/boletos" class="card">
-      <div class="card-icon">
-        <svg viewBox="0 0 24 24">
-          <rect x="2" y="3" width="20" height="18" rx="2"/>
-          <line x1="7" y1="8" x2="17" y2="8"/>
-          <line x1="7" y1="12" x2="17" y2="12"/>
-          <line x1="7" y1="16" x2="13" y2="16"/>
-          <line x1="2" y1="7" x2="6" y2="7"/>
-        </svg>
-      </div>
-      <div class="card-label">Boletos</div>
-      <div class="card-desc">Processar boletos de condomínio e cobranças mensais</div>
-    </a>
-
-    <!-- ENVIO DE BOLETOS -->
-    <a href="/envio_boletos" class="card">
-      <div class="card-icon">
-        <svg viewBox="0 0 24 24">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-          <polyline points="22,6 12,13 2,6"/>
-        </svg>
-      </div>
-      <div class="card-label" style="font-size:13px">Envio de Boletos</div>
-      <div class="card-desc">Enviar boletos por e-mail para os locatários</div>
-    </a>
-
-    <!-- INFORME ANUAL -->
-    <a href="/informe_anual" class="card">
-      <div class="card-icon">
-        <svg viewBox="0 0 24 24">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="8" y1="13" x2="16" y2="13"/>
-          <line x1="8" y1="17" x2="16" y2="17"/>
-          <line x1="8" y1="9" x2="10" y2="9"/>
-        </svg>
-      </div>
-      <div class="card-label" style="font-size:12px">Informe de Rendimento Anual</div>
-      <div class="card-desc">Gera e envia informes diretamente aos propriet&aacute;rios</div>
-    </a>
-
-    <!-- DIMOB -->
-    <a href="/dimob" class="card">
-      <div class="card-icon">
-        <svg viewBox="0 0 24 24">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <line x1="3" y1="9" x2="21" y2="9"/>
-          <line x1="3" y1="15" x2="21" y2="15"/>
-          <line x1="9" y1="9" x2="9" y2="21"/>
-        </svg>
-      </div>
-      <div class="card-label">DIMOB</div>
-      <div class="card-desc">Fluxo com contador: envia, recebe PDFs e distribui aos propriet&aacute;rios</div>
-    </a>
-
-    <!-- INFORMES AO PROPRIETÁRIO -->
-    <a href="/boletos?informes=1" class="card">
-      <div class="card-icon">
+    <button class="grupo-panel" onclick="abrirGrupo('locatarios')">
+      <div class="grupo-icon">
         <svg viewBox="0 0 24 24">
           <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
           <circle cx="12" cy="7" r="4"/>
-          <line x1="16" y1="11" x2="22" y2="11"/>
-          <line x1="19" y1="8" x2="19" y2="14"/>
         </svg>
       </div>
-      <div class="card-label" style="font-size:13px">Informes</div>
-      <div class="card-desc">Demonstrativos mensais de repasse ao proprietário</div>
-    </a>
+      <div class="grupo-label">Locatários</div>
+      <div class="grupo-desc">Boletos, reajustes de aluguel e envio de e-mails</div>
+      <div class="grupo-seta">&#8964;</div>
+    </button>
 
+    <button class="grupo-panel" onclick="abrirGrupo('proprietarios')">
+      <div class="grupo-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <div class="grupo-label">Proprietários</div>
+      <div class="grupo-desc">Informes mensais, DIMOB e rendimento anual</div>
+      <div class="grupo-seta">&#8964;</div>
+    </button>
+
+  </div>
+
+  <!-- ── Sub-cards: Locatários ── -->
+  <div id="viewLocatarios" class="cards-view">
+    <button class="btn-voltar" onclick="voltarGrupos()">&#8592; Voltar</button>
+    <div class="grupo-titulo">Locatários</div>
+    <div class="cards">
+
+      <a href="/reajustes" class="card">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+            <polyline points="17 6 23 6 23 12"/>
+          </svg>
+        </div>
+        <div class="card-label">Reajustes</div>
+        <div class="card-desc">Calcular e aplicar reajuste de aluguel via BACEN</div>
+      </a>
+
+      <a href="/boletos" class="card">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24">
+            <rect x="2" y="3" width="20" height="18" rx="2"/>
+            <line x1="7" y1="8" x2="17" y2="8"/>
+            <line x1="7" y1="12" x2="17" y2="12"/>
+            <line x1="7" y1="16" x2="13" y2="16"/>
+          </svg>
+        </div>
+        <div class="card-label">Boletos</div>
+        <div class="card-desc">Processar boletos de condomínio e cobranças mensais</div>
+      </a>
+
+      <a href="/envio_boletos" class="card">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </div>
+        <div class="card-label">Envio de Boletos</div>
+        <div class="card-desc">Enviar boletos por e-mail para os locatários</div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- ── Sub-cards: Proprietários ── -->
+  <div id="viewProprietarios" class="cards-view">
+    <button class="btn-voltar" onclick="voltarGrupos()">&#8592; Voltar</button>
+    <div class="grupo-titulo">Proprietários</div>
+    <div class="cards">
+
+      <a href="/boletos?informes=1" class="card">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+            <line x1="16" y1="11" x2="22" y2="11"/>
+            <line x1="19" y1="8" x2="19" y2="14"/>
+          </svg>
+        </div>
+        <div class="card-label">Informes</div>
+        <div class="card-desc">Demonstrativos mensais de repasse ao proprietário</div>
+      </a>
+
+      <a href="/informe_anual" class="card">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="8" y1="13" x2="16" y2="13"/>
+            <line x1="8" y1="17" x2="16" y2="17"/>
+            <line x1="8" y1="9" x2="10" y2="9"/>
+          </svg>
+        </div>
+        <div class="card-label" style="font-size:12px">Informe Anual</div>
+        <div class="card-desc">Gera e envia informes diretamente aos proprietários</div>
+      </a>
+
+      <a href="/dimob" class="card">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="3" y1="15" x2="21" y2="15"/>
+            <line x1="9" y1="9" x2="9" y2="21"/>
+          </svg>
+        </div>
+        <div class="card-label">DIMOB</div>
+        <div class="card-desc">Fluxo com contador: envia, recebe PDFs e distribui aos proprietários</div>
+      </a>
+
+    </div>
   </div>
 
   {% if is_admin %}
@@ -262,11 +356,29 @@ body::before {
   {% endif %}
 
   <div class="footer">
-    <span>Funchal Neg&oacute;cios Imobili&aacute;rios Ltda.</span>
+    <span>Funchal Negócios Imobiliários Ltda.</span>
     <span>&bull;</span>
     <a href="/logout">Sair</a>
   </div>
 
 </div>
+
+<script>
+function abrirGrupo(grupo) {
+  document.getElementById('viewGrupos').style.display = 'none';
+  document.getElementById('viewLocatarios').classList.remove('ativo');
+  document.getElementById('viewProprietarios').classList.remove('ativo');
+  document.getElementById('viewGrupos').style.display = 'none';
+
+  const id = grupo === 'locatarios' ? 'viewLocatarios' : 'viewProprietarios';
+  document.getElementById(id).classList.add('ativo');
+}
+
+function voltarGrupos() {
+  document.getElementById('viewLocatarios').classList.remove('ativo');
+  document.getElementById('viewProprietarios').classList.remove('ativo');
+  document.getElementById('viewGrupos').style.display = '';
+}
+</script>
 </body>
 </html>
