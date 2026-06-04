@@ -3029,20 +3029,25 @@ def api_dimob_enviar_pdf_proprietario():
 
     html_body = f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"></head>
-<body style="font-family:'Times New Roman',Times,serif;color:#000;background:#fff;max-width:700px;margin:0 auto;padding:24px">
+<body style="font-family:'Segoe UI',Arial,sans-serif;color:#1A2C30;background:#fff;max-width:680px;margin:0 auto;padding:32px 24px">
   {logo_tag}
-  <div style="border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:18px">
-    <div style="font-size:15pt;font-weight:bold;text-transform:uppercase;text-align:center">Informe de Rendimentos — Ano-Calendário {ano}</div>
-    <div style="font-size:10pt;text-align:center;margin-top:3px">Data de emissão: {date.today().strftime('%d/%m/%Y')}</div>
-  </div>
-  <p style="font-size:11pt;line-height:1.6">Prezado(a) <strong>{proprietario}</strong>,</p>
-  <p style="font-size:11pt;line-height:1.6;margin-top:10px">
-    Segue em anexo o seu Informe de Rendimentos referente ao ano-calendário <strong>{ano}</strong>,
-    emitido pela Funchal Negócios Imobiliários Ltda.
+  <p style="font-size:11pt;line-height:1.7;margin-top:16px">Prezado(a) <strong>{proprietario}</strong>,</p>
+  <p style="font-size:11pt;line-height:1.7;margin-top:12px">
+    Segue em anexo o seu <strong>Informe de Rendimentos (DIMOB) — Ano-Calendário {ano}</strong>,
+    emitido pela Funchal Negócios Imobiliários Ltda. em cumprimento às obrigações acessórias perante a Receita Federal do Brasil.
   </p>
-  <p style="margin-top:20px;font-size:9pt;color:#555;border-top:1px solid #ccc;padding-top:10px">
-    <strong>Proprietário:</strong> declare o valor <strong>Líquido</strong> como rendimento recebido de pessoa jurídica.<br>
+  <p style="font-size:11pt;line-height:1.7;margin-top:12px">
+    Este documento deve ser utilizado para o preenchimento da sua Declaração de Imposto de Renda.
+    Caso tenha dúvidas, nossa equipe está à disposição.
+  </p>
+  <p style="margin-top:24px;font-size:9.5pt;color:#555;border-top:1px solid #ddd;padding-top:14px;line-height:1.7">
+    <strong>Onde declarar:</strong> informe o valor <strong>Líquido</strong> como rendimento recebido de pessoa jurídica
+    (carnê-leão, código 95, ou na ficha "Rendimentos Recebidos de PJ").<br>
     Fonte pagadora: <strong>Funchal Negócios Imobiliários Ltda. — CNPJ 11.514.872/0001-94</strong>.
+  </p>
+  <p style="font-size:11pt;line-height:1.7;margin-top:24px">
+    Atenciosamente,<br>
+    <strong>Financeiro Funchal Imóveis</strong>
   </p>
 </body></html>"""
 
