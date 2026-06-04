@@ -366,8 +366,6 @@ function abrirGrupo(grupo) {
   document.getElementById('viewGrupos').style.display = 'none';
   document.getElementById('viewLocatarios').classList.remove('ativo');
   document.getElementById('viewProprietarios').classList.remove('ativo');
-  document.getElementById('viewGrupos').style.display = 'none';
-
   const id = grupo === 'locatarios' ? 'viewLocatarios' : 'viewProprietarios';
   document.getElementById(id).classList.add('ativo');
 }
