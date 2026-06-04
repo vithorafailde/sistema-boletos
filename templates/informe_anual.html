@@ -498,7 +498,7 @@ async function enviarInformeEmail() {
   const orig = btn.innerHTML; btn.disabled=true; btn.textContent='Enviando...';
   try {
     const r = await fetch('/api/dimob_enviar_email', {method:'POST',headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({proprietario:propNome, cpf_proprietario:cs[0].cpf_proprietario||'', email_dest:emailDest.trim(), ano:anoCalculado, contratos:cs})});
+      body: JSON.stringify({proprietario:propNome, cpf_proprietario:cs[0].cpf_proprietario||'', email_dest:emailDest.trim(), ano:anoCalculado, contratos:cs, tipo:'informe_anual'})});
     const j = await r.json();
     if (j.ok) alert(`Informe enviado com sucesso para ${emailDest.trim()}!`);
     else alert('Erro ao enviar: '+j.erro);
@@ -528,7 +528,7 @@ async function enviarParaTodos() {
     const cs=_contratosParaEnvio(prop);
     try {
       const r=await fetch('/api/dimob_enviar_email',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({proprietario:prop,cpf_proprietario:grupos[prop].cpf,email_dest:grupos[prop].email.trim(),ano:anoCalculado,contratos:cs})});
+        body:JSON.stringify({proprietario:prop,cpf_proprietario:grupos[prop].cpf,email_dest:grupos[prop].email.trim(),ano:anoCalculado,contratos:cs,tipo:'informe_anual'})});
       const j=await r.json(); if (j.ok) ok++; else {erro++;erros.push(`${prop}: ${j.erro}`);}
     } catch(e) {erro++;erros.push(`${prop}: ${e.message}`);}
   }

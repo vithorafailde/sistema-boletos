@@ -2850,7 +2850,7 @@ Instruções:
 - Retorne null se não encontrar o campo"""
 
 
-def _gerar_html_email_dimob(proprietario, cpf_prop, ano, contratos, hoje):
+def _gerar_html_email_dimob(proprietario, cpf_prop, ano, contratos, hoje, show_disclaimer=True):
     """Gera HTML do email DIMOB com todos os imóveis do proprietário."""
     try:
         from flask import request as _req
@@ -2933,7 +2933,12 @@ def _gerar_html_email_dimob(proprietario, cpf_prop, ano, contratos, hoje):
       <td style="padding:8px 10px;text-align:right;font-weight:bold;font-size:12pt">{fmt(total_geral_liquido)}</td>
     </tr>
   </table>
-
+  {f'''<p style="margin-top:20px;font-size:9pt;color:#555;border-top:1px solid #ccc;padding-top:10px;line-height:1.5">
+    <strong>Proprietário:</strong> declare o valor <strong>Líquido</strong> como rendimento recebido de pessoa jurídica
+    (carnê-leão, código 95, ou na ficha "Rendimentos Recebidos de PJ").<br>
+    Fonte pagadora: <strong>Funchal Negócios Imobiliários Ltda. — CNPJ 11.514.872/0001-94</strong>.<br><br>
+    <em>Este documento é emitido pela administradora do imóvel e não substitui documentos fiscais oficiais.</em>
+  </p>''' if show_disclaimer else ''}
 </body></html>"""
 
 
@@ -2947,6 +2952,7 @@ def api_dimob_enviar_email():
     email_dest = d.get("email_dest", "").strip()
     ano        = d.get("ano", "")
     contratos  = d.get("contratos", [])
+    tipo       = d.get("tipo", "dimob")
     hoje       = date.today().strftime("%d/%m/%Y")
 
     if not email_dest:
@@ -2954,7 +2960,8 @@ def api_dimob_enviar_email():
     if not contratos:
         return jsonify({"ok": False, "erro": "Nenhum contrato informado."})
 
-    html_body = _gerar_html_email_dimob(proprietario, cpf_prop, ano, contratos, hoje)
+    show_disclaimer = (tipo != "informe_anual")
+    html_body = _gerar_html_email_dimob(proprietario, cpf_prop, ano, contratos, hoje, show_disclaimer=show_disclaimer)
     assunto   = f"Informe de Rendimentos {ano} — {proprietario}"
 
     smtp = ler_smtp()
@@ -3033,7 +3040,10 @@ def api_dimob_enviar_pdf_proprietario():
     Segue em anexo o seu Informe de Rendimentos referente ao ano-calendário <strong>{ano}</strong>,
     emitido pela Funchal Negócios Imobiliários Ltda.
   </p>
-
+  <p style="margin-top:20px;font-size:9pt;color:#555;border-top:1px solid #ccc;padding-top:10px">
+    <strong>Proprietário:</strong> declare o valor <strong>Líquido</strong> como rendimento recebido de pessoa jurídica.<br>
+    Fonte pagadora: <strong>Funchal Negócios Imobiliários Ltda. — CNPJ 11.514.872/0001-94</strong>.
+  </p>
 </body></html>"""
 
     try:
