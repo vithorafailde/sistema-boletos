@@ -3227,6 +3227,11 @@ def enviar_boleto_locatario():
     locatario  = (d.get("locatario") or "").strip()
     mes        = (d.get("mes") or "").strip()
 
+    # Se mês não informado, usa o mês atual em português
+    if not mes:
+        _hoje = date.today()
+        mes = f"{MESES_NOMES[_hoje.month - 1]}/{_hoje.year}"
+
     # Suporte a múltiplos arquivos (locatário com vários imóveis) ou único (retrocompatível)
     arquivos = d.get("arquivos") or []
     if not arquivos and d.get("arquivo_salvo"):
@@ -3259,7 +3264,7 @@ def enviar_boleto_locatario():
         return jsonify({"ok": False, "erro": "Nenhum arquivo válido encontrado"})
 
     n = len(attachments)
-    mes_texto = mes or "referência"
+    mes_texto = mes
     plural = "boletos" if n > 1 else "boleto"
     assunto = f"Boleto{'s' if n > 1 else ''} de Aluguel — {mes_texto}"
     if locatario:
