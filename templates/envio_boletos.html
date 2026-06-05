@@ -567,9 +567,9 @@ async function enviarTodos() {
   document.getElementById('btnEnviarTodos').textContent = 'Enviar Todos com E-mail';
   carregarLogEnvios();
 
-  let msg = `${ok} boleto(s) enviado(s) com sucesso!`;
-  if (erro > 0) msg += `\n\n${erro} erro(s):\n` + erros.join('\n');
-  alert(msg);
+  let resumo = `${ok} boleto(s) enviado(s) com sucesso!`;
+  if (erro > 0) resumo += `\n\n${erro} erro(s):\n` + erros.join('\n');
+  alert(resumo);
 }
 
 function novoProcessamento() {
