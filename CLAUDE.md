@@ -3,7 +3,7 @@
 ## O que é este sistema
 Sistema Flask que roda **tanto localmente (localhost:5000) quanto no Railway** (cloud) que:
 1. Lê uma planilha Excel de contratos e boletos de condomínio em PDF
-2. Cruza os dados via Claude AI (`claude-haiku-4-5-20251001`) e gera resumo de cobranças por locatário
+2. Cruza os dados via Claude AI (`claude-sonnet-4-6`) e gera resumo de cobranças por locatário
 3. Tem uma página separada (`/reajustes`) que calcula reajuste de aluguel usando índices do BACEN
 4. Tem uma página separada (`/dimob`) que gera informes anuais de pagamento por locatário (DIMOB)
 5. Tem seção de **Informes Mensais ao Proprietário** (PDF + envio por email via Resend)
@@ -105,11 +105,21 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 **Fallback**: se número-índice falhar para ESTE_MES, usa % mensal composto
 
 ### Status dos contratos
+- `RENOVAR` → `data_fim` (col J) caiu no mês passado — contrato venceu, precisa renovação
 - `ESTE_MES` → mês atual == mês SEGUINTE ao aniversário (hora de reajustar)
 - `FUTURO` → mes_aplicacao > hoje.month
 - `OK` → mes_aplicacao ≤ hoje.month (já foi reajustado este ciclo)
 - Contratos OK: **não calcular** acumulado, não mostrar novo aluguel, não mostrar diferença
 - Lógica correta: `mes_aplicacao = data_rej.month % 12 + 1`
+- Ordenação: RENOVAR > ESTE_MES > FUTURO > OK
+
+### Status RENOVAR — regras que NÃO podem mudar
+- Detectado em `ler_excel_reajustes()` **independente** do status de reajuste
+- Condição: `data_fim.month == hoje.month - 1` AND `data_fim.year == ano_anterior`
+- Ex.: `data_fim = 01/05/2026`, hoje = junho/2026 → RENOVAR ✓
+- Ex.: `data_fim = 01/06/2026`, hoje = junho/2026 → ainda não (contrato acabou de encerrar)
+- **Campo manual de valor** ("Novo valor do contrato") aparece **apenas** para RENOVAR — não para ESTE_MES
+- Badge roxo "Renovar contrato" na tabela; filtro dedicado na barra de filtros
 
 ### Aplicação do reajuste
 - Só grava **coluna F** (aluguel) na planilha — nenhuma outra coluna é alterada
@@ -120,6 +130,44 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 - Timeout: **30 segundos**
 - **3 tentativas** com 2s de intervalo entre elas
 - Retorna `({}, erro_str)` se todas as tentativas falharem
+
+---
+
+## Leitura de PDFs de condomínio (Claude AI)
+
+- Modelo: **`claude-sonnet-4-6`** — NÃO usar Haiku, precisão muito menor
+- Resolução das imagens: **250 DPI** — NÃO reduzir abaixo disso
+- Modo **híbrido**: envia texto extraído pelo pdfplumber + imagens juntos para cruzamento visual
+  - Mesmo quando o PDF tem texto selecionável, as imagens são incluídas
+  - Instrução ao modelo: se texto e imagem divergirem, prevalece a imagem
+- `max_tokens`: 2000
+- Verificação de soma: o prompt instrui o modelo a somar os itens e comparar com o total do boleto
+- Formato brasileiro: prompt instrui explicitamente (vírgula = decimal, ponto = milhar)
+
+---
+
+## Envio de Boletos por Email (página `/envio_boletos`)
+
+### Identificação de locatário pelo nome do arquivo
+- Função: `_match_nome_arquivo(nome_arq)` em `processar_boletos_locatarios()`
+- Scoring: **cobertura do nome do locatário no arquivo** (não o contrário)
+  - Mede quantas palavras significativas do NOME aparecem no filename
+  - Ex.: locatário "Isidro Silva" em "isidro silva av paulista 101 apto 5" → 2/2 = 100%
+  - Lógica antiga media palavras do arquivo → "isidro silva" em filename de 8 palavras = 25% → falha
+  - **NÃO reverter para lógica antiga**
+- Threshold: **40%** (antes era 50% — reduzido para tolerar sobrenomes ausentes no filename)
+- Match exato (norm completo) tem prioridade sobre match por palavras
+
+### Envio consolidado por locatário
+- Locatários com **múltiplos imóveis** recebem **um único email** com todos os PDFs em anexo
+- `enviarTodos()`: agrupa por `(locatario_match, email)` antes de enviar
+- `enviarUm()`: ao clicar "Enviar" em qualquer linha, consolida todos os boletos não enviados do mesmo locatário+email
+- Backend `/envio_boletos/enviar`: aceita `arquivos: [{arquivo_salvo}]` (array) — retrocompatível com `arquivo_salvo` (string)
+- Assunto com múltiplos: "Boletos de Aluguel — Mês — Nome (N imóveis)"
+
+### Log de auditoria
+- Status gravado: sempre `"sent"` (tanto Resend quanto SMTP) — **NÃO usar "enviado"**
+- `AUDIT_BADGES` no frontend mapeia: `sent`, `delivered`, `delayed`, `bounced`, `complained`, `opened`, `clicked`, `erro`
 
 ---
 
@@ -152,7 +200,13 @@ repasse = aluguel
 - A taxa da imobiliária (% do contrato) é aplicada sobre multa+juros: `taxaSobRec = (multa + juros) * percImob / 100`
 - Valores brutos somam ao repasse; a taxa da imob. é deduzida separadamente
 - Aparecem discriminados no card de informe, no PDF e no email
-- **Integração DIMOB:** ao clicar "Salvar para próximo mês", multa+juros são gravados em `dimob_historico.json` por locatário/mês. Na DIMOB, o valor do mês correspondente já inclui multa+juros automaticamente.
+- **Integração DIMOB:** ao clicar "Salvar", multa+juros são gravados em `dimob_historico.json` por locatário/mês. Na DIMOB, o valor do mês correspondente já inclui multa+juros automaticamente.
+- Email de informe: `_gerar_html_email` renderiza linhas separadas de multa, juros e taxa sobre eles quando presentes — o payload do frontend deve incluir `multa_atraso`, `juros_mora`, `taxa_sob_rec`
+
+### Deduções manuais (`ded1` a `ded10`)
+- Cada dedução tem `desc`, `val` e `subtrair` (bool: true = subtrai do repasse, false = soma)
+- **`subtrair` é salvo no `historico.json`** e restaurado no mês seguinte — NÃO remover do `salvar_extras`
+- Sem o campo `subtrair` no histórico, deduções marcadas como "+" viram "-" no próximo mês
 
 ### Logo nos PDFs
 - A logo (`static/logo.png`) é convertida para **base64 via fetch** antes de abrir a janela do PDF
@@ -196,6 +250,15 @@ repasse = aluguel
 
 ---
 
+## Toast "Salvo!"
+
+- Elemento `<div id="toastSalvo">` fixo no canto inferior direito, presente em **todos** os templates
+- Função `showSalvo(msg)` exibe o toast por 2,5 segundos
+- **Deve ser chamado em todo save bem-sucedido** — não usar `alert()` para confirmar salvamentos
+- Templates que têm: index.html, reajustes.html, dimob.html, informe_anual.html, configuracoes.html, envio_boletos.html
+
+---
+
 ## Banner de cota condominial divergente
 
 - Se o valor da cota condominial no boleto do mês for diferente do histórico, exibe banner amarelo
@@ -205,6 +268,22 @@ repasse = aluguel
 ---
 
 ## Bugs já corrigidos — não regredir
+
+### 12. ded{n}_subtrair não salvo no histórico
+**Problema:** `salvar_extras` não gravava `ded{n}_subtrair` no historico.json. Ao recarregar no mês seguinte, o campo era undefined → defaultava para `true` (subtrair), virando deduções "+" em "-".  
+**Fix:** `salvar_extras` grava `ded{n}_subtrair`; carregamento do histórico restaura o campo diretamente em `row[f"ded{_n}_subtrair"]`. **Não remover.**
+
+### 13. Score de match invertido (cobertura do nome, não do arquivo)
+**Problema:** `score_nome_arquivo` media `matches / palavras_do_arquivo`. Filenames com endereço/apto inflavam o denominador → locatário com 2 palavras em arquivo de 8 = 25% → sem match.  
+**Fix:** Score agora é `matches / palavras_significativas_do_locatario`. **NÃO reverter.**
+
+### 14. SyntaxError por `const msg` e `let msg` no mesmo escopo
+**Problema:** `enviarTodos()` declarava `const msg` e `let msg` na mesma função → SyntaxError que impedia todo o script de carregar (inclusive o toggle do card de cadastro).  
+**Fix:** Segunda variável renomeada para `resumo`. **Não reusar o nome `msg` nessa função.**
+
+### 15. Multa/juros ausentes no email de informe
+**Problema:** Payload enviado para `/enviar_informe` não incluía `multaBruta`, `jurosBruto`, `taxaSobRec`. Email mostrava repasse correto mas sem discriminar multa/juros.  
+**Fix:** Campos adicionados ao payload em ambos os fetchs de informe; `_gerar_html_email` renderiza as linhas. **Manter no payload.**
 
 ### 10. percImob indefinido em atualizarRodape
 **Problema:** A variável `percImob` era usada em `atualizarRodape()` para calcular taxa sobre multa/juros, mas não estava definida nesse escopo (estava definida apenas em `renderRepasse()`).  
@@ -307,8 +386,8 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 
 ## Reajuste Manual (Renovação de Contrato)
 
-- Na página de reajustes, contratos com status `ESTE_MES` têm campo **"Renovação — digitar valor:"**
-- Ao digitar: contrato é selecionado automaticamente, valor calculado fica esmaecido, diferença atualiza em tempo real
+- Campo **"Novo valor do contrato"** aparece **exclusivamente** para contratos com status `RENOVAR`
+- Contratos `ESTE_MES` (reajuste normal) **não têm campo manual** — recebem apenas o índice BACEN
 - `manuais = {}` — dict `num_linha → valor` que prevalece sobre o calculado pelo índice
 - Ao aplicar: manual > zerado (0%) > calculado pelo índice
 - O valor manual é gravado na coluna F da planilha igual ao reajuste por índice — DIMOB e informes recebem automaticamente
@@ -320,9 +399,9 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 - O histórico (`historico.json`) salva o campo `"saved_month": "AAAA-MM"` em cada entrada
 - No processamento, a parcela só é incrementada (+1) se o mês atual for **diferente** do `saved_month`
 - Reprocessar dentro do mesmo mês → parcela permanece igual (sobrepõe os dados)
-- O botão se chama apenas **"Salvar"** (não mais "Salvar para próximo mês")
-- Botão **"- 1 Parcela IPTU (todos)"** na barra de resultados subtrai 1 do numerador de todas as parcelas na tela e chama `recalc()` para atualizar o discriminativo imediatamente
+- O botão se chama apenas **"Salvar"**
 - Os inputs de parcela (IPTU, IPTU Vaga, Abono) chamam `recalc(idx)` no `oninput` para manter o discriminativo do Total do Boleto sincronizado
+- Campo nomeado **"IPTU"** (não "IPTU Apto") — em toda a interface e no Excel exportado
 
 ---
 
@@ -360,7 +439,7 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 ## Confirmação antes de salvar
 
 Todos os botões de salvar têm `confirm()` antes de executar:
-- "Salvar para próximo mês" (index.html)
+- "Salvar" (index.html)
 - "Salvar" emails proprietários (modal informes)
 - "Salvar Alug. Anteriores" (dimob.html)
 - "Salvar E-mails" locatários (envio_boletos.html)
@@ -384,7 +463,8 @@ Todos os botões de salvar têm `confirm()` antes de executar:
 - Mover `outros` de volta para `REPASSE_ITENS`
 - Filtros "Com Cond." / "Sem Cond." na página de boletos
 - Mensagem "Planilha encontrada" na página `/reajustes`
-- Botão "Exportar CSV" na página de reajustes
+- Botão "Exportar CSV" ou "Exportar Excel" na página de boletos — removido a pedido
+- Botão "- 1 Parcela IPTU" — removido a pedido
 - Verificação de "vigência mínima de 12 meses"
 - Fonte alternativa de dados (IPEA, FGV) para qualquer índice
 - Janela de 12 meses (decisão: 13 meses — BACEN Cidadão)
@@ -393,6 +473,7 @@ Todos os botões de salvar têm `confirm()` antes de executar:
 - SMTP direto no Railway (portas 465/587 bloqueadas) — usar sempre Resend via HTTPS
 - Botão "Informes ao Proprietário" na página de boletos — acesso só pelo card da home
 - Emojis em qualquer parte da interface — o sistema não usa emojis
+- Campo manual de reajuste em contratos ESTE_MES — só para RENOVAR
 
 ---
 
@@ -441,7 +522,6 @@ data/locatarios_emails.json   — emails dos locatários para envio de boletos
 | `/salvar_extras` | POST | logado | Salva histórico + multa/juros no DIMOB |
 | `/baixar_historico` | GET | logado | Download historico.json |
 | `/restaurar_historico` | POST | logado | Restaura historico.json |
-| `/exportar` | POST | logado | Exporta Excel |
 | `/configurar_smtp` | POST | **admin** | Salva e testa config email |
 | `/get_smtp` | GET | logado | Retorna config email atual |
 | `/enviar_informe` | POST | logado | Envia informe por email (Resend) |
@@ -461,7 +541,7 @@ data/locatarios_emails.json   — emails dos locatários para envio de boletos
 | `/informe_anual` | GET | logado | Página Informe de Rendimento Anual |
 | `/envio_boletos` | GET | logado | Página envio de boletos |
 | `/envio_boletos/processar` | POST | logado | Identifica locatários nos PDFs (streaming) |
-| `/envio_boletos/enviar` | POST | logado | Envia boleto por email com anexo PDF |
+| `/envio_boletos/enviar` | POST | logado | Envia boleto(s) por email — aceita múltiplos arquivos |
 | `/api/locatarios_emails` | GET | logado | Retorna emails cadastrados dos locatários |
 | `/api/locatarios_emails/bulk` | POST | logado | Salva emails dos locatários em massa |
 
@@ -478,7 +558,7 @@ mes_aplicacao = data_rej.month % 12 + 1   ← mês SEGUINTE ao aniversário
 - Contrato inativo → `None`
 
 ### Multa/juros no DIMOB
-- Gravados em `dimob_historico.json` quando usuário clica "Salvar para próximo mês"
+- Gravados em `dimob_historico.json` quando usuário clica "Salvar"
 - Estrutura: `hist[ano][chave_locatario]["multa_juros"][str(mes_num)] = {"multa": X, "juros": Y}`
 - `calcular_meses_dimob()` soma multa+juros ao valor base de cada mês automaticamente
 - Mês extraído do campo `mes` do payload (ex: "Junho/2026" → 6) via dict `{"jan":1,...,"dez":12}`
