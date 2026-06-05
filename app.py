@@ -3285,13 +3285,13 @@ def enviar_boleto_locatario():
 
     html_body = f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"></head>
-<body style="font-family:'Times New Roman',Times,serif;color:#000;background:#fff;max-width:600px;margin:0 auto;padding:24px">
+<body style="font-family:'Times New Roman',Times,serif;font-size:14pt;color:#000;background:#fff;max-width:600px;margin:0 auto;padding:24px">
   {logo_tag}
-  <p>Boa tarde,</p>
-  <p>{corpo}</p>
+  <p style="font-size:14pt">Boa tarde,</p>
+  <p style="font-size:14pt">{corpo}</p>
   <br>
-  <p>Atenciosamente,</p>
-  <p><strong>Financeiro Funchal Im&oacute;veis</strong></p>
+  <p style="font-size:14pt">Atenciosamente,</p>
+  <p style="font-size:14pt"><strong>Financeiro Funchal Im&oacute;veis</strong></p>
   <hr style="margin-top:32px;border:none;border-top:1px solid #ccc">
   <p style="font-size:9pt;color:#888">Funchal Solu&ccedil;&otilde;es Empresariais e Imobili&aacute;rias Ltda. &mdash; CRECI 21.360-J</p>
 </body></html>"""
