@@ -376,11 +376,19 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 
 ## Logo nos PDFs e Emails
 
-- Todos os PDFs e emails: `width:100%` (ponta a ponta)
+- Todos os PDFs e emails: `max-width:100%` (ponta a ponta)
 - Email informes mensais (`_gerar_html_email`): `max-width:100%`
 - Email DIMOB (`_gerar_html_email_dimob`): `max-width:100%`
-- Email boletos: `max-width:220px`
+- Email boletos (`enviar_boleto_locatario`): `max-width:100%`
 - **Não usar base64 em emails** — clientes de email bloqueiam. Usar URL pública do Railway
+- Fonte do email de boleto: **14pt** (Times New Roman)
+
+## Compatibilidade de email entre clientes
+
+- Layout simples (sem grid/flexbox/media queries) garante renderização consistente em Gmail, Hotmail/Outlook.com e iCloud
+- **Imagens externas são bloqueadas por padrão** em todos os clientes (Outlook, Hotmail, iCloud, Gmail) — o destinatário vê o `alt` até clicar "Exibir imagens". Comportamento padrão do mercado, não é bug
+- **Outlook desktop (Windows)** pode ignorar `max-width:100%` em imagens — se necessário, trocar por `width="500"` fixo. Atualmente não implementado a pedido
+- Texto, fonte e estrutura de parágrafos funcionam em todos os clientes sem problemas
 
 ---
 
