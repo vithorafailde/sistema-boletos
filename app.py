@@ -429,16 +429,20 @@ def ler_excel_reajustes(path):
 
         if mes_aplicacao == hoje.month:
             status = 'ESTE_MES'
-            # Contrato vence no mês do aniversário ou no mês de aplicação → RENOVAR
-            # Ex.: aniversário maio, aplicação junho, data_fim 01/05/2026 → RENOVAR
-            if (data_fim is not None
-                    and data_fim.year == hoje.year
-                    and data_fim.month in (data_rej.month, mes_aplicacao)):
-                status = 'RENOVAR'
         elif mes_aplicacao > hoje.month:
             status = 'FUTURO'
         else:
             status = 'OK'
+
+        # RENOVAR: contrato terminou no mês passado → no mês seguinte ao fim
+        # aparece o sinal de renovação, independente do status de reajuste.
+        # Ex.: data_fim = 01/05/2026, hoje = junho/2026 → RENOVAR
+        mes_ant = hoje.month - 1 if hoje.month > 1 else 12
+        ano_ant = hoje.year if hoje.month > 1 else hoje.year - 1
+        if (data_fim is not None
+                and data_fim.year == ano_ant
+                and data_fim.month == mes_ant):
+            status = 'RENOVAR'
 
         # Aniversário para cálculo BACEN: sempre ano atual.
         # NÃO avança para ano seguinte — o BACEN calcula os 12 meses que PRECEDEM
