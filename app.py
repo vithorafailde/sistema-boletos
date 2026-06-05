@@ -3308,35 +3308,49 @@ def enviar_boleto_locatario():
     from email import encoders as email_encoders
 
     d = request.get_json() or {}
-    arquivo_salvo = (d.get("arquivo_salvo") or "").strip()
     email_dest = (d.get("email") or "").strip()
-    locatario = (d.get("locatario") or "").strip()
-    mes = (d.get("mes") or "").strip()
+    locatario  = (d.get("locatario") or "").strip()
+    mes        = (d.get("mes") or "").strip()
+
+    # Suporte a múltiplos arquivos (locatário com vários imóveis) ou único (retrocompatível)
+    arquivos = d.get("arquivos") or []
+    if not arquivos and d.get("arquivo_salvo"):
+        arquivos = [{"arquivo_salvo": d["arquivo_salvo"]}]
 
     if not email_dest:
         return jsonify({"ok": False, "erro": "Email não informado"})
-    if not arquivo_salvo:
-        return jsonify({"ok": False, "erro": "Arquivo não informado"})
-
-    pdf_path = UPLOAD_DIR / arquivo_salvo
-    if not pdf_path.exists():
-        return jsonify({"ok": False, "erro": "Arquivo não encontrado no servidor"})
+    if not arquivos:
+        return jsonify({"ok": False, "erro": "Nenhum arquivo informado"})
 
     smtp = ler_smtp()
     if not smtp["resend_key"] and (not smtp["user"] or not smtp["passw"]):
         return jsonify({"ok": False, "erro": "Email não configurado. Configure em 'Configurar Email'."})
 
-    # Lê PDF como base64
-    with open(str(pdf_path), "rb") as f:
-        pdf_b64 = base64.b64encode(f.read()).decode()
+    # Monta lista de anexos lendo cada PDF
+    attachments = []
+    for arq in arquivos:
+        arquivo_salvo = (arq.get("arquivo_salvo") or "").strip()
+        if not arquivo_salvo:
+            continue
+        pdf_path = UPLOAD_DIR / arquivo_salvo
+        if not pdf_path.exists():
+            return jsonify({"ok": False, "erro": f"Arquivo não encontrado: {arquivo_salvo}"})
+        with open(str(pdf_path), "rb") as f:
+            pdf_b64 = base64.b64encode(f.read()).decode()
+        nome_anexo = arquivo_salvo[4:] if arquivo_salvo.startswith("loc_") else arquivo_salvo
+        attachments.append({"filename": nome_anexo, "content": pdf_b64, "path": pdf_path})
 
-    # Nome do arquivo para o anexo (sem prefixo loc_)
-    nome_anexo = arquivo_salvo[4:] if arquivo_salvo.startswith("loc_") else arquivo_salvo
+    if not attachments:
+        return jsonify({"ok": False, "erro": "Nenhum arquivo válido encontrado"})
 
+    n = len(attachments)
     mes_texto = mes or "referência"
-    assunto = f"Boleto de Aluguel — {mes_texto}"
+    plural = "boletos" if n > 1 else "boleto"
+    assunto = f"Boleto{'s' if n > 1 else ''} de Aluguel — {mes_texto}"
     if locatario:
         assunto += f" — {locatario}"
+    if n > 1:
+        assunto += f" ({n} imóveis)"
 
     logo_path = BASE / "static" / "logo.png"
     logo_tag = ""
@@ -3345,12 +3359,16 @@ def enviar_boleto_locatario():
             b64_logo = base64.b64encode(f.read()).decode()
         logo_tag = f'<img src="data:image/png;base64,{b64_logo}" style="max-width:220px;height:auto;display:block;margin-bottom:16px" alt="Funchal Imoveis">'
 
+    corpo = (f"Seguem em anexo os {n} {plural} referentes ao m&ecirc;s de <strong>{mes_texto}</strong>."
+             if n > 1 else
+             f"Segue em anexo o {plural} referente ao m&ecirc;s de <strong>{mes_texto}</strong>.")
+
     html_body = f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"></head>
 <body style="font-family:'Times New Roman',Times,serif;color:#000;background:#fff;max-width:600px;margin:0 auto;padding:24px">
   {logo_tag}
   <p>Boa tarde,</p>
-  <p>Segue em anexo o boleto referente ao m&ecirc;s de <strong>{mes_texto}</strong>.</p>
+  <p>{corpo}</p>
   <br>
   <p>Atenciosamente,</p>
   <p><strong>Financeiro Funchal Im&oacute;veis</strong></p>
@@ -3366,7 +3384,7 @@ def enviar_boleto_locatario():
             "to": [email_dest],
             "subject": assunto,
             "html": html_body,
-            "attachments": [{"filename": nome_anexo, "content": pdf_b64}]
+            "attachments": [{"filename": a["filename"], "content": a["content"]} for a in attachments]
         }
         if reply_to:
             data_resend["reply_to"] = [reply_to]
@@ -3385,36 +3403,37 @@ def enviar_boleto_locatario():
             with urllib.request.urlopen(req, timeout=30) as resp:
                 body_r = _json.loads(resp.read().decode("utf-8"))
                 rid = body_r.get("id", "")
-                gravar_log_envio(locatario or nome_anexo, email_dest, mes, "sent", tipo="boleto", resend_id=rid)
+                gravar_log_envio(locatario or attachments[0]["filename"], email_dest, mes, "sent", tipo="boleto", resend_id=rid)
                 return jsonify({"ok": True})
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="ignore")
-            gravar_log_envio(locatario or nome_anexo, email_dest, mes, "erro", f"HTTP {e.code}: {body[:200]}", tipo="boleto")
+            gravar_log_envio(locatario or attachments[0]["filename"], email_dest, mes, "erro", f"HTTP {e.code}: {body[:200]}", tipo="boleto")
             return jsonify({"ok": False, "erro": f"HTTP {e.code}: {body[:300]}"})
         except Exception as e:
-            gravar_log_envio(locatario or nome_anexo, email_dest, mes, "erro", str(e), tipo="boleto")
+            gravar_log_envio(locatario or attachments[0]["filename"], email_dest, mes, "erro", str(e), tipo="boleto")
             return jsonify({"ok": False, "erro": str(e)})
 
-    # SMTP com anexo
+    # SMTP com múltiplos anexos
     remetente = smtp["from"] or smtp["user"]
     msg = MIMEMultipart()
     msg["Subject"] = assunto
     msg["From"] = remetente
     msg["To"] = email_dest
     msg.attach(MIMEText(html_body, "html", "utf-8"))
-    part = MIMEBase("application", "octet-stream")
-    with open(str(pdf_path), "rb") as f:
-        part.set_payload(f.read())
-    email_encoders.encode_base64(part)
-    part.add_header("Content-Disposition", f'attachment; filename="{nome_anexo}"')
-    msg.attach(part)
+    for a in attachments:
+        part = MIMEBase("application", "octet-stream")
+        with open(str(a["path"]), "rb") as f:
+            part.set_payload(f.read())
+        email_encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f'attachment; filename="{a["filename"]}"')
+        msg.attach(part)
     try:
         with _smtp_connect(smtp, timeout=15) as s:
             s.sendmail(remetente, [email_dest], msg.as_string())
-        gravar_log_envio(locatario or nome_anexo, email_dest, mes, "enviado", tipo="boleto")
+        gravar_log_envio(locatario or attachments[0]["filename"], email_dest, mes, "enviado", tipo="boleto")
         return jsonify({"ok": True})
     except Exception as e:
-        gravar_log_envio(locatario or nome_anexo, email_dest, mes, "erro", str(e), tipo="boleto")
+        gravar_log_envio(locatario or attachments[0]["filename"], email_dest, mes, "erro", str(e), tipo="boleto")
         return jsonify({"ok": False, "erro": str(e)})
 
 

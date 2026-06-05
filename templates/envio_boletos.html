@@ -468,80 +468,98 @@ function renderResultados() {
   document.getElementById('btnEnviarTodos').disabled = resultados.length === 0;
 }
 
+// Agrupa boletos pelo mesmo locatário+email para envio consolidado
+function _grupoDoLocatario(idx) {
+  const r = resultados[idx];
+  const email = document.getElementById(`emailInp_${idx}`)?.value?.trim() || r.email || '';
+  const nome  = (r.locatario_match || r.locatario_pdf || '').toLowerCase();
+  // Busca todos os índices com mesmo locatário E mesmo email que ainda não foram enviados
+  return resultados.map((rr, i) => {
+    const eml = document.getElementById(`emailInp_${i}`)?.value?.trim() || rr.email || '';
+    const nm  = (rr.locatario_match || rr.locatario_pdf || '').toLowerCase();
+    return {r: rr, i, eml, nm};
+  }).filter(x => !x.r._enviado && !x.r.erro && x.nm === nome && x.eml === email);
+}
+
 async function enviarUm(idx) {
   const r = resultados[idx];
-  const email = document.getElementById(`emailInp_${idx}`)?.value || r.email || '';
+  const email = document.getElementById(`emailInp_${idx}`)?.value?.trim() || r.email || '';
   if (!email) { alert('Informe o e-mail antes de enviar.'); return; }
 
-  const btn = document.getElementById(`btnEnv_${idx}`);
-  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
-
+  // Consolida todos os boletos não enviados do mesmo locatário
+  const grupo = _grupoDoLocatario(idx);
+  const arquivos = grupo.map(x => ({arquivo_salvo: x.r.arquivo_salvo}));
+  const locatario = r.locatario_match || r.locatario_pdf || '';
   const mes = document.getElementById('inMes').value;
+
+  // Desabilita botões do grupo
+  grupo.forEach(x => {
+    const btn = document.getElementById(`btnEnv_${x.i}`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+  });
+
   const resp = await fetch('/envio_boletos/enviar', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      arquivo_salvo: r.arquivo_salvo,
-      email: email,
-      locatario: r.locatario_match || r.locatario_pdf || '',
-      mes: mes
-    })
+    body: JSON.stringify({arquivos, email, locatario, mes})
   });
   const result = await resp.json();
-  if (result.ok) {
-    resultados[idx]._enviado = true;
-    resultados[idx]._erroEnvio = null;
-  } else {
-    resultados[idx]._enviado = false;
-    resultados[idx]._erroEnvio = result.erro || 'Erro desconhecido';
-    alert('Erro ao enviar: ' + (result.erro || 'Erro desconhecido'));
-  }
+  grupo.forEach(x => {
+    resultados[x.i]._enviado  = result.ok;
+    resultados[x.i]._erroEnvio = result.ok ? null : (result.erro || 'Erro desconhecido');
+  });
+  if (!result.ok) alert('Erro ao enviar: ' + (result.erro || 'Erro desconhecido'));
   renderResultados();
   carregarLogEnvios();
 }
 
 async function enviarTodos() {
   const mes = document.getElementById('inMes').value;
-  // Coleta e-mail do campo inline (digitado ou pré-preenchido do cadastro)
-  const paraEnviar = resultados.map((r, i) => {
+  // Coleta e-mail do campo inline para cada boleto
+  const todos = resultados.map((r, i) => {
     const emailInp = document.getElementById(`emailInp_${i}`)?.value?.trim() || r.email || '';
     return {...r, _idx: i, _emailFinal: emailInp};
   }).filter(r => !r._enviado && !r.erro && r._emailFinal);
 
-  if (paraEnviar.length === 0) { alert('Nenhum boleto com e-mail disponível para enviar.\nPreencha os e-mails no cadastro ou diretamente na tabela.'); return; }
-  if (!confirm(`Enviar ${paraEnviar.length} boleto(s) por e-mail?`)) return;
+  if (todos.length === 0) { alert('Nenhum boleto com e-mail disponível para enviar.\nPreencha os e-mails no cadastro ou diretamente na tabela.'); return; }
+
+  // Agrupa por locatário + email → um único email com todos os boletos do locatário
+  const grupos = {};
+  for (const r of todos) {
+    const chave = `${(r.locatario_match || r.locatario_pdf || '').toLowerCase()}||${r._emailFinal}`;
+    if (!grupos[chave]) grupos[chave] = [];
+    grupos[chave].push(r);
+  }
+  const nGrupos = Object.keys(grupos).length;
+  const nBoletos = todos.length;
+  const msg = nBoletos === nGrupos
+    ? `Enviar ${nBoletos} boleto(s) por e-mail?`
+    : `Enviar ${nBoletos} boleto(s) para ${nGrupos} destinatário(s)?\n(locatários com múltiplos imóveis receberão todos em um único e-mail)`;
+  if (!confirm(msg)) return;
 
   document.getElementById('btnEnviarTodos').disabled = true;
   document.getElementById('btnEnviarTodos').textContent = 'Enviando...';
 
   let ok = 0, erro = 0, erros = [];
 
-  for (const r of paraEnviar) {
-    const email = r._emailFinal;
-    if (!email) continue;
-    const resp = await fetch('/envio_boletos/enviar', {
+  for (const [, grupo] of Object.entries(grupos)) {
+    const email     = grupo[0]._emailFinal;
+    const locatario = grupo[0].locatario_match || grupo[0].locatario_pdf || '';
+    const arquivos  = grupo.map(r => ({arquivo_salvo: r.arquivo_salvo}));
+
+    const resp   = await fetch('/envio_boletos/enviar', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        arquivo_salvo: r.arquivo_salvo,
-        email: email,
-        locatario: r.locatario_match || r.locatario_pdf || '',
-        mes: mes
-      })
+      body: JSON.stringify({arquivos, email, locatario, mes})
     });
     const result = await resp.json();
-    if (result.ok) {
-      resultados[r._idx]._enviado = true;
-      resultados[r._idx]._erroEnvio = null;
-      ok++;
-    } else {
-      resultados[r._idx]._enviado = false;
-      resultados[r._idx]._erroEnvio = result.erro || 'Erro';
-      erro++;
-      erros.push(`${r.locatario_match || r.locatario_pdf || email}: ${result.erro || 'Erro'}`);
-    }
+    grupo.forEach(r => {
+      resultados[r._idx]._enviado  = result.ok;
+      resultados[r._idx]._erroEnvio = result.ok ? null : (result.erro || 'Erro');
+    });
+    if (result.ok) { ok += grupo.length; }
+    else { erro += grupo.length; erros.push(`${locatario || email}: ${result.erro || 'Erro'}`); }
     renderResultados();
-    // Pequena pausa para não sobrecarregar a API
     await new Promise(res => setTimeout(res, 400));
   }
 
