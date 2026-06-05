@@ -3272,12 +3272,12 @@ def enviar_boleto_locatario():
     if n > 1:
         assunto += f" ({n} imóveis)"
 
-    logo_path = BASE / "static" / "logo.png"
-    logo_tag = ""
-    if logo_path.exists():
-        with open(logo_path, "rb") as f:
-            b64_logo = base64.b64encode(f.read()).decode()
-        logo_tag = f'<img src="data:image/png;base64,{b64_logo}" style="max-width:220px;height:auto;display:block;margin-bottom:16px" alt="Funchal Imoveis">'
+    try:
+        from flask import request as _req
+        logo_url = _req.host_url.rstrip('/') + '/static/logo.png'
+    except Exception:
+        logo_url = ''
+    logo_tag = f'<img src="{logo_url}" style="max-width:220px;height:auto;display:block;margin-bottom:16px" alt="Funchal Imoveis">' if logo_url else ''
 
     corpo = (f"Seguem em anexo os {n} {plural} referentes ao m&ecirc;s de <strong>{mes_texto}</strong>."
              if n > 1 else
