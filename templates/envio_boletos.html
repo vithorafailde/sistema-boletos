@@ -122,7 +122,7 @@ table.main-table { width: 100%; border-collapse: collapse; }
         Os locatários são carregados automaticamente da planilha. Preencha o e-mail de cada um e clique em <strong>Salvar E-mails</strong>.
       </p>
       <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-        <button class="btn btn-primary btn-sm" onclick="salvarTodos();event.stopPropagation()">Salvar E-mails</button>
+        <button id="btnSalvarEmails" class="btn btn-primary btn-sm" onclick="salvarTodos();event.stopPropagation()">Salvar E-mails</button>
       </div>
       <div id="semLocatarios" style="text-align:center;padding:24px;color:var(--muted)">
         <div style="font-size:28px;margin-bottom:8px"></div>
@@ -295,7 +295,7 @@ async function salvarTodos() {
     };
   });
 
-  const btn = document.querySelector('[onclick="salvarTodos()"]');
+  const btn = document.getElementById('btnSalvarEmails');
   const textoOrig = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = 'Salvando...';
