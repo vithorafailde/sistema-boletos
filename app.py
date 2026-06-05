@@ -2199,7 +2199,7 @@ def exportar():
     ws.title = "Boletos"
     cols = ["Locatario", "Endereco", "Tipo", "Proprietario",
             "Aluguel", "Cond Repasse", "Fundo Reserva*",
-            "IPTU Apto", "Parc IPTU", "IPTU Vaga", "Parc IPTU Vaga",
+            "IPTU", "Parc IPTU", "IPTU Vaga", "Parc IPTU Vaga",
             "Seg Fianca", "Seg Incendio",
             "Outros Desc", "Outros Valor",
             "Outros Fixo Desc", "Outros Fixo Valor",
