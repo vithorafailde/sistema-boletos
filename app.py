@@ -3264,7 +3264,7 @@ def processar_boletos_locatarios():
             palavras_db = norm_palavras(info.get("locatario", ""))
             s = score_nome_arquivo(palavras_arq, palavras_db)
             sc = int(s * 100)
-            if sc > melhor_score and sc >= 50:
+            if sc > melhor_score and sc >= 40:
                 melhor_score = sc
                 chave_match = chave
                 email_match = info.get("email", "")
