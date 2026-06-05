@@ -150,25 +150,36 @@ def extrair_nome_arquivo(nome_arquivo):
     return nome.strip(), unidade
 
 def score_nome_arquivo(palavras_arq, palavras_loc):
-    """Score de similaridade entre nome do arquivo (apelido/abreviado) e nome do locatário.
-    Aceita abreviações de 2 letras (ex: HP) com match exato."""
-    validas = [p for p in palavras_arq if len(p) >= 2]
-    if not validas or not palavras_loc:
+    """Score: proporção das palavras SIGNIFICATIVAS do locatário presentes no arquivo.
+
+    Mede quanto do NOME DO LOCATÁRIO está coberto pelo filename — não o contrário.
+    Isso é robusto quando o filename contém endereço, número de apto, nome do
+    condomínio, etc. que inflam as palavras do arquivo e baixam o score antigo.
+
+    Exemplo:
+      locatário "Isidro Silva" (2 palavras) em arquivo
+      "isidro silva av paulista 101 apto 5" (8 palavras)
+      → lógica antiga: 2/8 = 25% → falha
+      → lógica nova:  2/2 = 100% → match ✓
+    """
+    STOPWORDS = {'DOS', 'DAS', 'DES', 'DEL', 'COM', 'POR', 'PARA', 'LTDA', 'EIRELI'}
+    # Palavras significativas do nome do locatário (4+ chars, não preposições)
+    sig = [p for p in palavras_loc if len(p) >= 4 and p not in STOPWORDS]
+    if not sig or not palavras_arq:
         return 0.0
-    matches = 0
-    for pa in validas:
-        for pl in palavras_loc:
+    matches = 0.0
+    for pl in sig:
+        for pa in palavras_arq:
             if pa == pl:
-                matches += 1
+                matches += 1.0
                 break
-            # prefixo comum de 4+ chars cobre variações ortográficas (luciaria/luciara)
-            # só para palavras com 4+ letras — abreviações exigem match exato
-            if len(pa) >= 4:
+            # prefixo de 4+ chars cobre variações ortográficas
+            if len(pa) >= 4 and len(pl) >= 4:
                 n = min(len(pa), len(pl), 5)
                 if n >= 4 and pa[:n] == pl[:n]:
                     matches += 0.8
                     break
-    return matches / len(validas)
+    return matches / len(sig)
 
 def extrair_rua(texto):
     palavras = norm_palavras(texto)
