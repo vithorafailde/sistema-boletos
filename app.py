@@ -429,6 +429,11 @@ def ler_excel_reajustes(path):
 
         if mes_aplicacao == hoje.month:
             status = 'ESTE_MES'
+            # Contrato vence no mês de aplicação → sinalizar como RENOVAR
+            if (data_fim is not None
+                    and data_fim.month == mes_aplicacao
+                    and data_fim.year == hoje.year):
+                status = 'RENOVAR'
         elif mes_aplicacao > hoje.month:
             status = 'FUTURO'
         else:
@@ -468,9 +473,9 @@ def ler_excel_reajustes(path):
             'vigencia_ok':       vigencia_ok,
         })
 
-    # Ordenar: este mês primeiro, futuros em ordem de mês, já feitos por último
-    ordem = {'ESTE_MES': 0, 'FUTURO': 1, 'OK': 2}
-    contratos.sort(key=lambda c: (ordem[c['status']], c['mes_reajuste']))
+    # Ordenar: renovar > este mês > futuros > já feitos
+    ordem = {'RENOVAR': 0, 'ESTE_MES': 1, 'FUTURO': 2, 'OK': 3}
+    contratos.sort(key=lambda c: (ordem.get(c['status'], 3), c['mes_reajuste']))
     return contratos
 
 
@@ -2477,14 +2482,15 @@ def api_calcular_reajustes():
             c['novo_aluguel'] = None
             c['diferenca']    = None
 
-        # Aplicavel apenas no mes de aplicacao (ESTE_MES)
-        c['aplicavel'] = (c['status'] == 'ESTE_MES') and c['novo_aluguel'] is not None
+        # Aplicavel no mes de aplicacao — tanto reajuste normal quanto renovação
+        c['aplicavel'] = (c['status'] in ('ESTE_MES', 'RENOVAR')) and c['novo_aluguel'] is not None
 
     # 5. Estatísticas
     total       = len(contratos)
+    renovar     = sum(1 for c in contratos if c['status'] == 'RENOVAR')
     este_mes    = sum(1 for c in contratos if c['status'] == 'ESTE_MES')
     futuros     = sum(1 for c in contratos if c['status'] == 'FUTURO')
-    ok_count    = total - este_mes - futuros
+    ok_count    = total - renovar - este_mes - futuros
     com_calculo = sum(1 for c in contratos if c['acumulado_pct'] is not None)
     aplicaveis  = sum(1 for c in contratos if c.get('aplicavel'))
 
@@ -2493,6 +2499,7 @@ def api_calcular_reajustes():
         'contratos': contratos,
         'resumo': {
             'total': total,
+            'renovar': renovar,
             'este_mes': este_mes,
             'futuros': futuros,
             'ok': ok_count,

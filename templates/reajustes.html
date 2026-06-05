@@ -72,6 +72,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .filtro-btn.yellow.active{background:var(--yellow);color:#fff;}
 .filtro-btn.green{border-color:var(--green);}
 .filtro-btn.green.active{background:var(--green);color:#fff;}
+.filtro-btn.purple{border-color:var(--purple);}
+.filtro-btn.purple.active{background:var(--purple);color:#fff;}
 .search-box{padding:6px 11px;border:1px solid var(--border);border-radius:7px;font-size:14px;outline:none;width:220px;margin-left:auto;}
 
 /* ── Tabela ── */
@@ -92,6 +94,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;}
 .badge-vencido{background:#F5D5D5;color:var(--red);}
 .badge-proximo{background:#F0E8C8;color:#7A5010;}
 .badge-ok{background:#D8E4F0;color:var(--green);}
+.badge-renovar{background:#EDE0F5;color:var(--purple);}
 .badge-idx{background:#DDE8EC;color:var(--accent);}
 
 /* ── Valores ── */
@@ -199,6 +202,7 @@ grammarly-extension,grammarly-desktop-integration,
 
       <div class="filtros">
         <button class="filtro-btn active"  id="fTodos"    onclick="filtrar('TODOS')">Todos</button>
+        <button class="filtro-btn purple"  id="fRenovar"  onclick="filtrar('RENOVAR')">Renovar</button>
         <button class="filtro-btn red"     id="fEsteMes"  onclick="filtrar('ESTE_MES')">Reajustar este mês</button>
         <button class="filtro-btn yellow"  id="fFuturo"   onclick="filtrar('FUTURO')">Futuros</button>
         <button class="filtro-btn green"   id="fOk"       onclick="filtrar('OK')">Já reajustados</button>
@@ -313,7 +317,7 @@ async function calcular() {
     msg.style.color = 'var(--green)';
     msg.textContent = `${data.resumo.total} contratos — consulta em ${data.resumo.data_consulta}`;
     todosContratos = data.contratos;
-    selecionados   = new Set(data.contratos.filter(c => c.aplicavel && c.status === 'ESTE_MES').map(c => c.num_linha));
+    selecionados   = new Set(data.contratos.filter(c => c.aplicavel && (c.status === 'ESTE_MES' || c.status === 'RENOVAR')).map(c => c.num_linha));
     renderResumo(data.resumo);
     renderAvisoBacen(data.resumo.erros_bacen);
     renderTabela();
@@ -335,6 +339,9 @@ function renderResumo(r) {
   document.getElementById('statsRow').innerHTML = `
     <div class="stat" style="border-top-color:#2563eb">
       <div class="num">${r.total}</div><div class="lbl">Total Contratos</div>
+    </div>
+    <div class="stat" style="border-top-color:var(--purple)">
+      <div class="num" style="color:var(--purple)">${r.renovar || 0}</div><div class="lbl">Renovar contrato</div>
     </div>
     <div class="stat" style="border-top-color:var(--red)">
       <div class="num" style="color:var(--red)">${r.este_mes}</div><div class="lbl">Reajustar este mês</div>
@@ -481,11 +488,12 @@ async function aplicarReajustes() {
       arquivoSelecionado = null;
       document.getElementById('fileName').textContent = '';
       // Recalcula contadores localmente
+      const nRen   = todosContratos.filter(c => c.status === 'RENOVAR').length;
       const nEste  = todosContratos.filter(c => c.status === 'ESTE_MES').length;
       const nFut   = todosContratos.filter(c => c.status === 'FUTURO').length;
       const nOk    = todosContratos.filter(c => c.status === 'OK').length;
       const nAplic = todosContratos.filter(c => c.aplicavel).length;
-      renderResumo({ total: todosContratos.length, este_mes: nEste, futuros: nFut,
+      renderResumo({ total: todosContratos.length, renovar: nRen, este_mes: nEste, futuros: nFut,
                      ok: nOk, com_calculo: 0, aplicaveis: nAplic,
                      erros_bacen: {}, data_consulta: '' });
       renderTabela();
@@ -508,8 +516,8 @@ async function aplicarReajustes() {
 // ── Filtro ────────────────────────────────────────────────────────────────────
 function filtrar(status) {
   filtroAtivo = status;
-  ['fTodos','fEsteMes','fFuturo','fOk'].forEach(id => document.getElementById(id).classList.remove('active'));
-  const idMap = {TODOS:'fTodos', ESTE_MES:'fEsteMes', FUTURO:'fFuturo', OK:'fOk'};
+  ['fTodos','fRenovar','fEsteMes','fFuturo','fOk'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const idMap = {TODOS:'fTodos', RENOVAR:'fRenovar', ESTE_MES:'fEsteMes', FUTURO:'fFuturo', OK:'fOk'};
   document.getElementById(idMap[status]).classList.add('active');
   renderTabela();
 }
@@ -530,6 +538,7 @@ function diff(v) {
   return `<span class="${cls}">${sinal}R$ ${Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>`;
 }
 function badgeStatus(s) {
+  if (s === 'RENOVAR')  return `<span class="badge badge-renovar">Renovar contrato</span>`;
   if (s === 'ESTE_MES') return `<span class="badge badge-vencido">Reajustar este mês</span>`;
   if (s === 'FUTURO')   return `<span class="badge badge-proximo">Futuro</span>`;
   return `<span class="badge badge-ok">Já reajustado</span>`;
@@ -577,14 +586,14 @@ function renderTabela() {
       ? `<span style="font-weight:700;color:var(--muted);">${brl(c.aluguel)} <small>(0%)</small></span>`
       : `<span style="font-weight:700;color:var(--green);">${brl(c.novo_aluguel)}</span>`;
 
-    // Campo de valor manual — disponível para todos os contratos aplicáveis (ESTE_MES)
-    const manualHtml = c.aplicavel && c.status === 'ESTE_MES' ? `
+    // Campo de valor manual — exclusivo para contratos em RENOVAR (vencimento no mês)
+    const manualHtml = c.aplicavel && c.status === 'RENOVAR' ? `
       <div style="margin-top:6px;font-size:12px;color:var(--muted);">
-        <div style="margin-bottom:2px;">Renovação — digitar valor:</div>
+        <div style="margin-bottom:2px;color:var(--purple);font-weight:600;">Novo valor do contrato:</div>
         <input type="number" step="0.01" min="0" placeholder="ex: 2.500,00"
           value="${valManual || ''}"
           oninput="setManual(${c.num_linha}, this.value)"
-          style="width:110px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:13px;background:#fff;">
+          style="width:110px;padding:3px 6px;border:1.5px solid var(--purple);border-radius:5px;font-size:13px;background:#fff;">
         ${valManual ? `<span class="novo-manual-label" style="color:var(--purple);font-weight:700;margin-left:4px;">manual</span>` : `<span class="novo-manual-label" style="display:none;color:var(--purple);font-weight:700;margin-left:4px;">manual</span>`}
       </div>` : '';
 
