@@ -1211,34 +1211,7 @@ function filtrar(tipo, btn) {
   });
 }
 
-// ─── Salvar e Exportar ────────────────────────────────────────────────────────
-function subtrairParcelaIPTU() {
-  if (!dados || !dados.locatarios) return;
-  let alterados = 0;
-  dados.locatarios.forEach((row, idx) => {
-    let mudou = false;
-    ['iptu_parcela','iptu_parcela_hist','iptu_vaga_parcela','iptu_vaga_parcela_hist'].forEach(campo => {
-      const val = row[campo];
-      if (!val) return;
-      const m = String(val).match(/^(\d+)\/(\d+)$/);
-      if (!m) return;
-      const num = parseInt(m[1]);
-      if (num <= 1) return;
-      const novo = String(num - 1).padStart(m[1].length >= 2 ? 2 : 1, '0') + '/' + m[2];
-      dados.locatarios[idx][campo] = novo;
-      // Atualiza input na tela se existir
-      const inputId = (campo === 'iptu_parcela' || campo === 'iptu_parcela_hist') ? `iparc_${idx}` : `iparcv_${idx}`;
-      const el = document.getElementById(inputId);
-      if (el) el.value = novo;
-      alterados++;
-      mudou = true;
-    });
-    // Atualiza o discriminativo do total para esta linha
-    if (mudou) recalc(idx);
-  });
-  alert(`Parcela IPTU subtraída em 1 em ${alterados} campo(s). Clique novamente para subtrair mais 1.`);
-}
-
+// ─── Salvar ───────────────────────────────────────────────────────────────────
 async function salvarExtras() {
   if (!confirm('Confirma o salvamento?\n\nOs dados serão gravados no histórico. A parcela do IPTU só avança quando o mês real mudar.')) return;
   const payload = Object.assign({}, dados, {mes: document.getElementById('inMes').value || ''});
@@ -1250,16 +1223,6 @@ async function salvarExtras() {
   }
 }
 
-async function exportarExcel() {
-  const mes = document.getElementById('inMes').value;
-  const r = await fetch('/exportar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({locatarios:dados.locatarios,mes})});
-  if (!r.ok){alert('Erro ao exportar');return;}
-  const blob = await r.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url; a.download=`boletos_${mes.replace('/','_')||'export'}.xlsx`; a.click();
-  URL.revokeObjectURL(url);
-}
 
 // ─── API Modal ────────────────────────────────────────────────────────────────
 function abrirModal() { document.getElementById('modalApi').classList.add('open'); }
