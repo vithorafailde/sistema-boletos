@@ -838,7 +838,7 @@ def pdf_tem_texto(path):
         pass
     return False
 
-def pdf_para_b64(path, resolucao=150):
+def pdf_para_b64(path, resolucao=250):
     imgs = []
     try:
         with pdfplumber.open(str(path)) as pdf:
@@ -865,27 +865,39 @@ def pdf_texto_completo(path):
     return t.strip()
 
 def montar_content(pdf_path, prompt):
-    if pdf_tem_texto(pdf_path):
-        txt = pdf_texto_completo(pdf_path)
-        return [{"type": "text", "text": f"Texto extraido do PDF:\n\n{txt}\n\n{prompt}"}]
+    """Monta content com texto + imagens (modo hibrido) para maxima precisao.
+    Mesmo quando o PDF tem texto seleccionavel, inclui as imagens para que o
+    modelo possa cruzar os valores visualmente e evitar erros de extração."""
+    tem_texto = pdf_tem_texto(pdf_path)
     imgs = pdf_para_b64(pdf_path)
-    if not imgs:
+
+    if not tem_texto and not imgs:
         return None
+
     content = []
-    for img in imgs[:3]:
+
+    if tem_texto:
+        txt = pdf_texto_completo(pdf_path)
+        content.append({"type": "text",
+                         "text": f"Texto extraido do PDF (use para identificar campos):\n\n{txt}\n\n"
+                                 f"IMPORTANTE: o texto acima pode ter colunas desalinhadas. "
+                                 f"Use as imagens abaixo para confirmar os valores numericos com precisao."})
+
+    for img in imgs[:4]:
         content.append({"type": "image",
                          "source": {"type": "base64", "media_type": "image/png", "data": img}})
+
     content.append({"type": "text", "text": prompt})
     return content
 
 
-def chamar_claude(api_key, content, max_tokens=1500, tentativas=3):
+def chamar_claude(api_key, content, max_tokens=2000, tentativas=3):
     client = anthropic.Anthropic(api_key=api_key)
     ultimo_erro = "Falhou apos todas as tentativas"
     for t in range(tentativas):
         try:
             resp = client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model="claude-sonnet-4-6",
                 max_tokens=max_tokens,
                 messages=[{"role": "user", "content": content}]
             )
@@ -968,13 +980,39 @@ ATENCAO:
 - Se tiver so demonstrativo do predio sem dados individuais: tipo = demonstrativo_geral
 - Se tiver so boleto da unidade: tipo = boleto_individual
 
-REGRAS CRITICAS DE CLASSIFICACAO — LEIA COM MAXIMA ATENCAO:
+═══════════════════════════════════════════════════════
+LEITURA DE VALORES NUMERICOS — REGRAS ABSOLUTAS
+═══════════════════════════════════════════════════════
+
+1. FORMATO BRASILEIRO: virgula = decimal, ponto = milhar.
+   Exemplos: "127,50" → 127.50 | "1.234,00" → 1234.00 | "20,40" → 20.40
+   NUNCA confunda "127,50" com "20,50" — leia cada digito com cuidado.
+
+2. VERIFICACAO OBRIGATORIA: some todos os itens extraidos e compare
+   com o "total_boleto". Se a soma diferir mais de R$1,00 do total,
+   revise cada item — algum valor foi lido errado.
+
+3. QUANDO HOUVER IMAGEM E TEXTO: se o texto extraido mostrar um valor
+   diferente do que aparece visualmente na imagem, PREVALECE a imagem.
+   O texto pode ter colunas desalinhadas que trocam os valores de linha.
+
+4. NAO ARREDONDE nem truncue valores: "127,53" deve ser 127.53, nao 127 nem 128.
+
+5. Valores tipicos de referencia (use para detectar erros de leitura):
+   - Cota condominial: R$200 a R$2.000
+   - Agua: R$20 a R$500 (variavel por consumo)
+   - Gas: R$30 a R$400 (variavel por consumo)
+   - Fundo de reserva: 5% a 20% da cota (valor fixo, menor que a cota)
+   Se um valor lido parecer fora da faixa tipica, releia o documento.
+
+═══════════════════════════════════════════════════════
+REGRAS CRITICAS DE CLASSIFICACAO
+═══════════════════════════════════════════════════════
 
 AGUA (campo "agua"):
 - Qualquer linha com as palavras: "Agua", "Agua Fria", "Consumo Agua", "Cons. Agua", "Cons Agua", "Consumo de Agua",
   "Hidrometro", "Leitura Hidrometro", "Taxa Agua", "Agua Individual", "Medicao Agua"
 - E um valor VARIAVEL que muda todo mes conforme o consumo medido
-- Valor tipico: R$10 a R$300
 - SE HOUVER QUALQUER LINHA COM ESSAS PALAVRAS, coloque o valor em "agua". NUNCA em "fundo_reserva".
 
 FUNDO DE RESERVA (campo "fundo_reserva"):
@@ -1011,7 +1049,7 @@ def extrair_condo(api_key, pdf_path):
 
 # ─── Extração boleto anterior ─────────────────────────────────────────────────
 
-PROMPT_BOLETO_ANT = """Analise este boleto de locacao/aluguel do mes anterior. Extraia TODOS os valores cobrados.
+PROMPT_BOLETO_ANT = """Analise este boleto de locacao/aluguel. Extraia TODOS os valores cobrados com maxima precisao.
 
 Retorne APENAS JSON valido:
 {
@@ -1033,13 +1071,22 @@ Retorne APENAS JSON valido:
   "outros_itens": [{"descricao": "nome", "valor": 0.0}]
 }
 
-Instrucoes:
+LEITURA DE VALORES — REGRAS ABSOLUTAS:
+1. FORMATO BRASILEIRO: virgula = decimal, ponto = milhar.
+   Exemplos: "127,50" → 127.50 | "1.234,00" → 1234.00 | "20,40" → 20.40
+   NUNCA confunda digitos: leia cada numero com cuidado na imagem.
+2. VERIFICACAO: some todos os itens e compare com o total do boleto.
+   Se a soma diferir mais de R$1,00, revise os valores — algum foi lido errado.
+3. Se texto e imagem divergirem, PREVALECE a imagem.
+4. NAO arredonde: "127,53" → 127.53 (nao 127 nem 128).
+
+Instrucoes de campo:
 - "cond_cota" = taxa de condominio (valor fixo mensal)
 - "cond_vaga" = taxa de vaga de garagem/condominio vaga
 - "agua", "gas", "energia" = consumos variaveis
 - "iptu" e "iptu_vaga" = IPTU do apartamento e da vaga (podem ser cobrados separados)
 - iptu_parcela e iptu_vaga_parcela: SOMENTE formato "parcela/total" ex: "03/07". NUNCA colocar mes ou ano.
-- Valores com ponto decimal. null para ausentes."""
+- Valores com ponto decimal (ex: 127.50). null para ausentes."""
 
 def extrair_boleto_anterior(api_key, pdf_path):
     content = montar_content(pdf_path, PROMPT_BOLETO_ANT)
@@ -1264,7 +1311,7 @@ def config_save():
         return jsonify({"ok": False, "erro": "Chave vazia"})
     try:
         client = anthropic.Anthropic(api_key=api_key)
-        client.messages.create(model="claude-haiku-4-5-20251001", max_tokens=10,
+        client.messages.create(model="claude-sonnet-4-6", max_tokens=10,
                                 messages=[{"role": "user", "content": "ok"}])
     except Exception as e:
         return jsonify({"ok": False, "erro": str(e)[:150]})
