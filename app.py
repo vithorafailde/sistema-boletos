@@ -1508,6 +1508,8 @@ def processar():
                     if h.get(f"ded{_n}_val"):
                         row[f"ded{_n}_val_hist"]  = h[f"ded{_n}_val"]
                         row[f"ded{_n}_desc_hist"] = h.get(f"ded{_n}_desc", "")
+                        # Restaura o sinal (+/-) salvo — sem isso deduções "+" viram "-"
+                        row[f"ded{_n}_subtrair"]  = h.get(f"ded{_n}_subtrair", True)
                 # Cota: replica do histórico somente se o boleto atual não trouxe cota
                 v_cota = float(h.get("cond_cota") or 0)
                 if v_cota and not row["cond_itens_rep"].get("cota"):
@@ -1913,6 +1915,15 @@ def _gerar_html_email(proprietario, mes, rows, total, hoje):
                 linhas += f'<tr><td style="padding:5px 10px;font-size:11pt;font-style:italic;color:#555">(-) {d["desc"]}</td><td style="padding:5px 10px;text-align:right;font-style:italic;color:#555">({fmt(d["val"])})</td></tr>'
             else:
                 linhas += f'<tr><td style="padding:5px 10px;font-size:11pt;font-style:italic;color:#336">(+) {d["desc"]}</td><td style="padding:5px 10px;text-align:right;font-style:italic;color:#336">{fmt(d["val"])}</td></tr>'
+        multa = float(row.get("multa_atraso") or 0)
+        juros = float(row.get("juros_mora") or 0)
+        taxa_sob = float(row.get("taxa_sob_rec") or 0)
+        if multa:
+            linhas += f'<tr><td style="padding:5px 10px;font-size:11pt;font-style:italic;color:#2A6A2A">(+) Multa por atraso</td><td style="padding:5px 10px;text-align:right;font-style:italic;color:#2A6A2A">{fmt(multa)}</td></tr>'
+        if juros:
+            linhas += f'<tr><td style="padding:5px 10px;font-size:11pt;font-style:italic;color:#2A6A2A">(+) Juros de mora</td><td style="padding:5px 10px;text-align:right;font-style:italic;color:#2A6A2A">{fmt(juros)}</td></tr>'
+        if taxa_sob:
+            linhas += f'<tr><td style="padding:5px 10px;font-size:11pt;font-style:italic;color:#555">(-) Taxa adm. s/ multa+juros</td><td style="padding:5px 10px;text-align:right;font-style:italic;color:#555">({fmt(taxa_sob)})</td></tr>'
         linhas += f'<tr style="border-top:2px solid #000"><td style="padding:8px 10px;font-weight:bold;font-size:13pt">Valor líquido a repassar</td><td style="padding:8px 10px;text-align:right;font-weight:bold;font-size:13pt">{fmt(row["repasse"])}</td></tr>'
 
         sep = '<tr><td colspan="2" style="padding:0;height:14px;border:none"></td></tr>' if i > 0 else ''
@@ -2115,9 +2126,11 @@ def salvar_extras():
             "seg_fianca": row.get("seg_fianca") or row.get("seg_fianca_hist") or 0,
             "seg_incendio": row.get("seg_incendio") or row.get("seg_incendio_hist") or 0,
             "cond_cota": float((row.get("cond_itens_rep") or {}).get("cota") or 0),
-            **{f"ded{n}_desc": row.get(f"ded{n}_desc") or row.get(f"ded{n}_desc_hist") or ""
+            **{f"ded{n}_desc":     row.get(f"ded{n}_desc") or row.get(f"ded{n}_desc_hist") or ""
                for n in range(1, 11)},
-            **{f"ded{n}_val":  row.get(f"ded{n}_val")  or row.get(f"ded{n}_val_hist")  or 0
+            **{f"ded{n}_val":      row.get(f"ded{n}_val")  or row.get(f"ded{n}_val_hist")  or 0
+               for n in range(1, 11)},
+            **{f"ded{n}_subtrair": row.get(f"ded{n}_subtrair", True)
                for n in range(1, 11)},
         }
     salvar_historico(historico)
@@ -3441,7 +3454,7 @@ def enviar_boleto_locatario():
     try:
         with _smtp_connect(smtp, timeout=15) as s:
             s.sendmail(remetente, [email_dest], msg.as_string())
-        gravar_log_envio(locatario or attachments[0]["filename"], email_dest, mes, "enviado", tipo="boleto")
+        gravar_log_envio(locatario or attachments[0]["filename"], email_dest, mes, "sent", tipo="boleto")
         return jsonify({"ok": True})
     except Exception as e:
         gravar_log_envio(locatario or attachments[0]["filename"], email_dest, mes, "erro", str(e), tipo="boleto")

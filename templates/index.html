@@ -316,7 +316,9 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick="novoProcessamento()">Novo processamento</button>
         <button class="btn btn-outline" style="font-size:16px;padding:8px 22px" onclick="salvarExtras()">Salvar</button>
-<button class="btn btn-outline btn-sm" onclick="window.print()">Imprimir</button>
+        <button class="btn btn-outline btn-sm" onclick="subtrairParcelaIPTU()" title="Subtrai 1 parcela do IPTU de todas as unidades">- 1 Parcela IPTU</button>
+        <button class="btn btn-outline btn-sm" onclick="exportarExcel()">Exportar Excel</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">Imprimir</button>
         <button class="btn btn-outline btn-sm" onclick="baixarHistorico()" title="Baixe o historico para nao perder dados ao atualizar o sistema">Backup</button>
         <label class="btn btn-outline btn-sm" style="cursor:pointer" title="Restaure um backup anterior do historico">Restaurar<input type="file" accept=".json" style="display:none" onchange="restaurarHistorico(this)"></label>
       </div>
@@ -1766,8 +1768,11 @@ async function enviarInforme(propKey) {
       pa_ativo:  rd.paAtivo,
       pa_val:    rd.paVal,
       ded_prop_itens: rd.dedPropItens.map(d=>({label: LABELS[d.key]||d.key, val: d.val})),
-      deds:      rd.deds,
-      repasse:   rd.repasse
+      deds:        rd.deds,
+      multa_atraso: rd.multaBruta,
+      juros_mora:   rd.jurosBruto,
+      taxa_sob_rec: rd.taxaSobRec,
+      repasse:     rd.repasse
     };
   });
   const total = rows.reduce((s, r) => s + r.repasse, 0);
@@ -1952,7 +1957,11 @@ async function enviarParaTodos() {
         aluguel: rd.aluguel, taxa_imob: rd.taxaImob, perc_imob: rd.percImob,
         pa_ativo: rd.paAtivo, pa_val: rd.paVal,
         ded_prop_itens: rd.dedPropItens.map(d=>({label: LABELS[d.key]||d.key, val: d.val})),
-        deds: rd.deds, repasse: rd.repasse
+        deds: rd.deds,
+        multa_atraso: rd.multaBruta,
+        juros_mora:   rd.jurosBruto,
+        taxa_sob_rec: rd.taxaSobRec,
+        repasse: rd.repasse
       };
     });
     const total = rows.reduce((s,r) => s+r.repasse, 0);
