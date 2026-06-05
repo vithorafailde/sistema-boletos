@@ -456,8 +456,14 @@ function renderResultados() {
     corpo.innerHTML += `
       <tr>
         <td style="font-size:13px;color:var(--muted)">${escHtml(r.arquivo)}</td>
-        <td style="font-weight:600">${escHtml(r.locatario_pdf || '—')}</td>
-        <td>${r.locatario_match ? escHtml(r.locatario_match) : '<span style="color:var(--orange);font-style:italic;font-size:10px">não identificado</span>'}</td>
+        <td style="font-weight:600">
+          ${escHtml(r.locatario_pdf || '—')}
+          ${r.imovel ? `<div style="font-size:11px;color:var(--muted);font-weight:400;margin-top:2px">${escHtml(r.imovel)}</div>` : ''}
+        </td>
+        <td>
+          ${r.locatario_match ? escHtml(r.locatario_match) : '<span style="color:var(--orange);font-style:italic;font-size:10px">não identificado</span>'}
+          ${r.imovel && r.locatario_match ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(r.imovel)}</div>` : ''}
+        </td>
         <td>${emailCampo}</td>
         <td>${badgeHtml}</td>
         <td>${acaoHtml}</td>

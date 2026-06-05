@@ -3180,14 +3180,18 @@ def processar_boletos_locatarios():
             yield f"data: {json.dumps({'tipo': 'progresso', 'atual': i+1, 'total': len(saved), 'arquivo': orig_name})}\n\n"
 
             chave_match, nome_match, email_match, melhor_score = _match_nome_arquivo(orig_name)
-            # Nome extraído do arquivo (para exibir na tabela)
-            stem_display = re.sub(r'(?i)boleto[_\s-]*', '', Path(orig_name).stem)
-            stem_display = re.sub(r'[_\-]', ' ', stem_display).strip()
+            # Extrai nome e imóvel do filename
+            # Padrão: "Boleto_[NOME] - [IMÓVEL].pdf"
+            stem_raw = re.sub(r'(?i)boleto[_\s-]*', '', Path(orig_name).stem).strip()
+            partes = re.split(r'\s*-\s*', stem_raw, maxsplit=1)
+            stem_display = re.sub(r'[_]', ' ', partes[0]).strip()
+            imovel_display = re.sub(r'[_\-]', ' ', partes[1]).strip() if len(partes) > 1 else ''
 
             resultado = {
                 "arquivo": orig_name,
                 "arquivo_salvo": "loc_" + orig_name,
                 "locatario_pdf": stem_display,
+                "imovel": imovel_display,
                 "mes_referencia": "",
                 "chave_match": chave_match,
                 "locatario_match": nome_match,
