@@ -466,6 +466,7 @@ async function aplicarReajustes() {
       el.className = 'alerta alerta-ok';
       el.innerHTML = `<strong>${data.msg}</strong>` +
         (data.erros && data.erros.length ? '<br>Erros: ' + data.erros.join('; ') : '');
+      showSalvo();
       // Mostrar botão de download (fora do painelAplicar, não some)
       document.getElementById('painelDownload').style.display = 'block';
       // Atualiza estado local sem re-chamar o BACEN (evita double-apply e mantém download visível)
@@ -635,6 +636,15 @@ function renderTabela() {
 window.addEventListener('pageshow', function(e) {
   if (e.persisted) window.location.reload(true);
 });
+
+function showSalvo(msg) {
+  const t = document.getElementById('toastSalvo');
+  t.textContent = msg || 'Salvo!';
+  t.style.opacity = '1';
+  clearTimeout(t._st);
+  t._st = setTimeout(() => t.style.opacity = '0', 2500);
+}
 </script>
+<div id="toastSalvo" style="position:fixed;bottom:24px;right:24px;background:#2A5C2A;color:#fff;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.22);opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999">Salvo!</div>
 </body>
 </html>

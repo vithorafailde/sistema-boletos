@@ -112,7 +112,6 @@ table.main-table { width: 100%; border-collapse: collapse; }
         <span style="font-size:14px;font-weight:700">Cadastro de E-mails dos Locatários</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <span id="statusSalvo" style="font-size:13px;color:#2A6A2A;display:none">Salvo!</span>
         <span id="cadastroChevron" style="font-size:15px;color:var(--muted);transition:transform .2s">▼</span>
       </div>
     </div>
@@ -311,9 +310,7 @@ async function salvarTodos() {
   btn.innerHTML = textoOrig;
 
   if (r.ok) {
-    const st = document.getElementById('statusSalvo');
-    st.style.display = 'inline';
-    setTimeout(() => { st.style.display = 'none'; }, 3000);
+    showSalvo();
     _dbLocatarios = emails;
   } else {
     alert('Erro ao salvar: ' + (r.erro || 'desconhecido'));
@@ -624,9 +621,18 @@ function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function showSalvo(msg) {
+  const t = document.getElementById('toastSalvo');
+  t.textContent = msg || 'Salvo!';
+  t.style.opacity = '1';
+  clearTimeout(t._st);
+  t._st = setTimeout(() => t.style.opacity = '0', 2500);
+}
+
 // Inicialização
 carregarLocatarios();
 carregarLogEnvios();
 </script>
+<div id="toastSalvo" style="position:fixed;bottom:24px;right:24px;background:#2A5C2A;color:#fff;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.22);opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999">Salvo!</div>
 </body>
 </html>

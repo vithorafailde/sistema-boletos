@@ -1246,7 +1246,7 @@ async function salvarExtras() {
   const j = await r.json();
   if (j.ok) {
     try { localStorage.setItem('boletos_dados', JSON.stringify(dados)); } catch(e) {}
-    alert('Salvo! No proximo mes Cota Cond., IPTU e Seguros serao pre-preenchidos automaticamente.');
+    showSalvo();
   }
 }
 
@@ -1895,7 +1895,7 @@ async function salvarEmailsProprietarios() {
       body: JSON.stringify({emails})
     });
     const j = await r.json();
-    if (j.ok) { _emailsProprietarios = emails; fecharModalEmails(); }
+    if (j.ok) { _emailsProprietarios = emails; fecharModalEmails(); showSalvo(); }
     else alert('Erro ao salvar: ' + j.erro);
   } catch(e) { alert('Erro: ' + e.message); }
   btn.disabled = false; btn.textContent = 'Salvar';
@@ -2028,6 +2028,15 @@ document.getElementById('inMes').value=`${M[now.getMonth()]}/${now.getFullYear()
     try { document.getElementById('secaoUpload').style.display = 'block'; } catch(_) {}
   }
 })();
+
+function showSalvo(msg) {
+  const t = document.getElementById('toastSalvo');
+  t.textContent = msg || 'Salvo!';
+  t.style.opacity = '1';
+  clearTimeout(t._st);
+  t._st = setTimeout(() => t.style.opacity = '0', 2500);
+}
 </script>
+<div id="toastSalvo" style="position:fixed;bottom:24px;right:24px;background:#2A5C2A;color:#fff;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.22);opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999">Salvo!</div>
 </body>
 </html>

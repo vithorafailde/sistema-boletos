@@ -515,6 +515,7 @@ async function salvarHistoricoManual() {
     // Recalcula automaticamente com o histórico salvo
     alteracoesHist = {};
     document.getElementById('btnSalvarHist').style.display = 'none';
+    showSalvo();
     await calcular();
   } catch (e) {
     mostrarErro('Falha ao salvar: ' + e.message);
@@ -783,8 +784,7 @@ async function salvarEmailContador() {
   const j = await r.json();
   if (j.ok) {
     document.getElementById('btnEnviarContador').disabled = false;
-    document.getElementById('msgContador').textContent = 'E-mail salvo!';
-    setTimeout(() => document.getElementById('msgContador').textContent = '', 3000);
+    showSalvo('E-mail salvo!');
   }
 }
 
@@ -1092,6 +1092,15 @@ async function exportar(btn) {
     btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar Excel (Informes)`;
   }
 }
+
+function showSalvo(msg) {
+  const t = document.getElementById('toastSalvo');
+  t.textContent = msg || 'Salvo!';
+  t.style.opacity = '1';
+  clearTimeout(t._st);
+  t._st = setTimeout(() => t.style.opacity = '0', 2500);
+}
 </script>
+<div id="toastSalvo" style="position:fixed;bottom:24px;right:24px;background:#2A5C2A;color:#fff;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.22);opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999">Salvo!</div>
 </body>
 </html>

@@ -162,6 +162,7 @@ async function salvarApi() {
       const b = document.getElementById('apiStatusBadge');
       b.className = 'status-badge badge-api-ok'; b.textContent = 'API configurada';
       document.getElementById('apiMsgOk').style.display = 'block';
+      showSalvo();
     } else {
       document.getElementById('apiMsgErr').textContent = j.erro;
       document.getElementById('apiMsgErr').style.display = 'block';
@@ -202,6 +203,7 @@ async function salvarSmtp() {
       const b = document.getElementById('smtpStatusBadge');
       b.className = 'status-badge badge-ok'; b.textContent = 'E-mail configurado';
       document.getElementById('smtpMsgOk').style.display = 'block';
+      showSalvo();
     } else {
       document.getElementById('smtpMsgErr').textContent = j.erro || 'Erro ao testar conexão.';
       document.getElementById('smtpMsgErr').style.display = 'block';
@@ -213,6 +215,14 @@ async function salvarSmtp() {
   btn.disabled = false; btn.textContent = 'Salvar e Testar';
 }
 
+function showSalvo(msg) {
+  const t = document.getElementById('toastSalvo');
+  t.textContent = msg || 'Salvo!';
+  t.style.opacity = '1';
+  clearTimeout(t._st);
+  t._st = setTimeout(() => t.style.opacity = '0', 2500);
+}
+
 // Carrega config atual de e-mail ao abrir
 fetch('/get_smtp').then(r=>r.json()).then(j=>{
   document.getElementById('smtpHost').value = j.host || '';
@@ -221,5 +231,6 @@ fetch('/get_smtp').then(r=>r.json()).then(j=>{
   document.getElementById('smtpFrom').value = j.from_addr || '';
 }).catch(()=>{});
 </script>
+<div id="toastSalvo" style="position:fixed;bottom:24px;right:24px;background:#2A5C2A;color:#fff;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.22);opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999">Salvo!</div>
 </body>
 </html>
