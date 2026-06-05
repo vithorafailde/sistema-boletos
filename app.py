@@ -429,10 +429,11 @@ def ler_excel_reajustes(path):
 
         if mes_aplicacao == hoje.month:
             status = 'ESTE_MES'
-            # Contrato vence no mês de aplicação → sinalizar como RENOVAR
+            # Contrato vence no mês do aniversário ou no mês de aplicação → RENOVAR
+            # Ex.: aniversário maio, aplicação junho, data_fim 01/05/2026 → RENOVAR
             if (data_fim is not None
-                    and data_fim.month == mes_aplicacao
-                    and data_fim.year == hoje.year):
+                    and data_fim.year == hoje.year
+                    and data_fim.month in (data_rej.month, mes_aplicacao)):
                 status = 'RENOVAR'
         elif mes_aplicacao > hoje.month:
             status = 'FUTURO'
