@@ -153,14 +153,11 @@ def score_nome_arquivo(palavras_arq, palavras_loc):
     """Score: proporção das palavras SIGNIFICATIVAS do locatário presentes no arquivo.
 
     Mede quanto do NOME DO LOCATÁRIO está coberto pelo filename — não o contrário.
-    Isso é robusto quando o filename contém endereço, número de apto, nome do
-    condomínio, etc. que inflam as palavras do arquivo e baixam o score antigo.
-
-    Exemplo:
-      locatário "Isidro Silva" (2 palavras) em arquivo
-      "isidro silva av paulista 101 apto 5" (8 palavras)
-      → lógica antiga: 2/8 = 25% → falha
-      → lógica nova:  2/2 = 100% → match ✓
+    Trata três casos:
+      1. Palavras separadas: "isidro silva av paulista 101" → ISIDRO e SILVA encontrados
+      2. Nome concatenado: "ISIDROWILFREDDAZAPAREDE - TOSCA" → ISIDRO, WILFRED e ZAPAREDE
+         são substrings de "ISIDROWILFREDDAZAPAREDE" → todos encontrados via substring
+      3. Prefixo: cobre variações ortográficas (luciara/luciaria)
     """
     STOPWORDS = {'DOS', 'DAS', 'DES', 'DEL', 'COM', 'POR', 'PARA', 'LTDA', 'EIRELI'}
     # Palavras significativas do nome do locatário (4+ chars, não preposições)
@@ -169,15 +166,30 @@ def score_nome_arquivo(palavras_arq, palavras_loc):
         return 0.0
     matches = 0.0
     for pl in sig:
+        encontrou = False
         for pa in palavras_arq:
+            # 1. Match exato
             if pa == pl:
                 matches += 1.0
+                encontrou = True
                 break
-            # prefixo de 4+ chars cobre variações ortográficas
+            # 2. Substring: nome concatenado no arquivo (ex: ISIDROWILFREDDAZAPAREDE contém WILFRED)
+            if len(pl) >= 4 and pl in pa:
+                matches += 0.9
+                encontrou = True
+                break
+            # 3. Prefixo de 4+ chars cobre variações ortográficas
             if len(pa) >= 4 and len(pl) >= 4:
                 n = min(len(pa), len(pl), 5)
                 if n >= 4 and pa[:n] == pl[:n]:
                     matches += 0.8
+                    encontrou = True
+                    break
+        # 4. Inverso: palavra do arquivo é substring do nome (abreviações no filename)
+        if not encontrou:
+            for pa in palavras_arq:
+                if len(pa) >= 4 and pa in pl:
+                    matches += 0.7
                     break
     return matches / len(sig)
 
