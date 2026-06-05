@@ -3277,7 +3277,7 @@ def enviar_boleto_locatario():
         logo_url = _req.host_url.rstrip('/') + '/static/logo.png'
     except Exception:
         logo_url = ''
-    logo_tag = f'<img src="{logo_url}" style="max-width:220px;height:auto;display:block;margin-bottom:16px" alt="Funchal Imoveis">' if logo_url else ''
+    logo_tag = f'<img src="{logo_url}" style="max-width:100%;height:auto;display:block;margin-bottom:16px" alt="Funchal Imoveis">' if logo_url else ''
 
     corpo = (f"Seguem em anexo os {n} {plural} referentes ao m&ecirc;s de <strong>{mes_texto}</strong>."
              if n > 1 else
