@@ -2004,8 +2004,21 @@ def gravar_log_envio(nome, email, mes, status, erro="", tipo="informe", resend_i
         pass
 
 
-def atualizar_status_resend(resend_id, novo_status):
+def _iso_para_brt(iso_str):
+    """Converte timestamp ISO do Resend para formato brasileiro (UTC-3)."""
+    import datetime as _dt
+    from datetime import timezone, timedelta
+    try:
+        dt = _dt.datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+        brt = timezone(timedelta(hours=-3))
+        return dt.astimezone(brt).strftime("%d/%m/%Y %H:%M:%S")
+    except Exception:
+        return ""
+
+
+def atualizar_status_resend(resend_id, novo_status, status_at=None):
     """Atualiza o status de um registro do log pelo resend_id."""
+    import datetime as _dt
     if not resend_id or not LOG_ENVIOS_FILE.exists():
         return
     try:
@@ -2015,6 +2028,7 @@ def atualizar_status_resend(resend_id, novo_status):
         for entry in log:
             if entry.get("resend_id") == resend_id:
                 entry["status"] = novo_status
+                entry["status_at"] = status_at or _dt.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                 alterado = True
                 break
         if alterado:
@@ -2029,7 +2043,6 @@ def atualizar_status_resend(resend_id, novo_status):
 @app.route("/api/resend_webhook", methods=["POST"])
 def resend_webhook():
     """Recebe eventos de status do Resend (delivered, bounced, complained, etc.)."""
-    # Mapa de evento Resend → status interno
     STATUS_MAP = {
         "email.sent":             "sent",
         "email.delivered":        "delivered",
@@ -2042,13 +2055,86 @@ def resend_webhook():
     try:
         data = request.get_json(force=True) or {}
         event_type = data.get("type", "")
-        resend_id  = (data.get("data") or {}).get("email_id", "")
+        edata      = data.get("data") or {}
+        resend_id  = edata.get("email_id", "")
         novo_status = STATUS_MAP.get(event_type)
         if resend_id and novo_status:
-            atualizar_status_resend(resend_id, novo_status)
+            status_at = _iso_para_brt(edata.get("created_at", ""))
+            atualizar_status_resend(resend_id, novo_status, status_at or None)
     except Exception:
         pass
     return jsonify({"ok": True})
+
+
+@app.route("/api/sincronizar_resend", methods=["POST"])
+@login_required
+def sincronizar_resend():
+    """Consulta a API do Resend para cada email no log e atualiza o status real."""
+    import urllib.request, urllib.error, datetime as _dt
+    from datetime import timezone, timedelta
+    brt = timezone(timedelta(hours=-3))
+
+    cfg = ler_smtp()
+    api_key = cfg.get("resend_key", "")
+    if not api_key:
+        return jsonify({"erro": "Resend não configurado"}), 400
+
+    tipo = request.json.get("tipo", "") if request.is_json else ""
+
+    if not LOG_ENVIOS_FILE.exists():
+        return jsonify({"atualizados": 0, "total": 0})
+
+    with open(LOG_ENVIOS_FILE, encoding="utf-8") as f:
+        log = json.load(f)
+
+    STATUS_MAP = {
+        "sent":             "sent",
+        "delivered":        "delivered",
+        "delivery_delayed": "delayed",
+        "bounced":          "bounced",
+        "complained":       "complained",
+        "opened":           "opened",
+        "clicked":          "clicked",
+    }
+
+    atualizados = 0
+    total_com_id = 0
+    for entry in log:
+        rid = entry.get("resend_id", "")
+        if not rid:
+            continue
+        if tipo and entry.get("tipo") != tipo:
+            continue
+        total_com_id += 1
+        try:
+            req = urllib.request.Request(
+                f"https://api.resend.com/emails/{rid}",
+                headers={"Authorization": f"Bearer {api_key}"}
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                edata = json.load(resp)
+            last_event = edata.get("last_event", "")
+            novo_status = STATUS_MAP.get(last_event, last_event) if last_event else None
+            if novo_status and novo_status != entry.get("status"):
+                entry["status"] = novo_status
+                entry["status_at"] = _dt.datetime.now(brt).strftime("%d/%m/%Y %H:%M:%S")
+                atualizados += 1
+            elif novo_status and not entry.get("status_at"):
+                # status igual mas sem timestamp — preenche
+                entry["status_at"] = _dt.datetime.now(brt).strftime("%d/%m/%Y %H:%M:%S")
+                atualizados += 1
+        except Exception:
+            continue
+
+    try:
+        tmp = str(LOG_ENVIOS_FILE) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(log, f, ensure_ascii=False, indent=2)
+        import os; os.replace(tmp, LOG_ENVIOS_FILE)
+    except Exception:
+        pass
+
+    return jsonify({"atualizados": atualizados, "total": total_com_id})
 
 
 @app.route("/api/log_envios", methods=["GET"])

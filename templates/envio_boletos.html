@@ -172,26 +172,28 @@ table.main-table { width: 100%; border-collapse: collapse; }
   <div class="card" id="secaoAuditoria" style="margin-top:4px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin-bottom:0">Auditoria de Envios</div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <select id="filtroMesLog" class="form-input" style="font-size:14px;padding:5px 10px;width:auto" onchange="renderLogFiltrado()">
           <option value="">Todos os meses</option>
         </select>
         <button class="btn btn-outline btn-sm" onclick="carregarLogEnvios()">↻ Atualizar</button>
+        <button class="btn btn-outline btn-sm" id="btnSincronizar" onclick="sincronizarResend()" style="border-color:var(--accent);color:var(--accent)">Sincronizar com Resend</button>
       </div>
     </div>
     <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead>
           <tr style="background:var(--header);color:#fff">
-            <th style="padding:9px 12px;text-align:left;font-weight:600;white-space:nowrap">Data / Hora</th>
+            <th style="padding:9px 12px;text-align:left;font-weight:600;white-space:nowrap">Enviado em</th>
             <th style="padding:9px 12px;text-align:left;font-weight:600">Locatário</th>
             <th style="padding:9px 12px;text-align:left;font-weight:600">E-mail</th>
             <th style="padding:9px 12px;text-align:left;font-weight:600">Mês Ref.</th>
             <th style="padding:9px 12px;text-align:center;font-weight:600">Status</th>
+            <th style="padding:9px 12px;text-align:left;font-weight:600;white-space:nowrap">Atualizado em</th>
           </tr>
         </thead>
         <tbody id="logEnviosBody">
-          <tr><td colspan="5" style="padding:18px;text-align:center;color:var(--muted)">Nenhum envio registrado ainda.</td></tr>
+          <tr><td colspan="6" style="padding:18px;text-align:center;color:var(--muted)">Nenhum envio registrado ainda.</td></tr>
         </tbody>
       </table>
     </div>
@@ -622,21 +624,48 @@ function renderLogFiltrado() {
   const filtro = (document.getElementById('filtroMesLog')?.value || '').trim();
   const log = filtro ? _logEnviosCache.filter(e => e.mes === filtro) : _logEnviosCache;
   if (!log || log.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="padding:18px;text-align:center;color:var(--muted)">Nenhum envio registrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:18px;text-align:center;color:var(--muted)">Nenhum envio registrado ainda.</td></tr>';
     return;
   }
   tbody.innerHTML = log.map((e, i) => {
     const bg = i % 2 === 0 ? '#fff' : '#f7fafb';
     const b = AUDIT_BADGES[e.status] || ['#EEE','#555', e.status];
-    const badge = `<span style="background:${b[0]};color:${b[1]};padding:3px 9px;border-radius:12px;font-size:13px;font-weight:700" title="${escHtml(e.detalhe||'')}">${b[2]}</span>`;
+    const title = e.detalhe ? escHtml(e.detalhe) : b[2];
+    const badge = `<span style="background:${b[0]};color:${b[1]};padding:3px 9px;border-radius:12px;font-size:13px;font-weight:700;cursor:default" title="${title}">${b[2]}</span>`;
+    const statusAt = e.status_at
+      ? `<span style="color:var(--muted);font-size:11px">${escHtml(e.status_at)}</span>`
+      : `<span style="color:#bbb;font-size:11px">—</span>`;
     return `<tr style="background:${bg};border-top:1px solid var(--border)">
-      <td style="padding:8px 12px;white-space:nowrap;color:var(--muted)">${e.timestamp}</td>
+      <td style="padding:8px 12px;white-space:nowrap;color:var(--muted);font-size:11px">${e.timestamp}</td>
       <td style="padding:8px 12px;font-weight:600">${escHtml(e.nome||'')}</td>
       <td style="padding:8px 12px;color:var(--accent)">${escHtml(e.email||'')}</td>
       <td style="padding:8px 12px">${escHtml(e.mes||'')}</td>
       <td style="padding:8px 12px;text-align:center">${badge}</td>
+      <td style="padding:8px 12px;white-space:nowrap">${statusAt}</td>
     </tr>`;
   }).join('');
+}
+
+async function sincronizarResend() {
+  const btn = document.getElementById('btnSincronizar');
+  btn.disabled = true;
+  btn.textContent = 'Consultando Resend...';
+  try {
+    const r = await fetch('/api/sincronizar_resend', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({tipo:'boleto'})
+    });
+    const d = await r.json();
+    if (d.erro) { alert('Erro: ' + d.erro); return; }
+    await carregarLogEnvios();
+    showSalvo(`${d.atualizados} status atualizado(s) de ${d.total} emails`);
+  } catch(ex) {
+    alert('Erro ao consultar Resend: ' + ex);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sincronizar com Resend';
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
