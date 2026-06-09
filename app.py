@@ -32,7 +32,7 @@ DATA_DIR.mkdir(exist_ok=True)
 
 # Tudo que vier no boleto da unidade é repassado ao locatário,
 # exceto correio e fundo_reserva que são encargos do proprietário.
-REPASSE_ITENS = ["agua", "gas", "energia", "tx_leitura", "vaga_moto", "tag"]
+REPASSE_ITENS = ["agua", "gas", "energia", "tx_leitura", "vaga_moto", "tag", "salao_festas"]
 # Encargos do PROPRIETÁRIO: não repassar ao locatário
 NAO_REPASSE = ["fundo_reserva", "correio", "melhorias", "outros"]
 
@@ -56,8 +56,8 @@ BACEN_SERIES_INDICE = {'IPCA': 1737, 'INPC': 1617}
 LABELS = {
     "cota": "Cota Cond.", "agua": "Cons. Agua", "gas": "Cons. Gas",
     "energia": "Energia Comum", "tx_leitura": "Tx. Leitura",
-    "vaga_moto": "Vaga/Garagem", "tag": "Tag/Acesso", "melhorias": "Melhorias",
-    "outros": "Outros Cond.", "fundo_reserva": "Fundo Reserva", "correio": "Correio",
+    "vaga_moto": "Vaga/Garagem", "tag": "Tag/Acesso", "salao_festas": "Alug. Salao Festas",
+    "melhorias": "Melhorias", "outros": "Outros Cond.", "fundo_reserva": "Fundo Reserva", "correio": "Correio",
 }
 
 app = Flask(__name__)
@@ -1000,6 +1000,7 @@ Retorne APENAS JSON valido:
     "tx_leitura": null,
     "vaga_moto": null,
     "tag": null,
+    "salao_festas": null,
     "melhorias": null,
     "fundo_reserva": null,
     "correio": null,
@@ -1064,6 +1065,7 @@ OUTRAS CLASSIFICACOES:
 - "correio" = correspondencia/malote.
 - "vaga_moto" = taxa de vaga de garagem ou moto.
 - "tag" = tag de acesso, controle de acesso.
+- "salao_festas" = aluguel ou reserva de salao de festas, churrasqueira, espaco de eventos.
 - "outros" = qualquer encargo nao classificado acima.
 
 - Valores com ponto decimal (1234.56). null para ausentes.
