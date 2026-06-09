@@ -1065,7 +1065,7 @@ OUTRAS CLASSIFICACOES:
 - "correio" = correspondencia/malote.
 - "vaga_moto" = taxa de vaga de garagem ou moto.
 - "tag" = tag de acesso, controle de acesso.
-- "salao_festas" = aluguel ou reserva de salao de festas, churrasqueira, espaco de eventos.
+- "salao_festas" = aluguel ou reserva de qualquer area de lazer/eventos do condominio. Exemplos de nomes que devem ir aqui: "Salao de Festas", "Salao Festas", "Aluguel Salao", "Reserva Salao", "Churrasqueira", "Aluguel Churrasqueira", "Reserva Churrasqueira", "Espaco Gourmet", "Espaco de Eventos", "Area Gourmet", "Area de Lazer", "Salao de Eventos", "Salao Social", "Espaco Festas", "Aluguel Espaco", "Reserva Espaco", "Salao Multiuso", "Sala de Festas".
 - "outros" = qualquer encargo nao classificado acima.
 
 - Valores com ponto decimal (1234.56). null para ausentes.
