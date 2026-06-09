@@ -1655,6 +1655,11 @@ def montar_resultado(contratos, condos_lidos, boletos_extras):
             # demonstrativo_geral puro: ignora itens (valores são do prédio inteiro)
             # boleto_individual e demonstrativo_com_recibo: processa agua/gas/energia normalmente
             if tipo_doc in ("boleto_individual", "demonstrativo_com_recibo"):
+                v_cota = safe_float(itens.get("cota"))
+                if v_cota:
+                    rep += v_cota
+                    cond_itens_rep["cota"] = round(cond_itens_rep.get("cota", 0) + v_cota, 2)
+
                 for campo in REPASSE_ITENS:
                     v = safe_float(itens.get(campo))
                     if v == 0:
