@@ -392,13 +392,13 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 
 ---
 
-## Reajuste Manual (Renovação de Contrato)
+## Reajuste Manual
 
-- Campo **"Novo valor do contrato"** aparece **exclusivamente** para contratos com status `RENOVAR`
-- Contratos `ESTE_MES` (reajuste normal) **não têm campo manual** — recebem apenas o índice BACEN
+- Campo manual aparece para contratos `RENOVAR` (label "Novo valor do contrato:") **e** `ESTE_MES` (label "Valor manual:", ao lado/abaixo do valor sugerido pelo índice, na mesma célula da tabela)
 - `manuais = {}` — dict `num_linha → valor` que prevalece sobre o calculado pelo índice
 - Ao aplicar: manual > zerado (0%) > calculado pelo índice
 - O valor manual é gravado na coluna F da planilha igual ao reajuste por índice — DIMOB e informes recebem automaticamente
+- Lógica de `setManual`/`aplicarReajustes` já era genérica por `num_linha` — não dependia do status, só a exibição do campo no HTML era restrita
 
 ---
 
@@ -481,7 +481,6 @@ Todos os botões de salvar têm `confirm()` antes de executar:
 - SMTP direto no Railway (portas 465/587 bloqueadas) — usar sempre Resend via HTTPS
 - Botão "Informes ao Proprietário" na página de boletos — acesso só pelo card da home
 - Emojis em qualquer parte da interface — o sistema não usa emojis
-- Campo manual de reajuste em contratos ESTE_MES — só para RENOVAR
 
 ---
 
