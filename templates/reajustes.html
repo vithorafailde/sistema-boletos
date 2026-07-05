@@ -572,6 +572,13 @@ function renderTabela() {
           : '');
     const metodoHtml = '';
 
+    // Aviso: conferir o valor no site Cálculo Exato (último mês negativo ou índice IGPM)
+    const confereHtml = c.status === 'ESTE_MES' && c.confere_calculo_exato ? `
+      <div style="margin-top:3px;font-size:11px;color:var(--yellow);font-weight:700;">
+        Confira no site Cálculo Exato
+        ${c.confere_motivo ? `<div style="font-weight:400;color:var(--muted);">${esc(c.confere_motivo)}</div>` : ''}
+      </div>` : '';
+
     // Opção "Aplicar 0%" para reajustes negativos aplicáveis
     const negativo = c.aplicavel && c.acumulado_pct != null && c.acumulado_pct < 0;
     const zero0Html = negativo ? `
@@ -627,7 +634,7 @@ function renderTabela() {
       <td>${indiceBadge}</td>
       <td style="white-space:nowrap">${esc(c.data_reajuste)}</td>
       <td>${c.vigencia_ok === false ? `<span class="badge" style="background:#D8E4E4;color:#6B8585;border:1px solid #C8D4D4">Menos de 1 ano</span>` : badgeStatus(c.status)}</td>
-      <td style="white-space:nowrap">${pct(c.acumulado_pct)}${aviso12}${metodoHtml}</td>
+      <td>${pct(c.acumulado_pct)}${aviso12}${metodoHtml}${confereHtml}</td>
       <td class="td-novo">${novoValorWrap}</td>
       <td class="td-dif" style="white-space:nowrap">${difValor}</td>
     </tr>`;

@@ -2494,6 +2494,26 @@ def api_calcular_reajustes():
         # Aplicavel no mes de aplicacao — tanto reajuste normal quanto renovação
         c['aplicavel'] = (c['status'] in ('ESTE_MES', 'RENOVAR')) and c['novo_aluguel'] is not None
 
+        # ── Aviso: sugerir conferência no site Cálculo Exato ──────────────
+        # (a) a variação do último mês da janela (mês do aniversário) foi negativa
+        # (b) o índice efetivamente aplicado é IGPM
+        # Só para ESTE_MES — é onde o valor calculado importa de fato para aplicar.
+        c['confere_calculo_exato'] = False
+        c['confere_motivo']        = None
+        if c['status'] == 'ESTE_MES' and acum is not None:
+            try:
+                idx_efetivo = indice_aplicado or c['indice_norm']
+                key_ultimo  = f"{data_rej.year}-{data_rej.month:02d}"
+                val_ultimo  = historicos_mensal.get(idx_efetivo, {}).get(key_ultimo)
+                if val_ultimo is not None and val_ultimo < 0:
+                    c['confere_calculo_exato'] = True
+                    c['confere_motivo'] = f"Variação de {MESES_NOMES[data_rej.month - 1]}/{data_rej.year} negativa"
+                elif idx_efetivo == 'IGPM':
+                    c['confere_calculo_exato'] = True
+                    c['confere_motivo'] = 'Índice IGPM'
+            except Exception:
+                pass
+
     # 5. Estatísticas
     total       = len(contratos)
     renovar     = sum(1 for c in contratos if c['status'] == 'RENOVAR')
