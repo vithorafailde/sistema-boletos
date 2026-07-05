@@ -406,10 +406,9 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 
 - Aparece **só em contratos `ESTE_MES`**, na coluna do percentual acumulado (abaixo do valor calculado)
 - Backend (`api_calcular_reajustes`) calcula `c['confere_calculo_exato']` (bool) e `c['confere_motivo']` (texto) por contrato
-- Dois gatilhos (checados nessa ordem):
-  1. A variação mensal do **último mês da janela** (o próprio mês do aniversário) veio negativa na série BACEN — usa `historicos_mensal[idx_efetivo]` na chave do mês/ano do aniversário
-  2. O índice efetivamente aplicado (`indice_aplicado` ou `indice_norm`) é **IGPM** — sempre mostra o aviso, independente do sinal
-- `confere_motivo` é só texto informativo (ex.: "Variação de Junho/2026 negativa" ou "Índice IGPM") — não é um link, é texto puro
+- **Gatilho único:** a variação mensal do **último mês da janela** (o próprio mês do aniversário) veio negativa na série BACEN — usa `historicos_mensal[idx_efetivo]` na chave do mês/ano do aniversário. Vale para qualquer índice (IPCA, INPC ou IGPM)
+- **NÃO existe gatilho por "índice ser IGPM"** — foi cogitado e descartado explicitamente; IGPM só dispara o aviso se o último mês vier negativo, igual aos outros índices
+- `confere_motivo` é só texto informativo (ex.: "Variação de Junho/2026 negativa") — não é um link, é texto puro
 - Sem emoji (segue a regra geral de não usar emojis na interface)
 - **Não expandir para FUTURO** sem pedido explícito — decisão consciente de escopo, o "último mês" só importa de fato pros contratos que serão aplicados agora
 
