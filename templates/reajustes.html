@@ -572,11 +572,11 @@ function renderTabela() {
           : '');
     const metodoHtml = '';
 
-    // Aviso: conferir o valor no site Cálculo Exato (último mês negativo ou índice IGPM)
+    // Aviso: conferir o valor no site Cálculo Exato (variação do último mês negativa)
     const confereHtml = c.status === 'ESTE_MES' && c.confere_calculo_exato ? `
-      <div style="margin-top:3px;font-size:11px;color:var(--yellow);font-weight:700;">
+      <div style="margin-top:4px;font-size:14px;color:var(--yellow);font-weight:700;">
         Confira no site Cálculo Exato
-        ${c.confere_motivo ? `<div style="font-weight:400;color:var(--muted);">${esc(c.confere_motivo)}</div>` : ''}
+        ${c.confere_motivo ? `<div style="font-size:13px;font-weight:400;color:var(--muted);">${esc(c.confere_motivo)}</div>` : ''}
       </div>` : '';
 
     // Opção "Aplicar 0%" para reajustes negativos aplicáveis
