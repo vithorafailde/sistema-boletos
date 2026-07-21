@@ -118,6 +118,8 @@ def norm(nome):
     n = "".join(c for c in n if not unicodedata.combining(c))
     return re.sub(r"[^A-Z0-9]", "", n)
 
+PROPRIETARIOS_COMISSAO_LIQUIDA = {norm('Manoel Failde'), norm('Amandio Failde'), norm('Izabel Failde')}
+
 def norm_palavras(nome):
     if not nome:
         return []
@@ -763,6 +765,11 @@ def calcular_meses_dimob(contrato, ano, historico_dimob):
 
     multa_juros_hist = hist_c.get("multa_juros", {})
 
+    # Abono só é descontado do total para os proprietários com comissão sobre o líquido
+    # (pedido explícito) — para todos os outros o total continua bruto, como sempre foi.
+    comissao_liquida = norm(contrato.get('proprietario', '')) in PROPRIETARIOS_COMISSAO_LIQUIDA
+    abono_hist = hist_c.get("abono", {}) if comissao_liquida else {}
+
     meses = []
     for mes in range(1, 13):
         if tem_historico and mes < mes_aplicacao:
@@ -773,7 +780,9 @@ def calcular_meses_dimob(contrato, ano, historico_dimob):
         mj = multa_juros_hist.get(str(mes), {})
         extra_total = float(mj.get("multa", 0) or 0) + float(mj.get("juros", 0) or 0)
         extra = round(extra_total / n, 2) if n > 1 else extra_total
-        meses.append(round(base + extra, 2))
+        abono_mes = float(abono_hist.get(str(mes), 0) or 0)
+        abono = round(abono_mes / n, 2) if n > 1 else abono_mes
+        meses.append(round(base + extra - abono, 2))
 
     return meses, tem_historico
 
@@ -2264,14 +2273,23 @@ def salvar_extras():
                     continue
                 multa = float(row.get("multa_atraso_val") or 0)
                 juros = float(row.get("juros_mora_val") or 0)
+                abono = float(row.get("abono_val") or 0)
+                if not (multa or juros or abono):
+                    continue
+                if chave not in hist_dimob[ano_str]:
+                    hist_dimob[ano_str][chave] = {}
                 if multa or juros:
-                    if chave not in hist_dimob[ano_str]:
-                        hist_dimob[ano_str][chave] = {}
                     if "multa_juros" not in hist_dimob[ano_str][chave]:
                         hist_dimob[ano_str][chave]["multa_juros"] = {}
                     hist_dimob[ano_str][chave]["multa_juros"][str(mes_num)] = {
                         "multa": multa, "juros": juros
                     }
+                # Abono salvo por mês para os proprietários com comissão sobre o líquido
+                # poderem ter o total do DIMOB/Informe Anual descontado corretamente.
+                if abono:
+                    if "abono" not in hist_dimob[ano_str][chave]:
+                        hist_dimob[ano_str][chave]["abono"] = {}
+                    hist_dimob[ano_str][chave]["abono"][str(mes_num)] = abono
             salvar_dimob_historico(hist_dimob)
 
     return jsonify({"ok": True})

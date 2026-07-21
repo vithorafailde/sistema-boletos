@@ -195,6 +195,16 @@ repasse = aluguel
         - taxaSobRec (% imob. sobre multa+juros, zero se paAtivo)
 ```
 
+### Comissão sobre o líquido — Manoel Failde, Amandio Failde, Izabel Failde
+- **Pedido explícito:** para esses 3 proprietários (só eles), a comissão da imobiliária é calculada sobre `(aluguel - abono)`, não sobre o aluguel bruto. Para todos os outros proprietários, continua `aluguel * percentual_imob / 100` (sem mudança)
+- Lista normalizada em dois lugares que precisam ficar sincronizados:
+  - `app.py`: `PROPRIETARIOS_COMISSAO_LIQUIDA` (set de `norm(nome)`) — usado em `calcular_meses_dimob`
+  - `templates/index.html`: `PROPRIETARIOS_COMISSAO_LIQUIDA` (array de `normProp(nome)`) — usado em `renderRepasse`, `atualizarRodape`, `calcRepasseData` via `temComissaoLiquida()`
+- **Boletos/Informes Mensais:** `taxaImob` é recalculado no JS como `(aluguel - abono_val) * percImob/100` para esses 3, em vez de usar o `row.taxa_imob` vindo pronto do backend (que é sempre bruto)
+- **DIMOB/Informe Anual:** o abono passou a ser salvo por locatário/mês em `dimob_historico.json` (chave `"abono"`, mesmo formato de `"multa_juros"`) — gravado em `salvar_extras` sempre que houver valor, pra qualquer locatário (grátis, não usado por quem não é um dos 3). `calcular_meses_dimob()` só desconta esse abono do total do mês quando o `proprietario` do contrato está em `PROPRIETARIOS_COMISSAO_LIQUIDA` — pra esses 3, **tanto o total anual quanto a comissão** ficam líquidos de abono; pros demais nada muda
+- `dimob.html`/`informe_anual.html` não precisaram de nenhuma mudança — eles recalculam comissão em cima de `c.total`/`c.meses` que já vêm líquidos do backend
+- **Não expandir a lista de nomes nem mudar a fórmula sem pedido explícito**
+
 ### Multa por atraso e juros de mora
 - Campos editáveis na coluna **Repasse ao Proprietário** de cada unidade
 - A taxa da imobiliária (% do contrato) é aplicada sobre multa+juros: `taxaSobRec = (multa + juros) * percImob / 100`

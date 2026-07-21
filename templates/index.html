@@ -1035,8 +1035,11 @@ function renderRepasse(idx) {
   const row = dados.locatarios[idx];
   const paAtivo = row.primeiro_aluguel_ativo && (parseFloat(row.primeiro_aluguel_val)||0) > 0;
   const paVal = paAtivo ? (parseFloat(row.primeiro_aluguel_val)||0) : 0;
-  const taxaImobBruta = parseFloat(row.taxa_imob) || 0;
   const percImob = parseFloat(row.percentual_imob) || 0;
+  // Comissão líquida (aluguel - abono) para os 3 proprietários combinados — os demais mantêm o valor bruto vindo do backend
+  const taxaImobBruta = temComissaoLiquida(null, row.proprietario)
+    ? Math.round(((row.aluguel||0) - (parseFloat(row.abono_val)||0)) * percImob / 100 * 100) / 100
+    : (parseFloat(row.taxa_imob) || 0);
   const taxaImob = paAtivo ? 0 : taxaImobBruta;
   const itensNRep = row.cond_itens_nrep || {};
   const nrepAtivo = row.cond_itens_nrep_ativo || {};
@@ -1158,14 +1161,17 @@ function atualizarRodape() {
     totEx += iptu+iptuVaga+sf+si+ef+ef2+ef3+ef4+ef5+ev+ev2+ev3-ab;
     totGeral += (row.aluguel||0)+(row.cond_repasse||0)+iptu+iptuVaga+sf+si+ef+ef2+ef3+ef4+ef5+ev+ev2+ev3-ab;
     // Repasse: recalcula a partir dos dados atuais
-    const taxaImob = parseFloat(row.taxa_imob)||0;
+    const percImobR = parseFloat(row.percentual_imob)||0;
+    // Comissão líquida (aluguel - abono) para os 3 proprietários combinados — os demais mantêm o valor bruto vindo do backend
+    const taxaImob = temComissaoLiquida(null, row.proprietario)
+      ? Math.round(((row.aluguel||0) - ab) * percImobR / 100 * 100) / 100
+      : (parseFloat(row.taxa_imob)||0);
     const dedProp = Object.entries(row.cond_itens_nrep||{}).reduce((s,[k,v])=>s+((row.cond_itens_nrep_ativo||{})[k]!==false?(parseFloat(v)||0):0),0);
     const paAtivo = row.primeiro_aluguel_ativo && (parseFloat(row.primeiro_aluguel_val)||0) > 0;
     const paVal = paAtivo ? (parseFloat(row.primeiro_aluguel_val)||0) : 0;
     const taxaImobEf = paAtivo ? 0 : taxaImob;
     const _dsR = n => (row[`ded${n}_subtrair`]!==false?1:-1)*(parseFloat(row[`ded${n}_val`])||0);
     const dedMan = _dsR(1)+_dsR(2)+_dsR(3)+_dsR(4)+_dsR(5)+_dsR(6)+_dsR(7)+_dsR(8)+_dsR(9)+_dsR(10);
-    const percImobR = parseFloat(row.percentual_imob)||0;
     const multaR = parseFloat(row.multa_atraso_val)||0;
     const jurosR = parseFloat(row.juros_mora_val)||0;
     const taxaSobRecR = paAtivo ? 0 : (multaR + jurosR) * percImobR / 100;
@@ -1301,11 +1307,22 @@ function normProp(s) {
   return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
 }
 
+// Proprietários com comissão calculada sobre o líquido (aluguel - abono) — pedido explícito.
+// Todos os outros continuam com comissão sobre o aluguel bruto, como sempre foi.
+const PROPRIETARIOS_COMISSAO_LIQUIDA = ['manoel failde', 'amandio failde', 'izabel failde'];
+function temComissaoLiquida(proprietarioIndividual, proprietarioStr) {
+  if (proprietarioIndividual) return PROPRIETARIOS_COMISSAO_LIQUIDA.includes(normProp(proprietarioIndividual));
+  return (proprietarioStr||'').split(',').some(p => PROPRIETARIOS_COMISSAO_LIQUIDA.includes(normProp(p)));
+}
+
 function calcRepasseData(row) {
   const paAtivo = row.primeiro_aluguel_ativo && (parseFloat(row.primeiro_aluguel_val)||0) > 0;
   const paVal   = paAtivo ? (parseFloat(row.primeiro_aluguel_val)||0) : 0;
-  const taxaImobBruta = parseFloat(row.taxa_imob) || 0;
   const percImob = parseFloat(row.percentual_imob) || 0;
+  // Comissão líquida (aluguel - abono) para os 3 proprietários combinados — os demais mantêm o valor bruto vindo do backend
+  const taxaImobBruta = temComissaoLiquida(row._proprietario_individual, row.proprietario)
+    ? Math.round(((row.aluguel||0) - (parseFloat(row.abono_val)||0)) * percImob / 100 * 100) / 100
+    : (parseFloat(row.taxa_imob) || 0);
   const taxaImob = paAtivo ? 0 : taxaImobBruta;
   const itensNRep = row.cond_itens_nrep || {};
   const nrepAtivo = row.cond_itens_nrep_ativo || {};
