@@ -1309,10 +1309,24 @@ function normProp(s) {
 
 // Proprietários com comissão calculada sobre o líquido (aluguel - abono) — pedido explícito.
 // Todos os outros continuam com comissão sobre o aluguel bruto, como sempre foi.
-const PROPRIETARIOS_COMISSAO_LIQUIDA = ['manoel failde', 'amandio failde', 'izabel failde'];
+// Match por palavras (primeiro nome + sobrenome), não nome exato — tolera nome do meio
+// diferente do que foi digitado (ex.: "Manoel Failde" bate com "Manoel do Nascimento Failde").
+const PROPRIETARIOS_COMISSAO_LIQUIDA = [
+  ['manoel', 'failde'],
+  ['amandio', 'failde'],
+  ['izabel', 'failde'],
+];
+function _nomeContemPalavras(nomeNorm, palavras) {
+  const palavrasNome = nomeNorm.split(/\s+/).filter(Boolean);
+  return palavras.every(p => palavrasNome.includes(p));
+}
 function temComissaoLiquida(proprietarioIndividual, proprietarioStr) {
-  if (proprietarioIndividual) return PROPRIETARIOS_COMISSAO_LIQUIDA.includes(normProp(proprietarioIndividual));
-  return (proprietarioStr||'').split(',').some(p => PROPRIETARIOS_COMISSAO_LIQUIDA.includes(normProp(p)));
+  const bate = nome => {
+    const n = normProp(nome);
+    return PROPRIETARIOS_COMISSAO_LIQUIDA.some(palavras => _nomeContemPalavras(n, palavras));
+  };
+  if (proprietarioIndividual) return bate(proprietarioIndividual);
+  return (proprietarioStr||'').split(',').some(bate);
 }
 
 function calcRepasseData(row) {

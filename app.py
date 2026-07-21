@@ -118,14 +118,25 @@ def norm(nome):
     n = "".join(c for c in n if not unicodedata.combining(c))
     return re.sub(r"[^A-Z0-9]", "", n)
 
-PROPRIETARIOS_COMISSAO_LIQUIDA = {norm('Manoel Failde'), norm('Amandio Failde'), norm('Izabel Failde')}
-
 def norm_palavras(nome):
     if not nome:
         return []
     n = unicodedata.normalize("NFKD", str(nome).upper())
     n = "".join(c for c in n if not unicodedata.combining(c))
     return [w for w in re.sub(r"[^A-Z0-9 ]", " ", n).split() if len(w) > 2]
+
+# Proprietários com comissão calculada sobre o líquido (aluguel - abono) — pedido explícito.
+# Match por palavras (primeiro nome + sobrenome), não nome exato — tolera nome do meio
+# diferente do que foi digitado (ex.: "Manoel Failde" bate com "Manoel do Nascimento Failde").
+PROPRIETARIOS_COMISSAO_LIQUIDA_PALAVRAS = [
+    set(norm_palavras('Manoel Failde')),
+    set(norm_palavras('Amandio Failde')),
+    set(norm_palavras('Izabel Failde')),
+]
+
+def e_proprietario_comissao_liquida(nome):
+    palavras = set(norm_palavras(nome))
+    return any(alvo.issubset(palavras) for alvo in PROPRIETARIOS_COMISSAO_LIQUIDA_PALAVRAS)
 
 def extrair_nome_arquivo(nome_arquivo):
     """Extrai nome do locatário e unidade do padrão do nome do arquivo.
@@ -767,7 +778,7 @@ def calcular_meses_dimob(contrato, ano, historico_dimob):
 
     # Abono só é descontado do total para os proprietários com comissão sobre o líquido
     # (pedido explícito) — para todos os outros o total continua bruto, como sempre foi.
-    comissao_liquida = norm(contrato.get('proprietario', '')) in PROPRIETARIOS_COMISSAO_LIQUIDA
+    comissao_liquida = e_proprietario_comissao_liquida(contrato.get('proprietario', ''))
     abono_hist = hist_c.get("abono", {}) if comissao_liquida else {}
 
     meses = []

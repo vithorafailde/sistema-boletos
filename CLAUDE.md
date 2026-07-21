@@ -197,11 +197,12 @@ repasse = aluguel
 
 ### Comissão sobre o líquido — Manoel Failde, Amandio Failde, Izabel Failde
 - **Pedido explícito:** para esses 3 proprietários (só eles), a comissão da imobiliária é calculada sobre `(aluguel - abono)`, não sobre o aluguel bruto. Para todos os outros proprietários, continua `aluguel * percentual_imob / 100` (sem mudança)
-- Lista normalizada em dois lugares que precisam ficar sincronizados:
-  - `app.py`: `PROPRIETARIOS_COMISSAO_LIQUIDA` (set de `norm(nome)`) — usado em `calcular_meses_dimob`
-  - `templates/index.html`: `PROPRIETARIOS_COMISSAO_LIQUIDA` (array de `normProp(nome)`) — usado em `renderRepasse`, `atualizarRodape`, `calcRepasseData` via `temComissaoLiquida()`
+- **Match por palavras, não nome exato:** a planilha pode ter nome completo com nome do meio (ex.: "Manoel do Nascimento Failde") diferente do nome curto usado na regra. Por isso o match verifica se as palavras-chave (primeiro nome + sobrenome, ex. `["manoel","failde"]`) estão TODAS presentes entre as palavras do nome do proprietário — não faz `==` de string inteira. **Não trocar para comparação de nome exato** — já quebrou uma vez por causa do nome do meio
+- Lista duplicada em dois lugares que precisam ficar sincronizados:
+  - `app.py`: `PROPRIETARIOS_COMISSAO_LIQUIDA_PALAVRAS` (lista de sets de `norm_palavras(nome)`) + `e_proprietario_comissao_liquida(nome)` — usado em `calcular_meses_dimob`
+  - `templates/index.html`: `PROPRIETARIOS_COMISSAO_LIQUIDA` (lista de arrays de palavras) + `_nomeContemPalavras()` — usado em `renderRepasse`, `atualizarRodape`, `calcRepasseData` via `temComissaoLiquida()`
 - **Boletos/Informes Mensais:** `taxaImob` é recalculado no JS como `(aluguel - abono_val) * percImob/100` para esses 3, em vez de usar o `row.taxa_imob` vindo pronto do backend (que é sempre bruto)
-- **DIMOB/Informe Anual:** o abono passou a ser salvo por locatário/mês em `dimob_historico.json` (chave `"abono"`, mesmo formato de `"multa_juros"`) — gravado em `salvar_extras` sempre que houver valor, pra qualquer locatário (grátis, não usado por quem não é um dos 3). `calcular_meses_dimob()` só desconta esse abono do total do mês quando o `proprietario` do contrato está em `PROPRIETARIOS_COMISSAO_LIQUIDA` — pra esses 3, **tanto o total anual quanto a comissão** ficam líquidos de abono; pros demais nada muda
+- **DIMOB/Informe Anual:** o abono passou a ser salvo por locatário/mês em `dimob_historico.json` (chave `"abono"`, mesmo formato de `"multa_juros"`) — gravado em `salvar_extras` sempre que houver valor, pra qualquer locatário (grátis, não usado por quem não é um dos 3). `calcular_meses_dimob()` só desconta esse abono do total do mês quando `e_proprietario_comissao_liquida(proprietario)` é verdadeiro — pra esses 3, **tanto o total anual quanto a comissão** ficam líquidos de abono; pros demais nada muda
 - `dimob.html`/`informe_anual.html` não precisaram de nenhuma mudança — eles recalculam comissão em cima de `c.total`/`c.meses` que já vêm líquidos do backend
 - **Não expandir a lista de nomes nem mudar a fórmula sem pedido explícito**
 
