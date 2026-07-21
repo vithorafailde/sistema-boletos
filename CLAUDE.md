@@ -280,6 +280,10 @@ repasse = aluguel
 
 ## Bugs já corrigidos — não regredir
 
+### 16. "Novo processamento" não resetava o Mês de Referência
+**Problema:** ao carregar a página, `#inMes` é preenchido com o mês atual, mas a restauração automática do localStorage (dados do mês anterior) sobrescrevia esse campo com o mês antigo salvo. Ao clicar em "Novo processamento" pra subir os boletos do mês novo, o campo continuava com o mês antigo (ex: "Junho/2026") em vez do mês atual — e como o valor do campo é enviado como está pro backend (sem validação cruzada com o conteúdo dos PDFs), o processamento novo ficava rotulado com o mês errado, e o Informe Mensal saía com a referência errada.
+**Fix:** `novoProcessamento()` agora reseta `#inMes` pro mês atual (mesma lógica da sugestão inicial). **Não remover esse reset.**
+
 ### 12. ded{n}_subtrair não salvo no histórico
 **Problema:** `salvar_extras` não gravava `ded{n}_subtrair` no historico.json. Ao recarregar no mês seguinte, o campo era undefined → defaultava para `true` (subtrair), virando deduções "+" em "-".  
 **Fix:** `salvar_extras` grava `ded{n}_subtrair`; carregamento do histórico restaura o campo diretamente em `row[f"ded{_n}_subtrair"]`. **Não remover.**

@@ -1270,6 +1270,10 @@ function novoProcessamento() {
   ['inExcel','inCond','inBol'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('barra').style.width = '0%';
   document.getElementById('logBox').innerHTML = '';
+  // Reseta o mês sugerido pro mês atual — senão fica com o mês antigo que a
+  // restauração automática do localStorage tinha colocado no campo.
+  const agora = new Date();
+  document.getElementById('inMes').value = `${M[agora.getMonth()]}/${agora.getFullYear()}`;
   checkReady();
 }
 
