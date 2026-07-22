@@ -715,6 +715,15 @@ function renderTabela(lista) {
     const extrasFixo3ValOrig = parseFloat(row.extras_fixo3_val) || 0;
     const extrasFixo4ValOrig = parseFloat(row.extras_fixo4_val) || 0;
     const extrasFixo5ValOrig = parseFloat(row.extras_fixo5_val) || 0;
+    // Snapshot do _hist ANTES de limpar — a nota "historico: X" deste render precisa
+    // do valor original, mesmo depois do row.X_hist ser zerado logo abaixo.
+    const abonoValHistOrig      = parseFloat(row.abono_val_hist)       || 0;
+    const abonoParcelaHistOrig  = row.abono_parcela_hist || '';
+    const extrasFixoValHistOrig  = parseFloat(row.extras_fixo_val_hist)  || 0;
+    const extrasFixo2ValHistOrig = parseFloat(row.extras_fixo2_val_hist) || 0;
+    const extrasFixo3ValHistOrig = parseFloat(row.extras_fixo3_val_hist) || 0;
+    const extrasFixo4ValHistOrig = parseFloat(row.extras_fixo4_val_hist) || 0;
+    const extrasFixo5ValHistOrig = parseFloat(row.extras_fixo5_val_hist) || 0;
 
     // Inicializa valores efetivos no modelo — só na PRIMEIRA vez que a linha é carregada.
     // Sem essa trava, zerar um valor de propósito (ex: IPTU quitado) e depois recarregar
@@ -821,7 +830,7 @@ function renderTabela(lista) {
                 value="${row.abono_parcela||row.abono_parcela_hist||''}"
                 oninput="dados.locatarios[${idx}].abono_parcela=this.value;recalc(${idx})" id="abpar_${idx}">
             </div>
-            ${(row.abono_val_hist&&!abonoValOrig)?'<div class="hist-note">historico: '+brl(row.abono_val_hist)+(row.abono_parcela_hist?' ('+row.abono_parcela_hist+')':'')+'</div>':''}
+            ${(abonoValHistOrig&&!abonoValOrig)?'<div class="hist-note">historico: '+brl(abonoValHistOrig)+(abonoParcelaHistOrig?' ('+abonoParcelaHistOrig+')':'')+'</div>':''}
           </div>
           <div style="border-top:1px dashed #e2e8f0;margin:4px 0 2px"></div>
           <div style="font-size:12px;color:var(--green);font-weight:700;margin-bottom:2px">Outros fixo <span style="font-weight:400;font-style:italic">(replica todo mes)</span></div>
@@ -834,7 +843,7 @@ function renderTabela(lista) {
                 value="${row.extras_fixo_val||row.extras_fixo_val_hist||''}"
                 oninput="recalc(${idx})" data-field="extras_fixo_val">
             </div>
-            ${(row.extras_fixo_val_hist&&!extrasFixoValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo_val_hist)+'</div>':''}
+            ${(extrasFixoValHistOrig&&!extrasFixoValOrig)?'<div class="hist-note">historico: '+brl(extrasFixoValHistOrig)+'</div>':''}
           </div>
           <div>
             <div style="display:flex;gap:3px">
@@ -845,7 +854,7 @@ function renderTabela(lista) {
                 value="${row.extras_fixo2_val||row.extras_fixo2_val_hist||''}"
                 oninput="recalc(${idx})" data-field="extras_fixo2_val">
             </div>
-            ${(row.extras_fixo2_val_hist&&!extrasFixo2ValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo2_val_hist)+'</div>':''}
+            ${(extrasFixo2ValHistOrig&&!extrasFixo2ValOrig)?'<div class="hist-note">historico: '+brl(extrasFixo2ValHistOrig)+'</div>':''}
           </div>
           <div>
             <div style="display:flex;gap:3px">
@@ -856,7 +865,7 @@ function renderTabela(lista) {
                 value="${row.extras_fixo3_val||row.extras_fixo3_val_hist||''}"
                 oninput="recalc(${idx})" data-field="extras_fixo3_val">
             </div>
-            ${(row.extras_fixo3_val_hist&&!extrasFixo3ValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo3_val_hist)+'</div>':''}
+            ${(extrasFixo3ValHistOrig&&!extrasFixo3ValOrig)?'<div class="hist-note">historico: '+brl(extrasFixo3ValHistOrig)+'</div>':''}
           </div>
           <div>
             <div style="display:flex;gap:3px">
@@ -867,7 +876,7 @@ function renderTabela(lista) {
                 value="${row.extras_fixo4_val||row.extras_fixo4_val_hist||''}"
                 oninput="recalc(${idx})" data-field="extras_fixo4_val">
             </div>
-            ${(row.extras_fixo4_val_hist&&!extrasFixo4ValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo4_val_hist)+'</div>':''}
+            ${(extrasFixo4ValHistOrig&&!extrasFixo4ValOrig)?'<div class="hist-note">historico: '+brl(extrasFixo4ValHistOrig)+'</div>':''}
           </div>
           <div>
             <div style="display:flex;gap:3px">
@@ -878,7 +887,7 @@ function renderTabela(lista) {
                 value="${row.extras_fixo5_val||row.extras_fixo5_val_hist||''}"
                 oninput="recalc(${idx})" data-field="extras_fixo5_val">
             </div>
-            ${(row.extras_fixo5_val_hist&&!extrasFixo5ValOrig)?'<div class="hist-note">historico: '+brl(row.extras_fixo5_val_hist)+'</div>':''}
+            ${(extrasFixo5ValHistOrig&&!extrasFixo5ValOrig)?'<div class="hist-note">historico: '+brl(extrasFixo5ValHistOrig)+'</div>':''}
           </div>
           <div style="border-top:1px dashed #e2e8f0;margin:4px 0 2px"></div>
           <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:2px">Outros <span style="font-weight:400;font-style:italic">(so esse mes)</span></div>
