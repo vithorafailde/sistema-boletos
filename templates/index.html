@@ -731,6 +731,19 @@ function renderTabela(lista) {
       row.extras_fixo3_val = extrasFixo3ValOrig || parseFloat(row.extras_fixo3_val_hist) || 0;
       row.extras_fixo4_val = extrasFixo4ValOrig || parseFloat(row.extras_fixo4_val_hist) || 0;
       row.extras_fixo5_val = extrasFixo5ValOrig || parseFloat(row.extras_fixo5_val_hist) || 0;
+      // Textos (parcela/descrição) também precisam ser resolvidos pro campo definitivo
+      // ANTES de limpar o _hist — senão a sugestão (ex: "06/10") some sem nunca ter sido
+      // realmente copiada pra algum lugar.
+      row.iptu_parcela      = row.iptu_parcela      || row.iptu_parcela_hist      || '';
+      row.iptu_vaga_parcela = row.iptu_vaga_parcela || row.iptu_vaga_parcela_hist || '';
+      row.abono_desc        = row.abono_desc        || row.abono_desc_hist        || '';
+      row.abono_parcela     = row.abono_parcela     || row.abono_parcela_hist     || '';
+      row.extras_fixo_desc  = row.extras_fixo_desc  || row.extras_fixo_desc_hist  || '';
+      row.extras_fixo2_desc = row.extras_fixo2_desc || row.extras_fixo2_desc_hist || '';
+      row.extras_fixo3_desc = row.extras_fixo3_desc || row.extras_fixo3_desc_hist || '';
+      row.extras_fixo4_desc = row.extras_fixo4_desc || row.extras_fixo4_desc_hist || '';
+      row.extras_fixo5_desc = row.extras_fixo5_desc || row.extras_fixo5_desc_hist || '';
+
       // Limpa os campos _hist depois de resolvidos — impede que qualquer outro lugar
       // do template (inputs, notas "historico: X") volte a sugerir o valor antigo.
       row.iptu_hist = row.iptu_vaga_hist = row.seg_fianca_hist = row.seg_incendio_hist = 0;
