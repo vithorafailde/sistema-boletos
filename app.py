@@ -2262,25 +2262,29 @@ def salvar_extras():
         chave = row.get("chave") or norm(row.get("locatario", ""))
         if not chave:
             continue
+        # Nota: NÃO faz fallback pro campo "_hist" aqui (ex: `row.get("iptu") or row.get("iptu_hist")`).
+        # O frontend já resolveu o valor efetivo antes de mandar — se o usuário zerou um valor de
+        # propósito (IPTU quitado, etc.), esse fallback devolvia o valor antigo do histórico mesmo
+        # assim, porque 0/"" contam como falsy em `or`. Confia no que o frontend mandou.
         historico[chave] = {
             "saved_month": date.today().strftime("%Y-%m"),  # mês em que foi salvo
-            "iptu": row.get("iptu") or row.get("iptu_hist") or 0,
-            "iptu_parcela": row.get("iptu_parcela") or row.get("iptu_parcela_hist") or "",
-            "iptu_vaga": row.get("iptu_vaga") or row.get("iptu_vaga_hist") or 0,
-            "iptu_vaga_parcela": row.get("iptu_vaga_parcela") or row.get("iptu_vaga_parcela_hist") or "",
-            **{f"extras_fixo{n}_desc": row.get(f"extras_fixo{n}_desc") or row.get(f"extras_fixo{n}_desc_hist") or ""
+            "iptu": row.get("iptu") or 0,
+            "iptu_parcela": row.get("iptu_parcela") or "",
+            "iptu_vaga": row.get("iptu_vaga") or 0,
+            "iptu_vaga_parcela": row.get("iptu_vaga_parcela") or "",
+            **{f"extras_fixo{n}_desc": row.get(f"extras_fixo{n}_desc") or ""
                for n in ['', '2', '3', '4', '5']},
-            **{f"extras_fixo{n}_val": row.get(f"extras_fixo{n}_val") or row.get(f"extras_fixo{n}_val_hist") or 0
+            **{f"extras_fixo{n}_val": row.get(f"extras_fixo{n}_val") or 0
                for n in ['', '2', '3', '4', '5']},
-            "abono_desc": row.get("abono_desc") or row.get("abono_desc_hist") or "",
-            "abono_val": row.get("abono_val") or row.get("abono_val_hist") or 0,
-            "abono_parcela": row.get("abono_parcela") or row.get("abono_parcela_hist") or "",
-            "seg_fianca": row.get("seg_fianca") or row.get("seg_fianca_hist") or 0,
-            "seg_incendio": row.get("seg_incendio") or row.get("seg_incendio_hist") or 0,
+            "abono_desc": row.get("abono_desc") or "",
+            "abono_val": row.get("abono_val") or 0,
+            "abono_parcela": row.get("abono_parcela") or "",
+            "seg_fianca": row.get("seg_fianca") or 0,
+            "seg_incendio": row.get("seg_incendio") or 0,
             "cond_cota": float((row.get("cond_itens_rep") or {}).get("cota") or 0),
-            **{f"ded{n}_desc":     row.get(f"ded{n}_desc") or row.get(f"ded{n}_desc_hist") or ""
+            **{f"ded{n}_desc":     row.get(f"ded{n}_desc") or ""
                for n in range(1, 11)},
-            **{f"ded{n}_val":      row.get(f"ded{n}_val")  or row.get(f"ded{n}_val_hist")  or 0
+            **{f"ded{n}_val":      row.get(f"ded{n}_val")  or 0
                for n in range(1, 11)},
             **{f"ded{n}_subtrair": row.get(f"ded{n}_subtrair", True)
                for n in range(1, 11)},

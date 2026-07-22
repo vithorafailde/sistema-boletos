@@ -655,6 +655,9 @@ function renderTabela(lista) {
   const corpo = document.getElementById('corpo');
   corpo.innerHTML = '';
   lista.forEach((row, idx) => {
+    // Capturado ANTES de qualquer bloco desta linha mexer em row._hist_aplicado —
+    // impede que o bloco de IPTU/etc. "consuma" a flag antes do bloco de deduções ler.
+    const jaInicializado = !!row._hist_aplicado;
     const tr = document.createElement('tr');
     tr.dataset.idx = idx;
     tr.dataset.temcond = row.tem_cond ? '1' : '0';
@@ -713,17 +716,32 @@ function renderTabela(lista) {
     const extrasFixo4ValOrig = parseFloat(row.extras_fixo4_val) || 0;
     const extrasFixo5ValOrig = parseFloat(row.extras_fixo5_val) || 0;
 
-    // Inicializa valores efetivos no modelo (fallback hist já aplicado).
-    row.iptu             = iptuVal || iptuHist;
-    row.iptu_vaga        = iptuVagaVal || iptuVagaHist;
-    row.seg_fianca       = sfVal || sfHist;
-    row.seg_incendio     = siVal || siHist;
-    row.abono_val        = abonoValOrig      || parseFloat(row.abono_val_hist)       || 0;
-    row.extras_fixo_val  = extrasFixoValOrig  || parseFloat(row.extras_fixo_val_hist)  || 0;
-    row.extras_fixo2_val = extrasFixo2ValOrig || parseFloat(row.extras_fixo2_val_hist) || 0;
-    row.extras_fixo3_val = extrasFixo3ValOrig || parseFloat(row.extras_fixo3_val_hist) || 0;
-    row.extras_fixo4_val = extrasFixo4ValOrig || parseFloat(row.extras_fixo4_val_hist) || 0;
-    row.extras_fixo5_val = extrasFixo5ValOrig || parseFloat(row.extras_fixo5_val_hist) || 0;
+    // Inicializa valores efetivos no modelo — só na PRIMEIRA vez que a linha é carregada.
+    // Sem essa trava, zerar um valor de propósito (ex: IPTU quitado) e depois recarregar
+    // a tabela (F5, restauração do localStorage) fazia o histórico "puxar de volta" o
+    // valor antigo, porque 0 é falsy em `valorAtual || valorHistorico`.
+    if (!jaInicializado) {
+      row.iptu             = iptuVal || iptuHist;
+      row.iptu_vaga        = iptuVagaVal || iptuVagaHist;
+      row.seg_fianca       = sfVal || sfHist;
+      row.seg_incendio     = siVal || siHist;
+      row.abono_val        = abonoValOrig      || parseFloat(row.abono_val_hist)       || 0;
+      row.extras_fixo_val  = extrasFixoValOrig  || parseFloat(row.extras_fixo_val_hist)  || 0;
+      row.extras_fixo2_val = extrasFixo2ValOrig || parseFloat(row.extras_fixo2_val_hist) || 0;
+      row.extras_fixo3_val = extrasFixo3ValOrig || parseFloat(row.extras_fixo3_val_hist) || 0;
+      row.extras_fixo4_val = extrasFixo4ValOrig || parseFloat(row.extras_fixo4_val_hist) || 0;
+      row.extras_fixo5_val = extrasFixo5ValOrig || parseFloat(row.extras_fixo5_val_hist) || 0;
+      // Limpa os campos _hist depois de resolvidos — impede que qualquer outro lugar
+      // do template (inputs, notas "historico: X") volte a sugerir o valor antigo.
+      row.iptu_hist = row.iptu_vaga_hist = row.seg_fianca_hist = row.seg_incendio_hist = 0;
+      row.abono_val_hist = row.extras_fixo_val_hist = row.extras_fixo2_val_hist =
+        row.extras_fixo3_val_hist = row.extras_fixo4_val_hist = row.extras_fixo5_val_hist = 0;
+      row.iptu_parcela_hist = row.iptu_vaga_parcela_hist = '';
+      row.abono_desc_hist = row.abono_parcela_hist = '';
+      row.extras_fixo_desc_hist = row.extras_fixo2_desc_hist = row.extras_fixo3_desc_hist =
+        row.extras_fixo4_desc_hist = row.extras_fixo5_desc_hist = '';
+      row._hist_aplicado = true;
+    }
 
     const cotaHist = parseFloat(row.cond_cota_hist) || 0;
     const cotaVal  = parseFloat((row.cond_itens_rep||{}).cota) || 0;
@@ -895,12 +913,18 @@ function renderTabela(lista) {
       }
     }
     for (let n = 1; n <= 10; n++) {
-      const orig = parseFloat(row[`ded${n}_val`]) || 0;
-      row[`ded${n}_val`]  = orig || parseFloat(row[`ded${n}_val_hist`])  || 0;
-      if (!row[`ded${n}_desc`] && row[`ded${n}_desc_hist`])
-        row[`ded${n}_desc`] = row[`ded${n}_desc_hist`];
+      if (!jaInicializado) {
+        const orig = parseFloat(row[`ded${n}_val`]) || 0;
+        row[`ded${n}_val`]  = orig || parseFloat(row[`ded${n}_val_hist`])  || 0;
+        if (!row[`ded${n}_desc`] && row[`ded${n}_desc_hist`])
+          row[`ded${n}_desc`] = row[`ded${n}_desc_hist`];
+        // Limpa pra não sugerir/puxar de volta o valor antigo caso o usuário zere depois.
+        row[`ded${n}_val_hist`] = 0;
+        row[`ded${n}_desc_hist`] = '';
+      }
       if (row[`ded${n}_subtrair`] === undefined) row[`ded${n}_subtrair`] = true;
     }
+    row._hist_aplicado = true;
     let dedInputs = '';
     for (let n = 1; n <= 10; n++) {
       const dDesc = (row[`ded${n}_desc`] || '').replace(/"/g, '&quot;');

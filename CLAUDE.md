@@ -293,6 +293,13 @@ repasse = aluguel
 **Problema:** ao carregar a página, `#inMes` é preenchido com o mês atual, mas a restauração automática do localStorage (dados do mês anterior) sobrescrevia esse campo com o mês antigo salvo. Ao clicar em "Novo processamento" pra subir os boletos do mês novo, o campo continuava com o mês antigo (ex: "Junho/2026") em vez do mês atual — e como o valor do campo é enviado como está pro backend (sem validação cruzada com o conteúdo dos PDFs), o processamento novo ficava rotulado com o mês errado, e o Informe Mensal saía com a referência errada.
 **Fix:** `novoProcessamento()` agora reseta `#inMes` pro mês atual (mesma lógica da sugestão inicial). **Não remover esse reset.**
 
+### 17. Zerar IPTU/seguro/abono/dedução "voltava" pro valor antigo do histórico
+**Problema:** IPTU, IPTU Vaga, Seg. Fiança, Seg. Incêndio, Abono, Extras Fixos 1-5 e Deduções 1-10 usavam `valorAtual || valorHistorico` tanto no render (`renderTabela`, toda vez que a tabela desenhava a linha) quanto no `salvar_extras` (backend). Como `0`/`""` são falsy em JS e Python, zerar um valor de propósito (ex: IPTU quitado, parcela "10/10" concluída) fazia o histórico "puxar de volta" o valor antigo — seja ao dar F5/restaurar do localStorage (frontend), seja imediatamente ao clicar Salvar (backend, mesmo sem reload nenhum).
+**Fix:**
+- Frontend: `renderTabela` só aplica o merge com `_hist` **uma vez por linha**, controlado por `row._hist_aplicado` (capturado em `jaInicializado` no início do loop, pra o bloco de IPTU não "consumir" a flag antes do bloco de deduções ler). Depois do merge, os campos `_hist` da linha são zerados — isso também impede qualquer outro lugar do template (inputs, notas "historico: X") de sugerir o valor antigo de novo.
+- Backend: `salvar_extras` não faz mais fallback pra `_hist` nenhum — confia direto no que o frontend mandou (`row.get("iptu") or 0`, sem `or row.get("iptu_hist")`).
+- **Não reintroduzir o merge com `_hist` fora do bloco `if (!jaInicializado)`, nem no backend.**
+
 ### 12. ded{n}_subtrair não salvo no histórico
 **Problema:** `salvar_extras` não gravava `ded{n}_subtrair` no historico.json. Ao recarregar no mês seguinte, o campo era undefined → defaultava para `true` (subtrair), virando deduções "+" em "-".  
 **Fix:** `salvar_extras` grava `ded{n}_subtrair`; carregamento do histórico restaura o campo diretamente em `row[f"ded{_n}_subtrair"]`. **Não remover.**
