@@ -1,6 +1,7 @@
 uploads/
 data/config.json
 data/historico.json
+data/informes_historico.json
 __pycache__/
 *.pyc
 *.tmp

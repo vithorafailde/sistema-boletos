@@ -183,6 +183,15 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 - Botão **"Enviar para Todos"** → envia sequencialmente para todos os proprietários com email cadastrado; mostra progresso e resumo final de sucesso/erros; proprietários sem email são listados e ignorados
 - Botão **"Editar E-mails"** → modal para editar emails dos proprietários sem precisar reupar a planilha
 
+### Arquivo mensal de Informes — reabrir/reenviar meses passados
+- Select **"Mês de Referência"** no topo da seção de Informes, ao lado do select de proprietário
+- Ao clicar em **"Salvar"** na tela de Boletos, além do que já salvava (historico.json + dimob_historico.json), agora também arquiva o processamento **completo** do mês (aluguel, condomínio, IPTU, seguros, abono, deduções, comissão) em `data/informes_historico.json`, indexado por texto do mês (ex: `"Julho/2026"`)
+- Rotas: `POST /api/informes_salvar_mes` (grava/sobrescreve o mês), `GET /api/informes_meses_salvos` (lista meses arquivados, mais recente primeiro), `GET /api/informes_carregar_mes?mes=X` (retorna os dados daquele mês)
+- Selecionar um mês arquivado no dropdown troca `_infGrupos`/`_infOrdem` pra usar os dados arquivados (função `montarGruposInforme`) em vez dos dados "ao vivo" da tela de Boletos — reseta a seleção de proprietário ao trocar
+- `mesInformeAtual()` decide qual "mes" mandar pro backend (email/PDF/log): o mês arquivado selecionado, ou o mês ao vivo se nenhum arquivado estiver selecionado — **usar sempre essa função**, nunca ler `#inMes` direto dentro do fluxo de Informes, senão o email sai com o mês errado quando se está vendo um mês arquivado
+- `data/informes_historico.json` está no `.railwayignore` (igual ao `historico.json`) — **não remover de lá**, senão cada deploy apaga os meses arquivados em produção
+- Só funciona pros meses salvos **depois** dessa feature existir — meses anteriores não têm registro nesse arquivo
+
 ### Cálculo do repasse (`calcRepasseData(row)`)
 ```
 repasse = aluguel

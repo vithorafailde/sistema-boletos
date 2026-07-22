@@ -394,6 +394,14 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
       <button class="btn btn-outline btn-sm" style="color:#fff;border-color:#fff8" onclick="voltarParaResultados()">← Voltar aos Boletos</button>
     </div>
 
+    <!-- Seletor de mês arquivado -->
+    <div class="inf-filtro-box" style="margin-bottom:12px">
+      <div class="inf-filtro-titulo" style="margin-bottom:8px">Mês de Referência</div>
+      <select id="infMesSelect" class="form-input" style="font-size:15px;padding:10px 14px;max-width:320px;cursor:pointer" onchange="trocarMesInforme(this.value)">
+        <option value="">— mês atual (não arquivado) —</option>
+      </select>
+    </div>
+
     <!-- Seletor de proprietário -->
     <div class="inf-filtro-box">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
@@ -1222,11 +1230,19 @@ function filtrar(tipo, btn) {
 // ─── Salvar ───────────────────────────────────────────────────────────────────
 async function salvarExtras() {
   if (!confirm('Confirma o salvamento?\n\nOs dados serão gravados no histórico. A parcela do IPTU só avança quando o mês real mudar.')) return;
-  const payload = Object.assign({}, dados, {mes: document.getElementById('inMes').value || ''});
+  const mes = document.getElementById('inMes').value || '';
+  const payload = Object.assign({}, dados, {mes});
   const r = await fetch('/salvar_extras',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   const j = await r.json();
   if (j.ok) {
     try { localStorage.setItem('boletos_dados', JSON.stringify(dados)); } catch(e) {}
+    // Arquiva o mês completo pra poder reabrir/reenviar o Informe depois (aba de Informes)
+    if (mes) {
+      try {
+        await fetch('/api/informes_salvar_mes', {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({mes, locatarios: dados.locatarios})});
+      } catch(e) {}
+    }
     showSalvo();
   }
 }
@@ -1387,18 +1403,12 @@ let _infGrupos = {};
 let _infOrdem  = [];
 let _emailsProprietarios = {};
 
-function abrirInformes() {
-  if (!dados) return;
-  document.getElementById('resultados').style.display = 'none';
-  document.getElementById('secaoInforme').style.display = 'block';
-  carregarLogEnvios();
-  document.getElementById('infSubMes').textContent = document.getElementById('subMes').textContent;
-  carregarEmailsProprietarios();
-
-  // Monta grupos — suporta múltiplos proprietários separados por vírgula
+// Monta _infGrupos/_infOrdem a partir de uma lista de locatarios (ao vivo ou arquivada)
+// e popula o select de proprietários. Suporta múltiplos proprietários separados por vírgula.
+function montarGruposInforme(locatarios) {
   _infGrupos = {};
   _infOrdem  = [];
-  dados.locatarios.forEach(row => {
+  (locatarios || []).forEach(row => {
     const props  = row.proprietario ? row.proprietario.split(',').map(p => p.trim()).filter(Boolean) : [''];
     const emails = row.email_proprietario ? row.email_proprietario.split(',').map(e => e.trim()) : [];
     const n = props.length || 1;
@@ -1425,6 +1435,59 @@ function abrirInformes() {
     opt.textContent = _infGrupos[key].nome;
     sel.appendChild(opt);
   });
+  filtrarInforme('');
+}
+
+// Mês que vale pro Informe agora: o arquivado selecionado, ou o mês ao vivo da tela de Boletos
+function mesInformeAtual() {
+  const sel = document.getElementById('infMesSelect');
+  return (sel && sel.value) || document.getElementById('inMes').value || '';
+}
+
+// Carrega a lista de meses arquivados no seletor "Mês de Referência"
+async function carregarMesesInforme() {
+  const sel = document.getElementById('infMesSelect');
+  try {
+    const r = await fetch('/api/informes_meses_salvos');
+    const j = await r.json();
+    const mesAtual = document.getElementById('subMes').textContent.replace('Referencia: ', '');
+    sel.innerHTML = `<option value="">— mês atual (${mesAtual || 'não processado'}) —</option>`;
+    (j.meses || []).forEach(mes => {
+      const opt = document.createElement('option');
+      opt.value = mes; opt.textContent = mes;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+// Troca entre o mês "ao vivo" (dados da tela de Boletos) e um mês arquivado
+async function trocarMesInforme(mes) {
+  if (!mes) {
+    document.getElementById('infSubMes').textContent = document.getElementById('subMes').textContent;
+    montarGruposInforme(dados.locatarios);
+    return;
+  }
+  document.getElementById('infSubMes').textContent = 'Referencia: ' + mes;
+  try {
+    const r = await fetch('/api/informes_carregar_mes?mes=' + encodeURIComponent(mes));
+    const j = await r.json();
+    montarGruposInforme(j.locatarios || []);
+  } catch(e) {
+    alert('Erro ao carregar o mês arquivado.');
+  }
+}
+
+function abrirInformes() {
+  if (!dados) return;
+  document.getElementById('resultados').style.display = 'none';
+  document.getElementById('secaoInforme').style.display = 'block';
+  carregarLogEnvios();
+  document.getElementById('infSubMes').textContent = document.getElementById('subMes').textContent;
+  carregarEmailsProprietarios();
+  carregarMesesInforme();
+  document.getElementById('infMesSelect').value = '';
+
+  montarGruposInforme(dados.locatarios);
 
   // Placeholder inicial
   document.getElementById('informeCards').innerHTML = `
@@ -1520,7 +1583,7 @@ async function gerarPdfProprietario(propKey) {
   const g = _infGrupos[propKey];
   if (!g) return;
 
-  const mes    = document.getElementById('inMes').value || '';
+  const mes    = mesInformeAtual();
   const hoje   = new Date().toLocaleDateString('pt-BR');
   // Embutir logo em base64 para garantir carregamento no PDF
   let logoUrl = '';
@@ -1751,7 +1814,7 @@ async function enviarInforme(propKey) {
     return;
   }
 
-  const mes = document.getElementById('inMes').value || '';
+  const mes = mesInformeAtual();
 
   // Monta payload de rows com dados calculados (quota dividida por nº de proprietários)
   const rows = g.rows.map(row => {
@@ -1959,7 +2022,7 @@ async function enviarParaTodos() {
   const btn = document.getElementById('btnEnviarTodos');
   btn.disabled = true;
 
-  const mes = document.getElementById('inMes').value || '';
+  const mes = mesInformeAtual();
   let ok = 0, erro = 0, erros = [];
 
   for (let i = 0; i < comEmail.length; i++) {

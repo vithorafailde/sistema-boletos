@@ -21,6 +21,7 @@ CONFIG_FILE = DATA_DIR / "config.json"
 HISTORICO_FILE = DATA_DIR / "historico.json"
 
 DIMOB_HISTORICO_FILE = DATA_DIR / "dimob_historico.json"
+INFORMES_HISTORICO_FILE = DATA_DIR / "informes_historico.json"
 LOCATARIOS_EMAILS_FILE = DATA_DIR / "locatarios_emails.json"
 LOG_ENVIOS_FILE = DATA_DIR / "log_envios.json"
 
@@ -672,6 +673,32 @@ def ler_dimob_historico():
 def salvar_dimob_historico(dados):
     with open(DIMOB_HISTORICO_FILE, 'w', encoding='utf-8') as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
+
+# ─── Arquivo mensal de Informes (permite reabrir/reenviar meses passados) ──────
+
+def ler_informes_historico():
+    if INFORMES_HISTORICO_FILE.exists():
+        try:
+            with open(INFORMES_HISTORICO_FILE, encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def salvar_informes_historico(dados):
+    tmp = INFORMES_HISTORICO_FILE.with_suffix('.tmp')
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+    tmp.replace(INFORMES_HISTORICO_FILE)
+
+def _mes_ordenavel(mes_str):
+    """Converte 'Julho/2026' em (2026, 7) para ordenação cronológica."""
+    try:
+        nome, ano = mes_str.split('/')
+        idx = MESES_NOMES.index(nome.strip().capitalize()) + 1
+        return (int(ano), idx)
+    except Exception:
+        return (0, 0)
 
 # ─── Emails dos Locatários ────────────────────────────────────────────────────
 
@@ -2304,6 +2331,41 @@ def salvar_extras():
             salvar_dimob_historico(hist_dimob)
 
     return jsonify({"ok": True})
+
+
+@app.route("/api/informes_salvar_mes", methods=["POST"])
+@login_required
+def api_informes_salvar_mes():
+    """Arquiva o processamento completo do mês (aluguel, condominio, IPTU,
+    seguros, abono, deducoes, comissao) para poder reabrir/reenviar depois.
+    """
+    d = request.get_json(silent=True) or {}
+    mes = (d.get("mes") or "").strip()
+    locatarios = d.get("locatarios") or []
+    if not mes or not locatarios:
+        return jsonify({"ok": False, "erro": "Mês ou dados ausentes."})
+    hist = ler_informes_historico()
+    hist[mes] = locatarios
+    salvar_informes_historico(hist)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/informes_meses_salvos")
+@login_required
+def api_informes_meses_salvos():
+    """Lista os meses já arquivados, do mais recente para o mais antigo."""
+    hist = ler_informes_historico()
+    meses = sorted(hist.keys(), key=_mes_ordenavel, reverse=True)
+    return jsonify({"ok": True, "meses": meses})
+
+
+@app.route("/api/informes_carregar_mes")
+@login_required
+def api_informes_carregar_mes():
+    """Retorna o processamento arquivado de um mês específico."""
+    mes = (request.args.get("mes") or "").strip()
+    hist = ler_informes_historico()
+    return jsonify({"ok": True, "locatarios": hist.get(mes, [])})
 
 
 @app.route("/baixar_historico")
