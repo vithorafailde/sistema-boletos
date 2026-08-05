@@ -2,6 +2,7 @@ uploads/
 data/config.json
 data/historico.json
 data/informes_historico.json
+data/boletos_atual.json
 __pycache__/
 *.pyc
 *.tmp

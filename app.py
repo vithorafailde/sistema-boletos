@@ -23,6 +23,7 @@ HISTORICO_FILE = DATA_DIR / "historico.json"
 
 DIMOB_HISTORICO_FILE = DATA_DIR / "dimob_historico.json"
 INFORMES_HISTORICO_FILE = DATA_DIR / "informes_historico.json"
+BOLETOS_ATUAL_FILE = DATA_DIR / "boletos_atual.json"
 LOCATARIOS_EMAILS_FILE = DATA_DIR / "locatarios_emails.json"
 LOG_ENVIOS_FILE = DATA_DIR / "log_envios.json"
 
@@ -693,6 +694,24 @@ def salvar_informes_historico(dados):
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
     tmp.replace(INFORMES_HISTORICO_FILE)
+
+
+# ─── Estado atual dos Boletos (para o processamento aparecer igual em qualquer PC) ─
+
+def ler_boletos_atual():
+    if BOLETOS_ATUAL_FILE.exists():
+        try:
+            with open(BOLETOS_ATUAL_FILE, encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
+
+def salvar_boletos_atual(estado):
+    tmp = BOLETOS_ATUAL_FILE.with_suffix('.tmp')
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(estado, f, ensure_ascii=False, indent=2)
+    tmp.replace(BOLETOS_ATUAL_FILE)
 
 def _mes_ordenavel(mes_str):
     """Converte 'Julho/2026' em (2026, 7) para ordenação cronológica."""
@@ -2373,6 +2392,41 @@ def api_informes_carregar_mes():
     mes = (request.args.get("mes") or "").strip()
     hist = ler_informes_historico()
     return jsonify({"ok": True, "locatarios": hist.get(mes, [])})
+
+
+@app.route("/api/boletos_estado", methods=["GET"])
+@login_required
+def api_boletos_estado_get():
+    """Retorna o último processamento de boletos salvo no servidor, para que
+    abrir o sistema em outro PC mostre os mesmos dados (antes só ficava no
+    localStorage do navegador que processou)."""
+    estado = ler_boletos_atual()
+    if not estado:
+        return jsonify({"ok": True, "tem_dados": False})
+    return jsonify({"ok": True, "tem_dados": True, "dados": estado.get("dados"),
+                     "mes": estado.get("mes", ""), "salvo_em": estado.get("salvo_em", ""),
+                     "atualizado_em": estado.get("atualizado_em", ""),
+                     "atualizado_por": estado.get("atualizado_por", "")})
+
+
+@app.route("/api/boletos_estado", methods=["POST"])
+@login_required
+def api_boletos_estado_post():
+    """Salva o processamento atual de boletos no servidor (chamado logo após
+    processar e ao clicar em Salvar), pra sincronizar entre PCs diferentes."""
+    d = request.get_json(silent=True) or {}
+    dados = d.get("dados")
+    if not dados:
+        return jsonify({"ok": False, "erro": "Dados ausentes."})
+    anoMes = date.today().strftime("%Y-%m")
+    salvar_boletos_atual({
+        "dados": dados,
+        "mes": d.get("mes", ""),
+        "salvo_em": anoMes,
+        "atualizado_em": datetime.now().isoformat(timespec="seconds"),
+        "atualizado_por": session.get("usuario", ""),
+    })
+    return jsonify({"ok": True})
 
 
 @app.route("/baixar_historico")
