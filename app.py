@@ -30,7 +30,9 @@ LOG_ENVIOS_FILE = DATA_DIR / "log_envios.json"
 MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
-MAX_WORKERS_IA = 4  # chamadas simultâneas ao Claude ao processar PDFs (era sequencial, 1 por vez)
+MAX_WORKERS_IA = 2  # chamadas simultâneas ao Claude ao processar PDFs (era sequencial, 1 por vez)
+# Valor conservador: PDFs de condominio reais viram varias imagens em 250 DPI cada;
+# concorrencia alta demais pode estourar memoria no plano do Railway. Suba com cautela.
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
