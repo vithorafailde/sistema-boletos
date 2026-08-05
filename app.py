@@ -1467,72 +1467,69 @@ def processar():
             return
 
         # Condomínios — chamadas ao Claude disparadas em paralelo (eram sequenciais,
-        # uma esperando a outra terminar); resultados aplicados na ordem original de upload.
+        # uma esperando a outra terminar). Progresso é reportado na ordem real de
+        # conclusão (as_completed): se o arquivo 1 demorar, o 2/3/4 que já terminaram
+        # em paralelo aparecem na hora — não fica esperando a vez de cada um por índice.
         condos_lidos = []
-        futures_condo = [None] * len(condo_paths)
         if condo_paths:
-            pool_condo = concurrent.futures.ThreadPoolExecutor(max_workers=min(MAX_WORKERS_IA, len(condo_paths)))
-            futures_condo = [pool_condo.submit(extrair_condo, api_key, p) for p in condo_paths]
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(MAX_WORKERS_IA, len(condo_paths))) as pool_condo:
+                futuros_para_path = {pool_condo.submit(extrair_condo, api_key, p): p for p in condo_paths}
+                concluidos = 0
+                for fut in concurrent.futures.as_completed(futuros_para_path):
+                    pdf_path = futuros_para_path[fut]
+                    nome = pdf_path.name
+                    concluidos += 1
+                    yield f"data: {json.dumps({'tipo': 'progresso', 'atual': concluidos, 'total': total, 'arquivo': nome})}\n\n"
+                    dados, erro = fut.result()
+                    if erro:
+                        yield f"data: {json.dumps({'tipo': 'log', 'msg': f'AVISO {nome}: {erro}'})}\n\n"
+                        condos_lidos.append({"arquivo": nome, "erro": erro, "itens": {}, "locatario_chave": None, "tipo_documento": "erro"})
+                        continue
 
-        for i, pdf_path in enumerate(condo_paths):
-            nome = pdf_path.name
-            yield f"data: {json.dumps({'tipo': 'progresso', 'atual': i+1, 'total': total, 'arquivo': nome})}\n\n"
-            dados, erro = futures_condo[i].result()
-            if erro:
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'AVISO {nome}: {erro}'})}\n\n"
-                condos_lidos.append({"arquivo": nome, "erro": erro, "itens": {}, "locatario_chave": None, "tipo_documento": "erro"})
-                continue
+                    tipo_doc = dados.get("tipo_documento", "boleto_individual")
+                    chave, metodo, conf = match_condo_locatario(dados, contratos, proprietarios)
+                    dados["locatario_chave"] = chave
+                    dados["match_metodo"] = metodo
+                    dados["match_confianca"] = conf
 
-            tipo_doc = dados.get("tipo_documento", "boleto_individual")
-            chave, metodo, conf = match_condo_locatario(dados, contratos, proprietarios)
-            dados["locatario_chave"] = chave
-            dados["match_metodo"] = metodo
-            dados["match_confianca"] = conf
+                    if chave:
+                        loc = contratos[chave]["locatario"]
+                        flag = " [DEMONSTRATIVO]" if tipo_doc == "demonstrativo_geral" else (" [DEMONSTRATIVO+RECIBO]" if tipo_doc == "demonstrativo_com_recibo" else "")
+                        from_excluido = is_edificio_excluido(dados)
+                        excl_flag = " [SEM COND - EDIFICIO EXCLUIDO]" if from_excluido else ""
+                        yield f"data: {json.dumps({'tipo': 'log', 'msg': f'OK [{conf}%] {nome} -> {loc} ({metodo}){flag}{excl_flag}'})}\n\n"
+                        _itens = dados.get('itens') or {}
+                        _itens_str = ' | '.join(f'{k}:{v}' for k,v in _itens.items() if v) or '(todos null)'
+                        yield f"data: {json.dumps({'tipo': 'log', 'msg': 'ITENS ' + nome + ': ' + _itens_str})}\n\n"
+                    else:
+                        pag = dados.get("pagador", "?")
+                        un = dados.get("unidade", "")
+                        end = dados.get("endereco", "")
+                        yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH {nome} | pag:{pag} | un:{un} | end:{end}'})}\n\n"
+                    condos_lidos.append(dados)
 
-            if chave:
-                loc = contratos[chave]["locatario"]
-                flag = " [DEMONSTRATIVO]" if tipo_doc == "demonstrativo_geral" else (" [DEMONSTRATIVO+RECIBO]" if tipo_doc == "demonstrativo_com_recibo" else "")
-                from_excluido = is_edificio_excluido(dados)
-                excl_flag = " [SEM COND - EDIFICIO EXCLUIDO]" if from_excluido else ""
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'OK [{conf}%] {nome} -> {loc} ({metodo}){flag}{excl_flag}'})}\n\n"
-                _itens = dados.get('itens') or {}
-                _itens_str = ' | '.join(f'{k}:{v}' for k,v in _itens.items() if v) or '(todos null)'
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': 'ITENS ' + nome + ': ' + _itens_str})}\n\n"
-            else:
-                pag = dados.get("pagador", "?")
-                un = dados.get("unidade", "")
-                end = dados.get("endereco", "")
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH {nome} | pag:{pag} | un:{un} | end:{end}'})}\n\n"
-            condos_lidos.append(dados)
-
-        if condo_paths:
-            pool_condo.shutdown(wait=True)
-
-        # Boletos anteriores — mesma estratégia de paralelizar as chamadas ao Claude.
+        # Boletos anteriores — mesma estratégia (paralelo + progresso por conclusão real).
         boletos_extras = {}
-        futures_boleto = [None] * len(boleto_paths)
         if boleto_paths:
-            pool_boleto = concurrent.futures.ThreadPoolExecutor(max_workers=min(MAX_WORKERS_IA, len(boleto_paths)))
-            futures_boleto = [pool_boleto.submit(extrair_boleto_anterior, api_key, p) for p in boleto_paths]
-
-        for i, pdf_path in enumerate(boleto_paths):
-            nome = pdf_path.name
-            idx = len(condo_paths) + i + 1
-            yield f"data: {json.dumps({'tipo': 'progresso', 'atual': idx, 'total': total, 'arquivo': nome})}\n\n"
-            dados, erro = futures_boleto[i].result()
-            if erro:
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'AVISO boleto {nome}: {erro}'})}\n\n"
-                continue
-            chave = match_boleto_locatario(dados, contratos)
-            if chave:
-                loc = contratos[chave]["locatario"]
-                boletos_extras[chave] = dados
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'OK Boleto: {nome} -> {loc}'})}\n\n"
-            else:
-                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH boleto: {nome}'})}\n\n"
-
-        if boleto_paths:
-            pool_boleto.shutdown(wait=True)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(MAX_WORKERS_IA, len(boleto_paths))) as pool_boleto:
+                futuros_para_path = {pool_boleto.submit(extrair_boleto_anterior, api_key, p): p for p in boleto_paths}
+                concluidos = len(condo_paths)
+                for fut in concurrent.futures.as_completed(futuros_para_path):
+                    pdf_path = futuros_para_path[fut]
+                    nome = pdf_path.name
+                    concluidos += 1
+                    yield f"data: {json.dumps({'tipo': 'progresso', 'atual': concluidos, 'total': total, 'arquivo': nome})}\n\n"
+                    dados, erro = fut.result()
+                    if erro:
+                        yield f"data: {json.dumps({'tipo': 'log', 'msg': f'AVISO boleto {nome}: {erro}'})}\n\n"
+                        continue
+                    chave = match_boleto_locatario(dados, contratos)
+                    if chave:
+                        loc = contratos[chave]["locatario"]
+                        boletos_extras[chave] = dados
+                        yield f"data: {json.dumps({'tipo': 'log', 'msg': f'OK Boleto: {nome} -> {loc}'})}\n\n"
+                    else:
+                        yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH boleto: {nome}'})}\n\n"
 
         try:
             resultado = montar_resultado(contratos, condos_lidos, boletos_extras)
