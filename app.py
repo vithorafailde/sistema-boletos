@@ -1,4 +1,5 @@
 ﻿import json, re, base64, io, unicodedata, time, os, traceback
+import concurrent.futures
 import urllib.request
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -27,6 +28,8 @@ LOG_ENVIOS_FILE = DATA_DIR / "log_envios.json"
 
 MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+MAX_WORKERS_IA = 4  # chamadas simultâneas ao Claude ao processar PDFs (era sequencial, 1 por vez)
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
@@ -907,22 +910,18 @@ def ler_excel(path):
 
 # ─── PDF helpers ───────────────────────────────────────────────────────────────
 
-def pdf_tem_texto(path):
-    try:
-        with pdfplumber.open(str(path)) as pdf:
-            for page in pdf.pages:
-                t = page.extract_text()
-                if t and len(t.strip()) > 80:
-                    return True
-    except Exception:
-        pass
-    return False
-
-def pdf_para_b64(path, resolucao=250):
+def _ler_pdf_texto_e_imagens(path, resolucao=250):
+    """Abre o PDF uma unica vez e extrai texto + imagens juntos.
+    Antes eram 3 aberturas separadas (pdf_tem_texto/pdf_para_b64/pdf_texto_completo),
+    cada uma re-parseando o PDF do zero — aqui faz-se tudo em uma unica passada."""
+    texto = ""
     imgs = []
     try:
         with pdfplumber.open(str(path)) as pdf:
             for page in pdf.pages:
+                txt = page.extract_text()
+                if txt:
+                    texto += txt + "\n"
                 img = page.to_image(resolution=resolucao)
                 buf = io.BytesIO()
                 img.save(buf, format="PNG")
@@ -930,26 +929,14 @@ def pdf_para_b64(path, resolucao=250):
                 imgs.append(base64.b64encode(buf.read()).decode("utf-8"))
     except Exception:
         pass
-    return imgs
-
-def pdf_texto_completo(path):
-    t = ""
-    try:
-        with pdfplumber.open(str(path)) as pdf:
-            for page in pdf.pages:
-                txt = page.extract_text()
-                if txt:
-                    t += txt + "\n"
-    except Exception:
-        pass
-    return t.strip()
+    return texto.strip(), imgs
 
 def montar_content(pdf_path, prompt):
     """Monta content com texto + imagens (modo hibrido) para maxima precisao.
     Mesmo quando o PDF tem texto seleccionavel, inclui as imagens para que o
     modelo possa cruzar os valores visualmente e evitar erros de extração."""
-    tem_texto = pdf_tem_texto(pdf_path)
-    imgs = pdf_para_b64(pdf_path)
+    texto, imgs = _ler_pdf_texto_e_imagens(pdf_path)
+    tem_texto = len(texto) > 80
 
     if not tem_texto and not imgs:
         return None
@@ -957,9 +944,8 @@ def montar_content(pdf_path, prompt):
     content = []
 
     if tem_texto:
-        txt = pdf_texto_completo(pdf_path)
         content.append({"type": "text",
-                         "text": f"Texto extraido do PDF (use para identificar campos):\n\n{txt}\n\n"
+                         "text": f"Texto extraido do PDF (use para identificar campos):\n\n{texto}\n\n"
                                  f"IMPORTANTE: o texto acima pode ter colunas desalinhadas. "
                                  f"Use as imagens abaixo para confirmar os valores numericos com precisao."})
 
@@ -1461,12 +1447,18 @@ def processar():
             yield f"data: {json.dumps({'tipo': 'erro', 'msg': f'Erro Excel: {e}'})}\n\n"
             return
 
-        # Condomínios
+        # Condomínios — chamadas ao Claude disparadas em paralelo (eram sequenciais,
+        # uma esperando a outra terminar); resultados aplicados na ordem original de upload.
         condos_lidos = []
+        futures_condo = [None] * len(condo_paths)
+        if condo_paths:
+            pool_condo = concurrent.futures.ThreadPoolExecutor(max_workers=min(MAX_WORKERS_IA, len(condo_paths)))
+            futures_condo = [pool_condo.submit(extrair_condo, api_key, p) for p in condo_paths]
+
         for i, pdf_path in enumerate(condo_paths):
             nome = pdf_path.name
             yield f"data: {json.dumps({'tipo': 'progresso', 'atual': i+1, 'total': total, 'arquivo': nome})}\n\n"
-            dados, erro = extrair_condo(api_key, pdf_path)
+            dados, erro = futures_condo[i].result()
             if erro:
                 yield f"data: {json.dumps({'tipo': 'log', 'msg': f'AVISO {nome}: {erro}'})}\n\n"
                 condos_lidos.append({"arquivo": nome, "erro": erro, "itens": {}, "locatario_chave": None, "tipo_documento": "erro"})
@@ -1494,13 +1486,21 @@ def processar():
                 yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH {nome} | pag:{pag} | un:{un} | end:{end}'})}\n\n"
             condos_lidos.append(dados)
 
-        # Boletos anteriores
+        if condo_paths:
+            pool_condo.shutdown(wait=True)
+
+        # Boletos anteriores — mesma estratégia de paralelizar as chamadas ao Claude.
         boletos_extras = {}
+        futures_boleto = [None] * len(boleto_paths)
+        if boleto_paths:
+            pool_boleto = concurrent.futures.ThreadPoolExecutor(max_workers=min(MAX_WORKERS_IA, len(boleto_paths)))
+            futures_boleto = [pool_boleto.submit(extrair_boleto_anterior, api_key, p) for p in boleto_paths]
+
         for i, pdf_path in enumerate(boleto_paths):
             nome = pdf_path.name
             idx = len(condo_paths) + i + 1
             yield f"data: {json.dumps({'tipo': 'progresso', 'atual': idx, 'total': total, 'arquivo': nome})}\n\n"
-            dados, erro = extrair_boleto_anterior(api_key, pdf_path)
+            dados, erro = futures_boleto[i].result()
             if erro:
                 yield f"data: {json.dumps({'tipo': 'log', 'msg': f'AVISO boleto {nome}: {erro}'})}\n\n"
                 continue
@@ -1511,6 +1511,9 @@ def processar():
                 yield f"data: {json.dumps({'tipo': 'log', 'msg': f'OK Boleto: {nome} -> {loc}'})}\n\n"
             else:
                 yield f"data: {json.dumps({'tipo': 'log', 'msg': f'SEM MATCH boleto: {nome}'})}\n\n"
+
+        if boleto_paths:
+            pool_boleto.shutdown(wait=True)
 
         try:
             resultado = montar_resultado(contratos, condos_lidos, boletos_extras)
