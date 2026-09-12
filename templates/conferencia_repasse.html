@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conferência de Repasse — Funchal Imóveis</title>
+<style>
+:root {
+  --bg: #D6E3E8; --card: #fff; --border: #B8CECE; --text: #1A2C30; --muted: #4A6668;
+  --accent: #3B7A8E; --green: #4A6E9A; --red: #B84545; --yellow: #8C6C1F;
+  --orange: #B86030; --header: #2A4A52; --purple: #6A4F8A;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+.header { background: var(--header); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+.header h1 { font-size: 17px; font-weight: 700; }
+.header p { font-size: 13px; color: #94a3b8; margin-top: 2px; }
+.header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.card-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.step-num { background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.btn { padding: 8px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2A6A7E; }
+.btn-primary:disabled { background: #8AABAB; cursor: not-allowed; }
+.btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.btn-outline:hover { background: #DDE8EC; }
+.btn-sm { padding: 4px 11px; font-size: 13px; }
+.form-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 15px; outline: none; background:#fff; }
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,122,142,.15); }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+/* File drop */
+.file-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 28px 14px; text-align: center; cursor: pointer; transition: all .18s; background: #EFF2F2; }
+.file-drop:hover, .file-drop.drag-over { border-color: var(--accent); background: #DDE8EC; }
+.file-drop .lbl { font-weight: 600; font-size: 15px; }
+.file-drop .hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.file-drop input[type=file] { display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.chip { background: #DDE8EC; border: 1px solid #A8C5CE; border-radius: 20px; padding: 2px 9px; font-size: 12px; color: var(--accent); }
+/* Progress */
+.progress-bar-wrap { background: #C8D4D4; border-radius: 99px; height: 7px; margin: 10px 0; overflow: hidden; }
+.progress-bar { background: var(--accent); height: 100%; border-radius: 99px; transition: width .3s; width: 0%; }
+.log-box { background: #1A2E2E; color: #8AABAB; border-radius: 7px; padding: 10px 12px; font-family: 'Consolas', monospace; font-size: 13px; height: 130px; overflow-y: auto; margin-top: 8px; }
+.log-ok { color: #5AD48A; } .log-warn { color: #E5B24A; } .log-err { color: #E07070; }
+/* Table */
+.table-wrap { overflow-x: auto; }
+table.main-table { width: 100%; border-collapse: collapse; }
+.main-table thead th { background: var(--header); color: #fff; padding: 9px 10px; text-align: left; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.main-table tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.main-table tbody tr:hover td { background: #EFF2F2; }
+.detalhe-row td { background: #F7FAFB; padding: 6px 10px 12px 34px; font-size: 13px; color: var(--muted); }
+/* Status badges */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.badge-bate { background: #D0F0D8; color: #2A6A2A; }
+.badge-naobate { background: #F5D5D5; color: var(--red); }
+.badge-sem { background: #FFF3CD; color: var(--yellow); }
+#secaoProgresso { display: none; }
+#secaoResultados { display: none; }
+#semMeses { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Conferência de Repasse</h1>
+    <p>Confere se o valor repassado ao proprietário bate com o comprovante de transferência</p>
+  </div>
+  <div class="header-actions">
+    <a href="/boletos?informes=1" class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);">Informe Mensal</a>
+    <a href="/informe_anual" class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);">Informe Anual</a>
+    <a href="/" class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);">&#8592; Início</a>
+    <a href="/logout" class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);">Sair</a>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ── Passo 1: mês de referência ────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title"><span class="step-num">1</span> Mês de Referência</div>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:14px">
+      Escolha o mês já arquivado (salvo na tela de Boletos) para carregar o valor de repasse esperado de cada proprietário.
+    </p>
+    <div style="max-width:320px">
+      <label class="form-label">Mês</label>
+      <select id="selMes" class="form-input" onchange="trocarMes(this.value)">
+        <option value="">— escolha um mês —</option>
+      </select>
+    </div>
+    <div id="semMeses" style="margin-top:14px;color:var(--muted);font-size:14px">
+      Nenhum mês arquivado encontrado. Salve o processamento na tela de <strong>Boletos</strong> (botão "Salvar") para poder conferir aqui.
+    </div>
+  </div>
+
+  <!-- ── Passo 2: upload dos comprovantes ───────────────────────────────── -->
+  <div class="card" id="cardUpload" style="display:none">
+    <div class="card-title"><span class="step-num">2</span> Upload dos Comprovantes de Repasse (PDF)</div>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:14px">
+      Envie todos os comprovantes de transferência do mês de uma vez. O sistema lê o valor e o favorecido de cada um e casa automaticamente com o proprietário.
+    </p>
+    <div id="dropComp" class="file-drop" onclick="document.getElementById('inComp').click()">
+      <div class="lbl">Clique ou arraste os PDFs aqui</div>
+      <div class="hint">Comprovantes de transferência bancária (PDF)</div>
+      <input type="file" id="inComp" accept=".pdf" multiple>
+    </div>
+    <div class="chips" id="chipsComp"></div>
+    <div style="margin-top:14px">
+      <button class="btn btn-primary" id="btnProcessar" onclick="processarComprovantes()" disabled>
+        Processar Comprovantes
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Progresso ──────────────────────────────────────────────────────── -->
+  <div class="card" id="secaoProgresso">
+    <div class="card-title"><span class="step-num">...</span> Lendo comprovantes...</div>
+    <div id="progTexto" style="font-size:14px;color:var(--muted)">Iniciando...</div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="barra"></div></div>
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+  <!-- ── Resultados ─────────────────────────────────────────────────────── -->
+  <div id="secaoResultados">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="font-size:17px;font-weight:700">Conferência — <span id="tituloMes"></span></h2>
+        <p id="resumoStatus" style="font-size:14px;color:var(--muted)"></p>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('cardUpload').scrollIntoView({behavior:'smooth'})">Enviar mais comprovantes</button>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table class="main-table">
+          <thead>
+            <tr>
+              <th style="min-width:220px">Proprietário</th>
+              <th style="min-width:130px">Valor Esperado</th>
+              <th style="min-width:130px">Valor Recebido</th>
+              <th style="min-width:110px">Diferença</th>
+              <th style="min-width:120px">Status</th>
+              <th style="min-width:160px">Comprovante</th>
+            </tr>
+          </thead>
+          <tbody id="corpoResultados"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="cardSemMatch" style="display:none">
+      <div class="card-title" style="color:var(--orange)">Comprovantes sem correspondência automática</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px">
+        O nome do favorecido lido no comprovante não bateu com nenhum proprietário do mês. Selecione manualmente a quem pertence.
+      </p>
+      <div id="listaSemMatch"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Helpers de normalização / matching de nomes (mesma lógica do resto do sistema) ──
+function normProp(s) {
+  return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+}
+function normPalavras(nome) {
+  if (!nome) return [];
+  let n = String(nome).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  n = n.replace(/[^A-Z0-9 ]/g, ' ');
+  return n.split(/\s+/).filter(w => w.length > 2);
+}
+const STOPWORDS_NOME = new Set(['DOS','DAS','DES','DEL','COM','POR','PARA','LTDA','EIRELI']);
+// Mede quanto do nome-alvo (proprietário) está coberto pelas palavras do favorecido lido no comprovante.
+function scoreNome(palavrasArq, palavrasAlvo) {
+  const sig = palavrasAlvo.filter(p => p.length >= 4 && !STOPWORDS_NOME.has(p));
+  if (!sig.length || !palavrasArq.length) return 0.0;
+  let matches = 0.0;
+  for (const pl of sig) {
+    let encontrou = false;
+    for (const pa of palavrasArq) {
+      if (pa === pl) { matches += 1.0; encontrou = true; break; }
+      if (pl.length >= 4 && pa.includes(pl)) { matches += 0.9; encontrou = true; break; }
+      if (pa.length >= 4 && pl.length >= 4) {
+        const n = Math.min(pa.length, pl.length, 5);
+        if (n >= 4 && pa.slice(0, n) === pl.slice(0, n)) { matches += 0.8; encontrou = true; break; }
+      }
+    }
+    if (!encontrou) {
+      for (const pa of palavrasArq) {
+        if (pa.length >= 4 && pl.includes(pa)) { matches += 0.7; break; }
+      }
+    }
+  }
+  return matches / sig.length;
+}
+
+// ─── Cálculo do repasse — mesma fórmula de templates/index.html (calcRepasseData) ──
+const PROPRIETARIOS_COMISSAO_LIQUIDA = [
+  ['manoel', 'failde'],
+  ['amandio', 'failde'],
+  ['izabel', 'failde'],
+];
+function _nomeContemPalavras(nomeNorm, palavras) {
+  const palavrasNome = nomeNorm.split(/\s+/).filter(Boolean);
+  return palavras.every(p => palavrasNome.includes(p));
+}
+function temComissaoLiquida(proprietarioIndividual, proprietarioStr) {
+  const bate = nome => {
+    const n = normProp(nome);
+    return PROPRIETARIOS_COMISSAO_LIQUIDA.some(palavras => _nomeContemPalavras(n, palavras));
+  };
+  if (proprietarioIndividual) return bate(proprietarioIndividual);
+  return (proprietarioStr||'').split(',').some(bate);
+}
+function calcRepasseData(row) {
+  const paAtivo = row.primeiro_aluguel_ativo && (parseFloat(row.primeiro_aluguel_val)||0) > 0;
+  const paVal   = paAtivo ? (parseFloat(row.primeiro_aluguel_val)||0) : 0;
+  const percImob = parseFloat(row.percentual_imob) || 0;
+  const taxaImobBruta = temComissaoLiquida(row._proprietario_individual, row.proprietario)
+    ? Math.round(((row.aluguel||0) - (parseFloat(row.abono_val)||0)) * percImob / 100 * 100) / 100
+    : (parseFloat(row.taxa_imob) || 0);
+  const taxaImob = paAtivo ? 0 : taxaImobBruta;
+  const itensNRep = row.cond_itens_nrep || {};
+  const nrepAtivo = row.cond_itens_nrep_ativo || {};
+  const dedPropTotal = Object.entries(itensNRep)
+    .map(([k,v]) => (nrepAtivo[k]!==false) ? (parseFloat(v)||0) : 0)
+    .reduce((s,v) => s+v, 0);
+  let dedsManual = 0;
+  for (let n=1; n<=10; n++) {
+    const rawVal = parseFloat(row[`ded${n}_val`])||0;
+    if (!rawVal) continue;
+    const sub = row[`ded${n}_subtrair`]!==false;
+    dedsManual += sub ? rawVal : -rawVal;
+  }
+  const multaBruta = parseFloat(row.multa_atraso_val)||0;
+  const jurosBruto = parseFloat(row.juros_mora_val)||0;
+  const taxaSobRec = paAtivo ? 0 : (multaBruta + jurosBruto) * percImob / 100;
+  const repasse = (row.aluguel||0) - taxaImob - dedPropTotal - dedsManual - paVal + multaBruta + jurosBruto - taxaSobRec;
+  return { repasse };
+}
+function applyDivisor(rd, n) {
+  if (!n || n <= 1) return rd;
+  return { repasse: rd.repasse / n };
+}
+
+// Agrupa os locatários arquivados por proprietário e soma o repasse esperado de cada um
+function montarEsperados(locatarios) {
+  const grupos = {};
+  (locatarios || []).forEach(row => {
+    const props = row.proprietario ? row.proprietario.split(',').map(p => p.trim()).filter(Boolean) : [];
+    const n = props.length || 1;
+    props.forEach(propNome => {
+      const key = normProp(propNome);
+      if (!key) return;
+      if (!grupos[key]) grupos[key] = { nome: propNome, total: 0, imoveis: 0 };
+      const rowCopy = Object.assign({}, row, { _proprietario_individual: propNome });
+      const rd = applyDivisor(calcRepasseData(rowCopy), n);
+      grupos[key].total += rd.repasse;
+      grupos[key].imoveis += 1;
+    });
+  });
+  return grupos;
+}
+
+// ─── Estado ──────────────────────────────────────────────────────────────────
+let _esperados = {};   // chave -> {nome, total, imoveis}
+let _comprovantes = []; // resultados extraídos + _chaveMatch + _score
+
+function brl(v) {
+  const n = parseFloat(v) || 0;
+  return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Passo 1: mês ─────────────────────────────────────────────────────────────
+async function carregarMeses() {
+  try {
+    const r = await fetch('/api/informes_meses_salvos');
+    const j = await r.json();
+    const sel = document.getElementById('selMes');
+    sel.innerHTML = '<option value="">— escolha um mês —</option>' +
+      (j.meses || []).map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+    document.getElementById('semMeses').style.display = (j.meses || []).length === 0 ? 'block' : 'none';
+  } catch(e) {}
+}
+
+async function trocarMes(mes) {
+  document.getElementById('cardUpload').style.display = 'none';
+  document.getElementById('secaoResultados').style.display = 'none';
+  _comprovantes = [];
+  if (!mes) return;
+  try {
+    const r = await fetch('/api/informes_carregar_mes?mes=' + encodeURIComponent(mes));
+    const j = await r.json();
+    _esperados = montarEsperados(j.locatarios || []);
+    document.getElementById('cardUpload').style.display = 'block';
+    document.getElementById('tituloMes').textContent = mes;
+  } catch(e) {
+    alert('Erro ao carregar o mês selecionado.');
+  }
+}
+
+// ─── Passo 2: upload ───────────────────────────────────────────────────────────
+const dropComp = document.getElementById('dropComp');
+const inComp = document.getElementById('inComp');
+inComp.addEventListener('change', () => { renderChips(inComp.files); document.getElementById('btnProcessar').disabled = inComp.files.length === 0; });
+dropComp.addEventListener('dragover', e => { e.preventDefault(); dropComp.classList.add('drag-over'); });
+dropComp.addEventListener('dragleave', () => dropComp.classList.remove('drag-over'));
+dropComp.addEventListener('drop', e => {
+  e.preventDefault();
+  dropComp.classList.remove('drag-over');
+  const dt = new DataTransfer();
+  Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+  inComp.files = dt.files;
+  inComp.dispatchEvent(new Event('change'));
+});
+function renderChips(files) {
+  const el = document.getElementById('chipsComp');
+  el.innerHTML = '';
+  const arr = Array.from(files);
+  arr.slice(0, 10).forEach(f => { el.innerHTML += `<span class="chip">${escHtml(f.name)}</span>`; });
+  if (arr.length > 10) el.innerHTML += `<span class="chip">+${arr.length-10} arquivos</span>`;
+}
+
+async function processarComprovantes() {
+  const fd = new FormData();
+  for (const f of inComp.files) fd.append('comprovantes', f);
+
+  document.getElementById('secaoProgresso').style.display = 'block';
+  document.getElementById('secaoResultados').style.display = 'none';
+  const log = document.getElementById('logBox');
+  const barra = document.getElementById('barra');
+  const texto = document.getElementById('progTexto');
+  log.innerHTML = '';
+  barra.style.width = '0%';
+
+  try {
+    const resp = await fetch('/api/conferencia_processar', {method: 'POST', body: fd});
+    if (!resp.ok) { addLog(log, `Erro HTTP ${resp.status}`, 'err'); return; }
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        try { tratar(JSON.parse(line.slice(5).trim()), log, barra, texto); } catch(e) {}
+      }
+    }
+  } catch(e) {
+    addLog(log, 'Erro: ' + e.message, 'err');
+  }
+}
+
+function tratar(ev, log, barra, texto) {
+  if (ev.tipo === 'inicio') {
+    texto.textContent = `Processando ${ev.total} comprovante(s)...`;
+  } else if (ev.tipo === 'progresso') {
+    barra.style.width = (ev.total > 0 ? Math.round(ev.atual/ev.total*100) : 100) + '%';
+    texto.textContent = `${ev.atual}/${ev.total}: ${ev.arquivo}`;
+  } else if (ev.tipo === 'log') {
+    const cls = ev.msg.startsWith('OK') ? 'ok' : ev.msg.startsWith('ERRO') ? 'err' : '';
+    addLog(log, ev.msg, cls);
+  } else if (ev.tipo === 'resultado') {
+    barra.style.width = '100%';
+    texto.textContent = 'Concluído!';
+    addLog(log, 'Pronto! Comparando com os valores esperados...', 'ok');
+    // Novos comprovantes se somam aos já processados (permite enviar em lotes)
+    _comprovantes = _comprovantes.concat(ev.dados || []);
+    setTimeout(() => { montarConferencia(); renderResultados(); }, 400);
+  }
+}
+function addLog(el, msg, cls) {
+  const span = document.createElement('span');
+  if (cls) span.className = 'log-' + cls;
+  span.textContent = msg + '\n';
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ─── Matching + conferência ────────────────────────────────────────────────────
+function montarConferencia() {
+  const chaves = Object.keys(_esperados);
+  _comprovantes.forEach(c => {
+    if (c.erro) return;
+    if (c._chaveManual) { c._chaveMatch = c._chaveManual; return; }
+    const palavrasFav = normPalavras(c.favorecido || '');
+    let melhorChave = null, melhorScore = 0;
+    chaves.forEach(k => {
+      const s = scoreNome(palavrasFav, normPalavras(_esperados[k].nome));
+      if (s > melhorScore) { melhorScore = s; melhorChave = k; }
+    });
+    c._chaveMatch = melhorScore >= 0.40 ? melhorChave : null;
+    c._score = melhorScore;
+  });
+}
+
+function renderResultados() {
+  document.getElementById('secaoResultados').style.display = 'block';
+  const corpo = document.getElementById('corpoResultados');
+  const chaves = Object.keys(_esperados).sort((a,b) => _esperados[a].nome.localeCompare(_esperados[b].nome, 'pt-BR', {sensitivity:'base'}));
+
+  let nBate = 0, nNaoBate = 0, nSem = 0;
+  corpo.innerHTML = chaves.map(key => {
+    const esp = _esperados[key];
+    const matches = _comprovantes.filter(c => !c.erro && c._chaveMatch === key);
+    const recebido = matches.reduce((s,c) => s + (parseFloat(c.valor)||0), 0);
+    const temComprovante = matches.length > 0;
+    const diff = recebido - esp.total;
+    const bate = temComprovante && Math.abs(diff) < 0.005;
+
+    let badge, diffTxt;
+    if (!temComprovante) {
+      badge = '<span class="badge badge-sem">Sem comprovante</span>';
+      diffTxt = '—';
+      nSem++;
+    } else if (bate) {
+      badge = '<span class="badge badge-bate">Bate</span>';
+      diffTxt = brl(0);
+      nBate++;
+    } else {
+      badge = '<span class="badge badge-naobate">Não bate</span>';
+      diffTxt = (diff > 0 ? '+' : '') + brl(diff);
+      nNaoBate++;
+    }
+
+    const detalhe = matches.map(c =>
+      `${escHtml((c.arquivo||'').replace(/^rep_/, ''))} — ${escHtml(c.favorecido||'?')} — ${brl(c.valor)}${c.data ? ' — ' + escHtml(c.data) : ''}`
+    ).join('<br>');
+
+    return `<tr>
+      <td style="font-weight:600">${escHtml(esp.nome)}${esp.imoveis > 1 ? `<div style="font-size:11px;color:var(--muted);font-weight:400">${esp.imoveis} imóveis</div>` : ''}</td>
+      <td>${brl(esp.total)}</td>
+      <td>${temComprovante ? brl(recebido) : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${diffTxt}</td>
+      <td>${badge}</td>
+      <td style="font-size:12px;color:var(--muted)">${detalhe || '<span style="color:var(--muted)">nenhum</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('resumoStatus').textContent =
+    `${nBate} bate(m) · ${nNaoBate} não bate(m) · ${nSem} sem comprovante`;
+
+  renderSemMatch();
+}
+
+function renderSemMatch() {
+  const semMatch = _comprovantes.filter(c => !c.erro && !c._chaveMatch);
+  const card = document.getElementById('cardSemMatch');
+  if (semMatch.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const opts = Object.keys(_esperados)
+    .sort((a,b) => _esperados[a].nome.localeCompare(_esperados[b].nome, 'pt-BR', {sensitivity:'base'}))
+    .map(k => `<option value="${k}">${escHtml(_esperados[k].nome)}</option>`).join('');
+
+  document.getElementById('listaSemMatch').innerHTML = semMatch.map((c) => {
+    const idx = _comprovantes.indexOf(c);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <strong>${escHtml((c.arquivo||'').replace(/^rep_/, ''))}</strong>
+        <div style="font-size:12px;color:var(--muted)">Favorecido lido: ${escHtml(c.favorecido||'?')} — ${brl(c.valor)}</div>
+      </div>
+      <select class="form-input" style="width:auto" onchange="atribuirManual(${idx}, this.value)">
+        <option value="">— atribuir a um proprietário —</option>
+        ${opts}
+      </select>
+    </div>`;
+  }).join('');
+}
+
+function atribuirManual(idx, chave) {
+  if (!chave) return;
+  _comprovantes[idx]._chaveManual = chave;
+  montarConferencia();
+  renderResultados();
+}
+
+// Init
+carregarMeses();
+</script>
+</body>
+</html>

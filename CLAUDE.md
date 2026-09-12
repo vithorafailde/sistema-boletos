@@ -393,6 +393,34 @@ Aplicada em `templates/index.html` e `templates/reajustes.html`. **Não alterar 
 
 ---
 
+## Conferência de Repasse (`/conferencia_repasse`)
+
+### O que faz
+Confere se o valor efetivamente repassado ao proprietário (via comprovante de transferência) bate com o valor que deveria ter sido repassado naquele mês (o mesmo total calculado nos Informes Mensais).
+
+### Fluxo
+1. Usuário escolhe um **mês já arquivado** em `informes_historico.json` (mesmo arquivo dos Informes Mensais — só funciona para meses salvos via botão "Salvar" na tela de Boletos)
+2. Sistema recalcula o repasse esperado de cada proprietário a partir dos `locatarios` daquele mês (soma todos os imóveis do proprietário, aplicando divisor quando há múltiplos proprietários por imóvel)
+3. Usuário sobe os comprovantes de repasse (PDF) — pode subir em lotes, os comprovantes se acumulam
+4. Backend lê cada PDF via Claude AI (mesmo padrão híbrido texto+imagem dos outros PDFs) e extrai `favorecido`, `valor`, `data`, `banco`
+5. Frontend casa cada comprovante com um proprietário por nome (score de cobertura de palavras, mesmo algoritmo de `score_nome_arquivo` do envio de boletos, portado para JS) e soma o valor recebido por proprietário
+6. Compara valor recebido x valor esperado e sinaliza **Bate** / **Não bate** / **Sem comprovante**
+
+### Decisões de escopo (confirmadas com o usuário)
+- Só aceita **PDF** (não imagem solta) — mesmo pipeline de extração híbrida dos outros PDFs do sistema
+- Granularidade é **por proprietário** (soma de todos os imóveis dele no mês), não por imóvel individual
+- Tolerância é **exata** — só concilia com `|diferença| < R$0,005` (evita falso negativo por arredondamento de ponto flutuante, mas qualquer centavo real de diferença já conta como "Não bate")
+- Threshold de match automático por nome: **40%**, igual ao usado no envio de boletos. Abaixo disso o comprovante cai em "sem correspondência automática" e o usuário atribui manualmente pelo dropdown
+
+### Arquitetura — por que o cálculo do repasse está duplicado em JS aqui também
+O cálculo de repasse (`calcRepasseData`/`applyDivisor`/`temComissaoLiquida`) só existe em JavaScript (não há equivalente em Python) — é assim em `templates/index.html` também. Para não criar uma *terceira* cópia da fórmula (o que aumentaria o risco de divergência, já é um risco conhecido documentado na seção de comissão sobre o líquido), a página de Conferência **reaproveita a mesma fórmula em JS**, portada para `templates/conferencia_repasse.html`. O backend (`extrair_comprovante_repasse` em `app.py`) só faz a leitura do PDF via Claude — não sabe nada sobre proprietários, valores esperados ou matching, isso é tudo feito no cliente.
+- **Se a fórmula de repasse mudar em `index.html`, replicar a mudança em `conferencia_repasse.html` também.**
+
+### Comprovantes sem PDF
+Depois de processado, cada PDF de comprovante é apagado do servidor (`pdf_path.unlink()`) — não fica arquivo de comprovante salvo em lugar nenhum, só o resultado extraído (em memória no navegador, não persiste após reload).
+
+---
+
 ## Envio de Email DIMOB
 
 - Rota: `POST /api/dimob_enviar_email` — recebe `{proprietario, cpf_proprietario, email_dest, ano, contratos}`
@@ -537,6 +565,7 @@ templates/reajustes.html      — página de reajuste de aluguel
 templates/dimob.html          — página DIMOB (fluxo contador: envio → PDFs → proprietários)
 templates/informe_anual.html  — página Informe de Rendimento Anual (envio direto aos proprietários)
 templates/envio_boletos.html  — página de envio de boletos por email aos locatários
+templates/conferencia_repasse.html — confere se o valor repassado ao proprietário bate com o comprovante
 templates/configuracoes.html  — página de configurações (admin only): API Anthropic + Email/Resend
 templates/login.html          — login
 static/logo.png               — logo Funchal Imóveis (usada nos PDFs em base64)
@@ -594,6 +623,8 @@ data/locatarios_emails.json   — emails dos locatários para envio de boletos
 | `/envio_boletos/enviar` | POST | logado | Envia boleto(s) por email — aceita múltiplos arquivos |
 | `/api/locatarios_emails` | GET | logado | Retorna emails cadastrados dos locatários |
 | `/api/locatarios_emails/bulk` | POST | logado | Salva emails dos locatários em massa |
+| `/conferencia_repasse` | GET | logado | Página de conferência de repasse ao proprietário |
+| `/api/conferencia_processar` | POST | logado | Lê comprovantes de repasse (PDF) via Claude AI e retorna favorecido/valor/data/banco |
 
 ---
 

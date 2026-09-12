@@ -1183,6 +1183,37 @@ def extrair_boleto_anterior(api_key, pdf_path):
     return None, erro or "Falhou"
 
 
+# ─── Extração comprovante de repasse ───────────────────────────────────────────
+
+PROMPT_COMPROVANTE_REPASSE = """Analise este comprovante de transferencia bancaria (comprovante de repasse/pagamento a um proprietario de imovel).
+
+Retorne APENAS JSON valido:
+{
+  "favorecido": "nome completo do favorecido/beneficiario/destinatario/credor da transferencia",
+  "valor": 0.0,
+  "data": "DD/MM/AAAA ou null",
+  "banco": "nome do banco/instituicao ou null"
+}
+
+REGRAS:
+- "favorecido" e sempre quem RECEBEU o dinheiro (destinatario/beneficiario/credor/favorecido), NUNCA quem enviou (pagador/remetente/devedor/origem).
+- FORMATO BRASILEIRO: virgula = decimal, ponto = milhar. Exemplos: "1.234,56" -> 1234.56 | "127,50" -> 127.50
+- NAO arredonde nem trunque valores: "127,53" deve ser 127.53, nao 127 nem 128.
+- Se houver mais de um valor no comprovante (ex: valor solicitado e valor liquido, ou tarifa destacada em separado), use o VALOR EFETIVAMENTE TRANSFERIDO/creditado ao favorecido.
+- Se texto e imagem divergirem, PREVALECE a imagem.
+- valor com ponto decimal (ex: 1234.56). null se nao encontrado."""
+
+def extrair_comprovante_repasse(api_key, pdf_path):
+    content = montar_content(pdf_path, PROMPT_COMPROVANTE_REPASSE)
+    if not content:
+        return None, "Nao converteu PDF"
+    dados, erro = chamar_claude(api_key, content)
+    if dados:
+        dados["arquivo"] = Path(pdf_path).name
+        return dados, None
+    return None, erro or "Falhou"
+
+
 # ─── Matching ─────────────────────────────────────────────────────────────────
 
 def match_condo_locatario(condo, contratos, proprietarios):
@@ -3597,6 +3628,66 @@ def enviar_boleto_locatario():
     except Exception as e:
         gravar_log_envio(locatario or attachments[0]["filename"], email_dest, mes, "erro", str(e), tipo="boleto")
         return jsonify({"ok": False, "erro": str(e)})
+
+
+@app.route("/conferencia_repasse")
+@login_required
+def conferencia_repasse_page():
+    return render_template("conferencia_repasse.html")
+
+
+@app.route("/api/conferencia_processar", methods=["POST"])
+@login_required
+def api_conferencia_processar():
+    config = ler_config()
+    api_key = config.get("api_key")
+    if not api_key:
+        return jsonify({"ok": False, "erro": "Configure a chave API primeiro"})
+
+    comp_files = request.files.getlist("comprovantes")
+    if not comp_files:
+        return jsonify({"ok": False, "erro": "Nenhum comprovante enviado"})
+
+    UPLOAD_DIR.mkdir(exist_ok=True)
+    comp_paths = []
+    for f in comp_files:
+        if f.filename.lower().endswith(".pdf"):
+            safe_name = Path(f.filename).name  # sanitiza path traversal
+            dest = UPLOAD_DIR / ("rep_" + safe_name)
+            f.save(str(dest))
+            comp_paths.append(dest)
+
+    def gerar():
+        total = len(comp_paths)
+        yield f"data: {json.dumps({'tipo': 'inicio', 'total': total})}\n\n"
+        resultados = []
+
+        for i, pdf_path in enumerate(comp_paths):
+            nome = pdf_path.name
+            yield f"data: {json.dumps({'tipo': 'progresso', 'atual': i+1, 'total': total, 'arquivo': nome})}\n\n"
+
+            dados, erro = extrair_comprovante_repasse(api_key, pdf_path)
+            if erro:
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'ERRO {nome}: {erro}'})}\n\n"
+                resultados.append({"arquivo": nome, "erro": erro})
+            else:
+                fav = dados.get("favorecido") or "?"
+                val = dados.get("valor")
+                yield f"data: {json.dumps({'tipo': 'log', 'msg': f'OK {nome} -> {fav} -> R$ {val}'})}\n\n"
+                resultados.append(dados)
+
+            try:
+                pdf_path.unlink()
+            except Exception:
+                pass
+
+        yield f"data: {json.dumps({'tipo': 'resultado', 'dados': resultados})}\n\n"
+
+    return Response(
+        stream_with_context(gerar()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"}
+    )
 
 
 if __name__ == "__main__":
