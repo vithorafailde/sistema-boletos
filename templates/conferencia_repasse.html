@@ -128,8 +128,14 @@ table.main-table { width: 100%; border-collapse: collapse; }
         <h2 style="font-size:17px;font-weight:700">Conferência — <span id="tituloMes"></span></h2>
         <p id="resumoStatus" style="font-size:14px;color:var(--muted)"></p>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="document.getElementById('cardUpload').scrollIntoView({behavior:'smooth'})">Enviar mais comprovantes</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('cardUpload').scrollIntoView({behavior:'smooth'})">Enviar mais comprovantes</button>
+        <button class="btn btn-primary btn-sm" id="btnSalvarConferencia" onclick="salvarConferencia()">Salvar Conferência</button>
+      </div>
     </div>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 14px">
+      Salvar aqui faz com que proprietários com divergência já venham desmarcados no "Enviar para Todos" dos Informes Mensais.
+    </p>
 
     <div class="card" style="padding:0;overflow:hidden">
       <div class="table-wrap">
@@ -403,43 +409,52 @@ function montarConferencia() {
   });
 }
 
-function renderResultados() {
-  document.getElementById('secaoResultados').style.display = 'block';
-  const corpo = document.getElementById('corpoResultados');
+// Calcula, por proprietário, o status da conferência (bate / nao_bate / sem_comprovante)
+// junto com os valores e comprovantes que compõem esse resultado.
+function calcularStatus() {
   const chaves = Object.keys(_esperados).sort((a,b) => _esperados[a].nome.localeCompare(_esperados[b].nome, 'pt-BR', {sensitivity:'base'}));
-
-  let nBate = 0, nNaoBate = 0, nSem = 0;
-  corpo.innerHTML = chaves.map(key => {
+  return chaves.map(key => {
     const esp = _esperados[key];
     const matches = _comprovantes.filter(c => !c.erro && c._chaveMatch === key);
     const recebido = matches.reduce((s,c) => s + (parseFloat(c.valor)||0), 0);
     const temComprovante = matches.length > 0;
     const diff = recebido - esp.total;
     const bate = temComprovante && Math.abs(diff) < 0.005;
+    const status = !temComprovante ? 'sem_comprovante' : (bate ? 'bate' : 'nao_bate');
+    return { key, nome: esp.nome, imoveis: esp.imoveis, esperado: esp.total, recebido, temComprovante, diff, status, matches };
+  });
+}
 
+function renderResultados() {
+  document.getElementById('secaoResultados').style.display = 'block';
+  const corpo = document.getElementById('corpoResultados');
+  const linhas = calcularStatus();
+
+  let nBate = 0, nNaoBate = 0, nSem = 0;
+  corpo.innerHTML = linhas.map(l => {
     let badge, diffTxt;
-    if (!temComprovante) {
+    if (l.status === 'sem_comprovante') {
       badge = '<span class="badge badge-sem">Sem comprovante</span>';
       diffTxt = '—';
       nSem++;
-    } else if (bate) {
+    } else if (l.status === 'bate') {
       badge = '<span class="badge badge-bate">Bate</span>';
       diffTxt = brl(0);
       nBate++;
     } else {
       badge = '<span class="badge badge-naobate">Não bate</span>';
-      diffTxt = (diff > 0 ? '+' : '') + brl(diff);
+      diffTxt = (l.diff > 0 ? '+' : '') + brl(l.diff);
       nNaoBate++;
     }
 
-    const detalhe = matches.map(c =>
+    const detalhe = l.matches.map(c =>
       `${escHtml((c.arquivo||'').replace(/^rep_/, ''))} — ${escHtml(c.favorecido||'?')} — ${brl(c.valor)}${c.data ? ' — ' + escHtml(c.data) : ''}`
     ).join('<br>');
 
     return `<tr>
-      <td style="font-weight:600">${escHtml(esp.nome)}${esp.imoveis > 1 ? `<div style="font-size:11px;color:var(--muted);font-weight:400">${esp.imoveis} imóveis</div>` : ''}</td>
-      <td>${brl(esp.total)}</td>
-      <td>${temComprovante ? brl(recebido) : '<span style="color:var(--muted)">—</span>'}</td>
+      <td style="font-weight:600">${escHtml(l.nome)}${l.imoveis > 1 ? `<div style="font-size:11px;color:var(--muted);font-weight:400">${l.imoveis} imóveis</div>` : ''}</td>
+      <td>${brl(l.esperado)}</td>
+      <td>${l.temComprovante ? brl(l.recebido) : '<span style="color:var(--muted)">—</span>'}</td>
       <td>${diffTxt}</td>
       <td>${badge}</td>
       <td style="font-size:12px;color:var(--muted)">${detalhe || '<span style="color:var(--muted)">nenhum</span>'}</td>
@@ -450,6 +465,31 @@ function renderResultados() {
     `${nBate} bate(m) · ${nNaoBate} não bate(m) · ${nSem} sem comprovante`;
 
   renderSemMatch();
+}
+
+async function salvarConferencia() {
+  const mes = document.getElementById('tituloMes').textContent;
+  if (!mes) return;
+  const linhas = calcularStatus();
+  if (!confirm(`Salvar a conferência de ${mes}?\n\nProprietários com "Não bate" ficarão desmarcados por padrão no envio dos Informes Mensais.`)) return;
+
+  const resultados = {};
+  linhas.forEach(l => { resultados[l.key] = { nome: l.nome, status: l.status }; });
+
+  const btn = document.getElementById('btnSalvarConferencia');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/conferencia_salvar_resultado', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ mes, resultados })
+    });
+    const j = await r.json();
+    if (j.ok) showSalvo();
+    else alert('Erro ao salvar: ' + (j.erro || 'desconhecido'));
+  } catch(e) {
+    alert('Erro ao salvar: ' + e.message);
+  }
+  btn.disabled = false;
 }
 
 function renderSemMatch() {
@@ -484,8 +524,17 @@ function atribuirManual(idx, chave) {
   renderResultados();
 }
 
+function showSalvo(msg) {
+  const t = document.getElementById('toastSalvo');
+  t.textContent = msg || 'Salvo!';
+  t.style.opacity = '1';
+  clearTimeout(t._st);
+  t._st = setTimeout(() => t.style.opacity = '0', 2500);
+}
+
 // Init
 carregarMeses();
 </script>
+<div id="toastSalvo" style="position:fixed;bottom:24px;right:24px;background:#2A5C2A;color:#fff;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.22);opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999">Salvo!</div>
 </body>
 </html>

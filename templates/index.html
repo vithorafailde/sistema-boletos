@@ -192,6 +192,27 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
   </div>
 </div>
 
+<!-- Modal Enviar para Todos (seleção de proprietários) -->
+<div id="modalEnviarTodos" class="modal-bg" style="display:none">
+  <div class="modal" style="width:520px;max-height:80vh;display:flex;flex-direction:column">
+    <h2>Enviar Informes aos Proprietários</h2>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:14px">
+      Desmarque quem não deve receber neste envio. Proprietários com divergência na
+      <strong>Conferência de Repasse</strong> deste mês já vêm desmarcados.
+    </p>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="btn btn-outline btn-sm" onclick="marcarTodosEnvio(true)">Marcar todos</button>
+      <button class="btn btn-outline btn-sm" onclick="marcarTodosEnvio(false)">Desmarcar todos</button>
+    </div>
+    <div id="listaEnviarTodosModal" style="overflow-y:auto;flex:1;padding-right:4px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline btn-sm" onclick="fecharModalEnviarTodos()">Cancelar</button>
+      <button class="btn btn-sm" id="btnConfirmarEnviarTodos" onclick="confirmarEnvioSelecionados()"
+        style="background:#2A6A2A;color:#fff;font-weight:700">Enviar Selecionados</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal SMTP -->
 <div id="modalSmtp" class="modal-bg">
   <div class="modal" style="width:500px">
@@ -950,6 +971,7 @@ function renderTabela(lista) {
         row.cond_itens_nrep_ativo[k] = true;
       }
     }
+    if (!row._boletoToggle) row._boletoToggle = {};
     for (let n = 1; n <= 10; n++) {
       if (!jaInicializado) {
         const orig = parseFloat(row[`ded${n}_val`]) || 0;
@@ -972,12 +994,12 @@ function renderTabela(lista) {
         ? `<div class="hist-note">hist: ${brl(row[`ded${n}_val_hist`])}</div>` : '';
       dedInputs += `
         <div style="display:flex;gap:3px;margin-bottom:2px;align-items:center">
-          <input class="input-desc" type="text" placeholder="Descrição..."
+          <input class="input-desc" type="text" placeholder="Descrição..." id="dedDesc_${idx}_${n}"
             style="width:80px;font-size:10px" value="${dDesc}"
             oninput="dados.locatarios[${idx}]['ded${n}_desc']=this.value;recalcRepasse(${idx})">
-          <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
+          <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00" id="dedVal_${idx}_${n}"
             value="${dVal}" oninput="recalcRepasse(${idx})" data-dedfield="ded${n}_val">
-          <input type="checkbox" title="Marcado = subtrai / Desmarcado = soma ao repasse"
+          <input type="checkbox" title="Marcado = subtrai / Desmarcado = soma ao repasse" id="dedSub_${idx}_${n}"
             ${dSub ? 'checked' : ''}
             onchange="dados.locatarios[${idx}]['ded${n}_subtrair']=this.checked;renderRepasse(${idx});atualizarRodape()"
             style="cursor:pointer;width:13px;height:13px;flex-shrink:0;accent-color:var(--accent)">
@@ -1006,10 +1028,11 @@ function renderTabela(lista) {
           <div style="border-top:1px dashed #A0D4A0;margin:5px 0 4px;padding-top:4px">
             <div style="font-size:9px;color:var(--green);font-weight:600;margin-bottom:4px">(+) MULTA / JUROS POR ATRASO:</div>
             <div style="display:flex;gap:3px;margin-bottom:2px;align-items:center">
-              <span style="font-size:9px;color:var(--muted);width:70px;flex-shrink:0">Multa (10%)</span>
-              <input class="input-val" type="number" step="0.01" min="0" placeholder="0,00"
-                style="width:80px" value="${row.multa_atraso_val||''}"
-                oninput="dados.locatarios[${idx}].multa_atraso_val=parseFloat(this.value)||0;renderRepasse(${idx});atualizarRodape()">
+              <span style="font-size:9px;color:var(--muted);width:70px;flex-shrink:0">Multa (%)</span>
+              <input class="input-val" type="number" step="0.01" min="0" placeholder="10"
+                style="width:50px" value="${row.multa_atraso_perc||''}"
+                oninput="onMultaPercInput(${idx},this.value)">
+              <span style="font-size:9px;color:var(--muted)">%</span>
             </div>
             <div style="display:flex;gap:3px;margin-bottom:2px;align-items:center">
               <span style="font-size:9px;color:var(--muted);width:70px;flex-shrink:0">Juros mora</span>
@@ -1048,6 +1071,73 @@ function chargeRowNR(nome, val) {
 }
 
 
+// Linha do "Total do Boleto" com checkbox pra lançar aquele valor como repasse ao proprietário
+// (preenche automaticamente um slot livre das Deduções Manuais — mesmo mecanismo, sem digitar na mão).
+function chargeRowToggle(idx, row, key, desc, val) {
+  if (!val) return '';
+  const checked = (row._boletoToggle && row._boletoToggle[key] !== undefined) ? 'checked' : '';
+  return `<div class="charge-row" style="align-items:center">
+      <span class="charge-name">${escHtml(desc)}</span>
+      <span style="display:flex;align-items:center;gap:5px">
+        <span class="charge-val">${brl(val)}</span>
+        <input type="checkbox" title="Marcar para lançar este valor como repasse ao proprietário"
+          data-idx="${idx}" data-key="${key}" data-desc="${escHtml(desc)}" data-val="${val}"
+          ${checked} onchange="toggleBoletoItemRepasse(this)"
+          style="cursor:pointer;width:13px;height:13px;flex-shrink:0;accent-color:var(--accent)">
+      </span>
+    </div>`;
+}
+
+// Marca/desmarca um item do Total do Boleto como repasse: ocupa/libera um slot das Deduções Manuais (ded1-10).
+function toggleBoletoItemRepasse(cb) {
+  const idx = parseInt(cb.dataset.idx, 10);
+  const key = cb.dataset.key;
+  const desc = cb.dataset.desc;
+  const val = parseFloat(cb.dataset.val) || 0;
+  const row = dados.locatarios[idx];
+  if (!row._boletoToggle) row._boletoToggle = {};
+
+  if (cb.checked) {
+    let n = row._boletoToggle[key];
+    if (!n) {
+      for (let i = 1; i <= 10; i++) {
+        if (!(row[`ded${i}_desc`]||'').trim() && !(parseFloat(row[`ded${i}_val`])||0)) { n = i; break; }
+      }
+      if (!n) {
+        alert('Todos os 10 campos de Deduções Manuais já estão ocupados. Limpe algum antes de marcar este item.');
+        cb.checked = false;
+        return;
+      }
+      row._boletoToggle[key] = n;
+    }
+    row[`ded${n}_desc`] = desc;
+    row[`ded${n}_val`] = val;
+    row[`ded${n}_subtrair`] = false; // soma ao repasse
+    const elDesc = document.getElementById(`dedDesc_${idx}_${n}`);
+    const elVal  = document.getElementById(`dedVal_${idx}_${n}`);
+    const elSub  = document.getElementById(`dedSub_${idx}_${n}`);
+    if (elDesc) elDesc.value = desc;
+    if (elVal)  elVal.value = val;
+    if (elSub)  elSub.checked = false;
+  } else {
+    const n = row._boletoToggle[key];
+    if (n) {
+      row[`ded${n}_desc`] = '';
+      row[`ded${n}_val`] = 0;
+      row[`ded${n}_subtrair`] = true;
+      const elDesc = document.getElementById(`dedDesc_${idx}_${n}`);
+      const elVal  = document.getElementById(`dedVal_${idx}_${n}`);
+      const elSub  = document.getElementById(`dedSub_${idx}_${n}`);
+      if (elDesc) elDesc.value = '';
+      if (elVal)  elVal.value = '';
+      if (elSub)  elSub.checked = true;
+      delete row._boletoToggle[key];
+    }
+  }
+  renderRepasse(idx);
+  atualizarRodape();
+}
+
 function renderTotal(idx) {
   const row = dados.locatarios[idx];
   // Sem fallback hist aqui — os valores já foram inicializados com hist em renderTabela
@@ -1073,24 +1163,24 @@ function renderTotal(idx) {
   let html = '';
   html += `<div class="charge-row"><span class="charge-name">Aluguel</span><span class="charge-val">${brl(row.aluguel)}</span></div>`;
 
-  // Cada item do condomínio discriminado individualmente
+  // Cada item do condomínio discriminado individualmente — com checkbox pra lançar como repasse
   const itens = row.cond_itens_rep || {};
   for (const [k, v] of Object.entries(itens)) {
-    if (v) html += `<div class="charge-row"><span class="charge-name">${LABELS[k]||k}</span><span class="charge-val">${brl(v)}</span></div>`;
+    html += chargeRowToggle(idx, row, 'cond_'+k, LABELS[k]||k, v);
   }
 
-  if (iptu) html += `<div class="charge-row"><span class="charge-name">IPTU${iptuParc?' ('+iptuParc+')':''}</span><span class="charge-val">${brl(iptu)}</span></div>`;
-  if (iptuVaga) html += `<div class="charge-row"><span class="charge-name">IPTU Vaga${iptuVagaParc?' ('+iptuVagaParc+')':''}</span><span class="charge-val">${brl(iptuVaga)}</span></div>`;
-  if (sf) html += `<div class="charge-row"><span class="charge-name">Seg. Fianca</span><span class="charge-val">${brl(sf)}</span></div>`;
-  if (si) html += `<div class="charge-row"><span class="charge-name">Seg. Incendio</span><span class="charge-val">${brl(si)}</span></div>`;
-  if (ef)  html += `<div class="charge-row"><span class="charge-name">${efDesc}</span><span class="charge-val">${brl(ef)}</span></div>`;
-  if (ef2) html += `<div class="charge-row"><span class="charge-name">${ef2Desc}</span><span class="charge-val">${brl(ef2)}</span></div>`;
-  if (ef3) html += `<div class="charge-row"><span class="charge-name">${ef3Desc}</span><span class="charge-val">${brl(ef3)}</span></div>`;
-  if (ef4) html += `<div class="charge-row"><span class="charge-name">${ef4Desc}</span><span class="charge-val">${brl(ef4)}</span></div>`;
-  if (ef5) html += `<div class="charge-row"><span class="charge-name">${ef5Desc}</span><span class="charge-val">${brl(ef5)}</span></div>`;
-  if (ev)  html += `<div class="charge-row"><span class="charge-name">${row.extras_desc||'Outros'}</span><span class="charge-val">${brl(ev)}</span></div>`;
-  if (ev2) html += `<div class="charge-row"><span class="charge-name">${row.extras2_desc||'Outros 2'}</span><span class="charge-val">${brl(ev2)}</span></div>`;
-  if (ev3) html += `<div class="charge-row"><span class="charge-name">${row.extras3_desc||'Outros 3'}</span><span class="charge-val">${brl(ev3)}</span></div>`;
+  html += chargeRowToggle(idx, row, 'iptu', `IPTU${iptuParc?' ('+iptuParc+')':''}`, iptu);
+  html += chargeRowToggle(idx, row, 'iptu_vaga', `IPTU Vaga${iptuVagaParc?' ('+iptuVagaParc+')':''}`, iptuVaga);
+  html += chargeRowToggle(idx, row, 'seg_fianca', 'Seg. Fianca', sf);
+  html += chargeRowToggle(idx, row, 'seg_incendio', 'Seg. Incendio', si);
+  html += chargeRowToggle(idx, row, 'extras_fixo', efDesc, ef);
+  html += chargeRowToggle(idx, row, 'extras_fixo2', ef2Desc, ef2);
+  html += chargeRowToggle(idx, row, 'extras_fixo3', ef3Desc, ef3);
+  html += chargeRowToggle(idx, row, 'extras_fixo4', ef4Desc, ef4);
+  html += chargeRowToggle(idx, row, 'extras_fixo5', ef5Desc, ef5);
+  html += chargeRowToggle(idx, row, 'extras', row.extras_desc||'Outros', ev);
+  html += chargeRowToggle(idx, row, 'extras2', row.extras2_desc||'Outros 2', ev2);
+  html += chargeRowToggle(idx, row, 'extras3', row.extras3_desc||'Outros 3', ev3);
   if (ab) html += `<div class="charge-row"><span class="charge-name" style="color:var(--red)">${abDesc}${abParc?' ('+abParc+')':''}</span><span class="charge-val" style="color:var(--red)">- ${brl(ab)}</span></div>`;
   html += `<div class="charge-separator"></div>`;
   html += `<div class="charge-row"><span class="charge-name charge-total">TOTAL</span><span class="charge-val charge-total total-grand">${brl(total)}</span></div>`;
@@ -1099,6 +1189,16 @@ function renderTotal(idx) {
   if (box) { box.innerHTML = html; box.dataset.total = total; }
 
   renderRepasse(idx);
+}
+
+// Multa por atraso é digitada em % (ex: 10 = 10% do aluguel) — converte pro valor em R$
+// que o resto do sistema (repasse, comissão sobre multa, DIMOB, email) já espera.
+function onMultaPercInput(idx, val) {
+  const row = dados.locatarios[idx];
+  row.multa_atraso_perc = parseFloat(val) || 0;
+  row.multa_atraso_val = Math.round((row.aluguel||0) * row.multa_atraso_perc / 100 * 100) / 100;
+  renderRepasse(idx);
+  atualizarRodape();
 }
 
 function renderRepasse(idx) {
@@ -1528,9 +1628,11 @@ async function trocarMesInforme(mes) {
   if (!mes) {
     document.getElementById('infSubMes').textContent = document.getElementById('subMes').textContent;
     montarGruposInforme(dados.locatarios);
+    carregarDivergencias(mesInformeAtual());
     return;
   }
   document.getElementById('infSubMes').textContent = 'Referencia: ' + mes;
+  carregarDivergencias(mes);
   try {
     const r = await fetch('/api/informes_carregar_mes?mes=' + encodeURIComponent(mes));
     const j = await r.json();
@@ -1538,6 +1640,20 @@ async function trocarMesInforme(mes) {
   } catch(e) {
     alert('Erro ao carregar o mês arquivado.');
   }
+}
+
+// Chaves de proprietário marcadas como "Não bate" na Conferência de Repasse do mês atual
+let _infDivergentes = new Set();
+async function carregarDivergencias(mes) {
+  _infDivergentes = new Set();
+  if (!mes) return;
+  try {
+    const r = await fetch('/api/conferencia_status?mes=' + encodeURIComponent(mes));
+    const j = await r.json();
+    Object.entries(j.resultados || {}).forEach(([chave, info]) => {
+      if (info && info.status === 'nao_bate') _infDivergentes.add(chave);
+    });
+  } catch(e) {}
 }
 
 function abrirInformes() {
@@ -1549,6 +1665,7 @@ function abrirInformes() {
   carregarEmailsProprietarios();
   carregarMesesInforme();
   document.getElementById('infMesSelect').value = '';
+  carregarDivergencias(mesInformeAtual());
 
   montarGruposInforme(dados.locatarios);
 
@@ -2058,7 +2175,7 @@ async function salvarEmailsProprietarios() {
 }
 
 // ─── Enviar para Todos ───────────────────────────────────────────────────────
-async function enviarParaTodos() {
+function enviarParaTodos() {
   if (!_infOrdem || _infOrdem.length === 0) return;
 
   const semEmail = _infOrdem.filter(k => {
@@ -2075,13 +2192,49 @@ async function enviarParaTodos() {
     return;
   }
 
-  let msg = `Enviar informes para ${comEmail.length} proprietário(s)?`;
-  if (semEmail.length > 0) {
-    const nomes = semEmail.map(k => _infGrupos[k].nome).join(', ');
-    msg += `\n\nSem e-mail (serão ignorados): ${nomes}`;
-  }
-  if (!confirm(msg)) return;
+  abrirModalEnvioSelecao(comEmail, semEmail);
+}
 
+// Monta a lista de checkboxes do modal — desmarca por padrão quem está com "Não bate" na Conferência de Repasse
+function abrirModalEnvioSelecao(comEmail, semEmail) {
+  const lista = document.getElementById('listaEnviarTodosModal');
+  const linhasCom = comEmail.map(k => {
+    const nome = _infGrupos[k].nome;
+    const divergente = _infDivergentes.has(k);
+    return `<label style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);cursor:pointer">
+      <input type="checkbox" data-propkey="${k}" ${divergente ? '' : 'checked'} style="width:16px;height:16px">
+      <span style="flex:1">${nome}</span>
+      ${divergente ? '<span style="background:#F5D5D5;color:var(--red);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap">Não bate</span>' : ''}
+    </label>`;
+  }).join('');
+  const linhasSem = semEmail.map(k => {
+    const nome = _infGrupos[k].nome;
+    return `<label style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);color:var(--muted);opacity:.6">
+      <input type="checkbox" disabled style="width:16px;height:16px">
+      <span style="flex:1">${nome}</span>
+      <span style="font-size:11px">sem e-mail</span>
+    </label>`;
+  }).join('');
+  lista.innerHTML = linhasCom + linhasSem;
+  document.getElementById('modalEnviarTodos').style.display = 'flex';
+}
+function fecharModalEnviarTodos() {
+  document.getElementById('modalEnviarTodos').style.display = 'none';
+}
+function marcarTodosEnvio(marcar) {
+  document.querySelectorAll('#listaEnviarTodosModal input[data-propkey]').forEach(inp => { inp.checked = marcar; });
+}
+
+async function confirmarEnvioSelecionados() {
+  const selecionados = Array.from(document.querySelectorAll('#listaEnviarTodosModal input[data-propkey]:checked'))
+    .map(inp => inp.dataset.propkey);
+  if (selecionados.length === 0) { alert('Selecione ao menos um proprietário.'); return; }
+  if (!confirm(`Enviar informes para ${selecionados.length} proprietário(s) selecionado(s)?`)) return;
+  fecharModalEnviarTodos();
+  await executarEnvioPropKeys(selecionados);
+}
+
+async function executarEnvioPropKeys(comEmail) {
   const btn = document.getElementById('btnEnviarTodos');
   btn.disabled = true;
 

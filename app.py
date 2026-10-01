@@ -24,6 +24,7 @@ DIMOB_HISTORICO_FILE = DATA_DIR / "dimob_historico.json"
 INFORMES_HISTORICO_FILE = DATA_DIR / "informes_historico.json"
 BOLETOS_ATUAL_FILE = DATA_DIR / "boletos_atual.json"
 LOCATARIOS_EMAILS_FILE = DATA_DIR / "locatarios_emails.json"
+CONFERENCIA_REPASSE_FILE = DATA_DIR / "conferencia_repasse.json"
 LOG_ENVIOS_FILE = DATA_DIR / "log_envios.json"
 
 MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -691,6 +692,24 @@ def salvar_informes_historico(dados):
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
     tmp.replace(INFORMES_HISTORICO_FILE)
+
+
+# ─── Conferência de Repasse — resultado por mês (para pré-desmarcar divergentes no envio) ──
+
+def ler_conferencia_repasse():
+    if CONFERENCIA_REPASSE_FILE.exists():
+        try:
+            with open(CONFERENCIA_REPASSE_FILE, encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def salvar_conferencia_repasse(dados):
+    tmp = CONFERENCIA_REPASSE_FILE.with_suffix('.tmp')
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+    tmp.replace(CONFERENCIA_REPASSE_FILE)
 
 
 # ─── Estado atual dos Boletos (para o processamento aparecer igual em qualquer PC) ─
@@ -3688,6 +3707,31 @@ def api_conferencia_processar():
         mimetype="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"}
     )
+
+
+@app.route("/api/conferencia_salvar_resultado", methods=["POST"])
+@login_required
+def api_conferencia_salvar_resultado():
+    """Salva o resultado da conferência (bate/nao_bate/sem_comprovante por proprietário)
+    para o mês, usado pra pré-desmarcar quem está divergente na hora de enviar os Informes."""
+    d = request.get_json(silent=True) or {}
+    mes = (d.get("mes") or "").strip()
+    resultados = d.get("resultados") or {}
+    if not mes or not resultados:
+        return jsonify({"ok": False, "erro": "Mês ou resultados ausentes."})
+    hist = ler_conferencia_repasse()
+    hist[mes] = resultados
+    salvar_conferencia_repasse(hist)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/conferencia_status", methods=["GET"])
+@login_required
+def api_conferencia_status():
+    """Retorna o resultado da conferência salva para um mês (chave_proprietario -> status)."""
+    mes = (request.args.get("mes") or "").strip()
+    hist = ler_conferencia_repasse()
+    return jsonify({"ok": True, "resultados": hist.get(mes, {})})
 
 
 if __name__ == "__main__":

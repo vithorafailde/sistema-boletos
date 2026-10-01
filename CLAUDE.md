@@ -217,11 +217,24 @@ repasse = aluguel
 
 ### Multa por atraso e juros de mora
 - Campos editáveis na coluna **Repasse ao Proprietário** de cada unidade
-- A taxa da imobiliária (% do contrato) é aplicada sobre multa+juros: `taxaSobRec = (multa + juros) * percImob / 100`
+- **Multa é digitada em % (não em R$)** — campo `multa_atraso_perc` (ex: digitar `10` = 10% do aluguel). `onMultaPercInput(idx, val)` converte pro valor em R$ (`multa_atraso_val = aluguel * perc/100`) e é isso que o resto do sistema usa
+  - **Pedido explícito do usuário:** antes a multa era digitada direto em R$ e o usuário tinha que calcular a porcentagem de cabeça — o rótulo "(10%)" já sugeria a convenção usual do contrato mas o campo não convertia nada, só usava o número digitado como R$ cru. Trocado pra digitar a % e o sistema calcular o R$ automaticamente.
+  - **Juros de mora continua em R$ puro** (`juros_mora_val`) — não tem equivalente percentual, não mudar
+- A taxa da imobiliária (% do contrato) é aplicada sobre multa+juros **já convertidos em R$**: `taxaSobRec = (multa_atraso_val + juros_mora_val) * percImob / 100` — como `multa_atraso_val` já é `perc * aluguel/100`, a comissão sobre a multa acaba sendo `percImob% × multa% × aluguel`
 - Valores brutos somam ao repasse; a taxa da imob. é deduzida separadamente
 - Aparecem discriminados no card de informe, no PDF e no email
+- Todo o resto do sistema (renderRepasse, atualizarRodape, calcRepasseData, DIMOB, payload de email) **só lê `multa_atraso_val` (R$), nunca `multa_atraso_perc`** — o campo percentual existe só pra alimentar esse valor derivado, não precisou mudar mais nada
 - **Integração DIMOB:** ao clicar "Salvar", multa+juros são gravados em `dimob_historico.json` por locatário/mês. Na DIMOB, o valor do mês correspondente já inclui multa+juros automaticamente.
 - Email de informe: `_gerar_html_email` renderiza linhas separadas de multa, juros e taxa sobre eles quando presentes — o payload do frontend deve incluir `multa_atraso`, `juros_mora`, `taxa_sob_rec`
+
+### Checkbox "lançar como repasse" no Total do Boleto
+- **Pedido explícito:** cada item do card **Total do Boleto** (água, gás, energia, cota, IPTU, IPTU Vaga, Seg. Fiança, Seg. Incêndio, extras fixos 1-5, extras do mês 1-3) tem um checkbox ao lado do valor. Marcado, lança aquele valor como repasse ao proprietário — sem precisar digitar na mão. Antes o usuário tinha que copiar o valor manualmente pra um campo de Dedução Manual vazio.
+- **Não é um mecanismo novo de cálculo** — só ocupa automaticamente um slot livre das **Deduções Manuais** (`ded1` a `ded10`) com `desc`/`val` do item e `subtrair=false` (soma). Reaproveita 100% do cálculo de repasse já existente (`renderRepasse`, `calcRepasseData`, `atualizarRodape`) — nenhuma dessas funções precisou mudar.
+- Função: `chargeRowToggle(idx, row, key, desc, val)` — renderiza a linha com checkbox no `renderTotal()`. `toggleBoletoItemRepasse(cb)` ocupa/libera o slot.
+- Estado de qual slot pertence a qual item fica em `row._boletoToggle = {chave: num_slot}` (ex: `{cond_agua: 1, iptu: 2}`) — persiste no mesmo `dados` salvo (localStorage/servidor), então o checkbox continua marcado ao recarregar a página.
+- Se os 10 slots de dedução já estiverem ocupados, mostra alerta e não marca o checkbox.
+- **Abono não tem esse checkbox** — já é subtraído automaticamente por um mecanismo próprio (ligado à comissão líquida dos 3 proprietários), não devia ser duplicado aqui.
+- **Não é restaurado automaticamente do histórico de mês anterior** — se o usuário marcou um item em um mês, no mês seguinte a planilha carrega zerada e os checkboxes vêm todos desmarcados (igual ao resto do fluxo de "zerar não deve puxar do histórico" — ver bug #17).
 
 ### Deduções manuais (`ded1` a `ded10`)
 - Cada dedução tem `desc`, `val` e `subtrair` (bool: true = subtrai do repasse, false = soma)
@@ -418,6 +431,14 @@ O cálculo de repasse (`calcRepasseData`/`applyDivisor`/`temComissaoLiquida`) s�
 
 ### Comprovantes sem PDF
 Depois de processado, cada PDF de comprovante é apagado do servidor (`pdf_path.unlink()`) — não fica arquivo de comprovante salvo em lugar nenhum, só o resultado extraído (em memória no navegador, não persiste após reload).
+
+### Integração com "Enviar para Todos" dos Informes Mensais
+- Botão **"Salvar Conferência"** (na tela de Conferência, depois de processar) grava o status de cada proprietário (`bate`/`nao_bate`/`sem_comprovante`) em `data/conferencia_repasse.json`, indexado por mês — mesma string de mês usada em `informes_historico.json` (ex: `"Julho/2026"`)
+- Rotas: `POST /api/conferencia_salvar_resultado` (grava), `GET /api/conferencia_status?mes=X` (lê)
+- Na tela de **Informes Mensais**, ao abrir a seção ou trocar de mês (`abrirInformes()`/`trocarMesInforme()`), o frontend busca esse status via `carregarDivergencias(mes)` e guarda as chaves com `nao_bate` em `_infDivergentes`
+- **"Enviar para Todos" não envia mais direto** — abre um modal (`modalEnviarTodos`) listando cada proprietário com checkbox, **desmarcado por padrão só para quem está com `nao_bate`** na conferência daquele mês (proprietários `sem_comprovante` ou `bate` continuam marcados). Usuário pode ajustar manualmente antes de confirmar
+- `data/conferencia_repasse.json` está no `.railwayignore` (mesmo padrão de `informes_historico.json`) — **não remover de lá**
+- **Não pré-desmarcar por `sem_comprovante`** — só `nao_bate` conta como divergência pra esse fluxo (decisão explícita do usuário: "apenas os que tenham divergência não estejam marcados")
 
 ---
 
@@ -625,6 +646,8 @@ data/locatarios_emails.json   — emails dos locatários para envio de boletos
 | `/api/locatarios_emails/bulk` | POST | logado | Salva emails dos locatários em massa |
 | `/conferencia_repasse` | GET | logado | Página de conferência de repasse ao proprietário |
 | `/api/conferencia_processar` | POST | logado | Lê comprovantes de repasse (PDF) via Claude AI e retorna favorecido/valor/data/banco |
+| `/api/conferencia_salvar_resultado` | POST | logado | Salva o status (bate/nao_bate/sem_comprovante) por proprietário do mês |
+| `/api/conferencia_status` | GET | logado | Retorna o status salvo da conferência de um mês |
 
 ---
 
