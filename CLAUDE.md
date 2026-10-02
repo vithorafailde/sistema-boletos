@@ -423,6 +423,7 @@ Confere se o valor efetivamente repassado ao proprietário (via comprovante de t
 - Só aceita **PDF** (não imagem solta) — mesmo pipeline de extração híbrida dos outros PDFs do sistema
 - Granularidade é **por proprietário** (soma de todos os imóveis dele no mês), não por imóvel individual
 - Tolerância é **exata** — só concilia com `|diferença| < R$0,005` (evita falso negativo por arredondamento de ponto flutuante, mas qualquer centavo real de diferença já conta como "Não bate")
+- **Siglas/palavras curtas contam no match** (ex: "HP", "JM") — `normPalavras` em `conferencia_repasse.html` mantém palavras de 2-3 letras (exceto preposições como DE/DA/DO) e junta letras soltas ("H.P." / "H P" vira "HP"); siglas só casam por igualdade exata. Isso difere do `norm_palavras` do Python (envio de boletos), que continua descartando palavras ≤ 2 letras — não mexer lá
 - Threshold de match automático por nome: **40%**, igual ao usado no envio de boletos. Abaixo disso o comprovante cai em "sem correspondência automática" e o usuário atribui manualmente pelo dropdown
 
 ### Arquitetura — por que o cálculo do repasse está duplicado em JS aqui também

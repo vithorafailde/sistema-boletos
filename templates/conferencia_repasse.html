@@ -171,19 +171,38 @@ table.main-table { width: 100%; border-collapse: collapse; }
 function normProp(s) {
   return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
 }
+// Preposições/ligações que não identificam ninguém (siglas como HP, JM, AJ NÃO entram aqui)
+const STOPWORDS_CURTAS = new Set(['DE','DA','DO','DI','DU','E','EM','NA','NO']);
 function normPalavras(nome) {
   if (!nome) return [];
   let n = String(nome).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
   n = n.replace(/[^A-Z0-9 ]/g, ' ');
-  return n.split(/\s+/).filter(w => w.length > 2);
+  const brutas = n.split(/\s+/).filter(Boolean);
+  // Junta letras soltas consecutivas em uma sigla: "H P" / "H.P." -> "HP"
+  const palavras = [];
+  let sigla = '';
+  const fechaSigla = () => { if (sigla) { palavras.push(sigla); sigla = ''; } };
+  for (const w of brutas) {
+    if (w.length === 1 && /[A-Z]/.test(w)) { sigla += w; continue; }
+    fechaSigla();
+    palavras.push(w);
+  }
+  fechaSigla();
+  // Mantém siglas e palavras curtas (2-3 letras, ex: HP), exceto preposições
+  return palavras.filter(w => w.length >= 2 && !STOPWORDS_CURTAS.has(w));
 }
 const STOPWORDS_NOME = new Set(['DOS','DAS','DES','DEL','COM','POR','PARA','LTDA','EIRELI']);
 // Mede quanto do nome-alvo (proprietário) está coberto pelas palavras do favorecido lido no comprovante.
+// Palavras com 4+ letras casam por igualdade/substring/prefixo; siglas curtas (HP) só casam por igualdade exata.
 function scoreNome(palavrasArq, palavrasAlvo) {
-  const sig = palavrasAlvo.filter(p => p.length >= 4 && !STOPWORDS_NOME.has(p));
+  const sig = palavrasAlvo.filter(p => !STOPWORDS_NOME.has(p));
   if (!sig.length || !palavrasArq.length) return 0.0;
   let matches = 0.0;
   for (const pl of sig) {
+    if (pl.length < 4) {
+      if (palavrasArq.includes(pl)) matches += 1.0;
+      continue;
+    }
     let encontrou = false;
     for (const pa of palavrasArq) {
       if (pa === pl) { matches += 1.0; encontrou = true; break; }
