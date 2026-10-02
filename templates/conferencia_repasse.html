@@ -175,6 +175,11 @@ function normProp(s) {
 // Grafias diferentes da mesma pessoa: o que está à esquerda (como aparece no comprovante) é tratado como o da direita (como está no cadastro).
 // Pedido explícito: favorecido "Zhang" deve ser atribuído ao proprietário "Chang".
 const ALIAS_PALAVRAS = { ZHANG: 'CHANG' };
+// Quando o favorecido contém TODAS as palavras de "favorecido", o comprovante é atribuído ao proprietário que contém TODAS as de "proprietario".
+// Pedido explícito: favorecido "Marcia Marcondes" entra em "Francisco Carlos".
+const ATRIBUICOES_FIXAS = [
+  { favorecido: ['MARCIA', 'MARCONDES'], proprietario: ['FRANCISCO', 'CARLOS'] },
+];
 const STOPWORDS_CURTAS =new Set(['DE','DA','DO','DI','DU','E','EM','NA','NO']);
 function normPalavras(nome) {
   if (!nome) return [];
@@ -195,8 +200,18 @@ function normPalavras(nome) {
   return palavras.filter(w => w.length >= 2 && !STOPWORDS_CURTAS.has(w));
 }
 const STOPWORDS_NOME = new Set(['DOS','DAS','DES','DEL','COM','POR','PARA','LTDA','EIRELI']);
+// true se as palavras diferem em no máximo 1 letra (troca, inserção ou remoção)
+function distancia1(a, b) {
+  if (a === b) return true;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+  if (a.length > b.length) return a.slice(i + 1) === b.slice(i);
+  return a.slice(i) === b.slice(i + 1);
+}
 // Mede quanto do nome-alvo (proprietário) está coberto pelas palavras do favorecido lido no comprovante.
-// Palavras com 4+ letras casam por igualdade/substring/prefixo; siglas curtas (HP) só casam por igualdade exata.
+// Palavras com 4+ letras casam por igualdade/substring (ou 1 letra de erro em nomes longos); siglas curtas (HP) só casam por igualdade exata.
+// NÃO casa por prefixo: MARCIA e MARCIO são pessoas diferentes.
 function scoreNome(palavrasArq, palavrasAlvo) {
   const sig = palavrasAlvo.filter(p => !STOPWORDS_NOME.has(p));
   if (!sig.length || !palavrasArq.length) return 0.0;
@@ -210,9 +225,9 @@ function scoreNome(palavrasArq, palavrasAlvo) {
     for (const pa of palavrasArq) {
       if (pa === pl) { matches += 1.0; encontrou = true; break; }
       if (pl.length >= 4 && pa.includes(pl)) { matches += 0.9; encontrou = true; break; }
-      if (pa.length >= 4 && pl.length >= 4) {
-        const n = Math.min(pa.length, pl.length, 5);
-        if (n >= 4 && pa.slice(0, n) === pl.slice(0, n)) { matches += 0.8; encontrou = true; break; }
+      // Erro de digitação (1 letra) só em nomes longos — em nomes curtos MARCIA x MARCIO são pessoas diferentes
+      if (pa.length >= 7 && pl.length >= 7 && Math.abs(pa.length - pl.length) <= 1 && distancia1(pa, pl)) {
+        matches += 0.8; encontrou = true; break;
       }
     }
     if (!encontrou) {
@@ -421,6 +436,12 @@ function montarConferencia() {
     if (c.erro) return;
     if (c._chaveManual) { c._chaveMatch = c._chaveManual; return; }
     const palavrasFav = normPalavras(c.favorecido || '');
+    // Atribuições fixas (favorecido -> proprietário) têm prioridade sobre o score por nome
+    const fixa = ATRIBUICOES_FIXAS.find(a => a.favorecido.every(p => palavrasFav.includes(p)));
+    if (fixa) {
+      const alvo = chaves.find(k => { const pk = normPalavras(_esperados[k].nome); return fixa.proprietario.every(p => pk.includes(p)); });
+      if (alvo) { c._chaveMatch = alvo; c._score = 1; return; }
+    }
     let melhorChave = null, melhorScore = 0;
     chaves.forEach(k => {
       const s = scoreNome(palavrasFav, normPalavras(_esperados[k].nome));
