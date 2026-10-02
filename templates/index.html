@@ -195,8 +195,8 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
 <!-- Modal Enviar para Todos (seleção de proprietários) -->
 <div id="modalEnviarTodos" class="modal-bg" style="display:none">
   <div class="modal" style="width:520px;max-height:80vh;display:flex;flex-direction:column">
-    <h2>Enviar Informes aos Proprietários</h2>
-    <p style="font-size:14px;color:var(--muted);margin-bottom:14px">
+    <h2 id="tituloModalEnvio">Enviar Informes aos Proprietários</h2>
+    <p id="descModalEnvio" style="font-size:14px;color:var(--muted);margin-bottom:14px">
       Desmarque quem não deve receber neste envio. Proprietários com divergência na
       <strong>Conferência de Repasse</strong> deste mês já vêm desmarcados.
     </p>
@@ -429,6 +429,7 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
         <div class="inf-filtro-titulo" style="margin-bottom:0">Selecione o Proprietário</div>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn btn-outline btn-sm" onclick="abrirModalEmails()" style="font-size:14px;padding:5px 12px">Editar E-mails</button>
+          <button class="btn btn-outline btn-sm" id="btnEnviarSelecionados" onclick="enviarParaTodos('selecionar')" style="font-size:14px;padding:5px 12px;font-weight:700">Enviar para Selecionados</button>
           <button class="btn btn-sm" id="btnEnviarTodos" onclick="enviarParaTodos()"
             style="background:#2A6A2A;color:#fff;font-weight:700;font-size:14px;padding:5px 14px;border:none">
             Enviar para Todos
@@ -2175,7 +2176,9 @@ async function salvarEmailsProprietarios() {
 }
 
 // ─── Enviar para Todos ───────────────────────────────────────────────────────
-function enviarParaTodos() {
+// modo 'todos': tudo marcado (exceto divergentes); modo 'selecionar': tudo desmarcado pra escolher um a um
+function enviarParaTodos(modo) {
+  modo = modo || 'todos';
   if (!_infOrdem || _infOrdem.length === 0) return;
 
   const semEmail = _infOrdem.filter(k => {
@@ -2192,17 +2195,23 @@ function enviarParaTodos() {
     return;
   }
 
-  abrirModalEnvioSelecao(comEmail, semEmail);
+  abrirModalEnvioSelecao(comEmail, semEmail, modo);
 }
 
-// Monta a lista de checkboxes do modal — desmarca por padrão quem está com "Não bate" na Conferência de Repasse
-function abrirModalEnvioSelecao(comEmail, semEmail) {
+// Monta a lista de checkboxes do modal — no modo 'todos' desmarca por padrão quem está com "Não bate" na Conferência de Repasse
+function abrirModalEnvioSelecao(comEmail, semEmail, modo) {
   const lista = document.getElementById('listaEnviarTodosModal');
+  const soSelecionar = modo === 'selecionar';
+  document.getElementById('tituloModalEnvio').textContent = soSelecionar ? 'Enviar para Proprietários Selecionados' : 'Enviar Informes aos Proprietários';
+  document.getElementById('descModalEnvio').innerHTML = soSelecionar
+    ? 'Marque os proprietários que devem receber o informe. Todos os marcados serão enviados juntos.'
+    : 'Desmarque quem não deve receber neste envio. Proprietários com divergência na <strong>Conferência de Repasse</strong> deste mês já vêm desmarcados.';
   const linhasCom = comEmail.map(k => {
     const nome = _infGrupos[k].nome;
     const divergente = _infDivergentes.has(k);
+    const marcado = !soSelecionar && !divergente;
     return `<label style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);cursor:pointer">
-      <input type="checkbox" data-propkey="${k}" ${divergente ? '' : 'checked'} style="width:16px;height:16px">
+      <input type="checkbox" data-propkey="${k}" ${marcado ? 'checked' : ''} style="width:16px;height:16px">
       <span style="flex:1">${nome}</span>
       ${divergente ? '<span style="background:#F5D5D5;color:var(--red);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap">Não bate</span>' : ''}
     </label>`;
@@ -2236,7 +2245,9 @@ async function confirmarEnvioSelecionados() {
 
 async function executarEnvioPropKeys(comEmail) {
   const btn = document.getElementById('btnEnviarTodos');
+  const btnSel = document.getElementById('btnEnviarSelecionados');
   btn.disabled = true;
+  if (btnSel) btnSel.disabled = true;
 
   const mes = mesInformeAtual();
   let ok = 0, erro = 0, erros = [];
@@ -2281,6 +2292,7 @@ async function executarEnvioPropKeys(comEmail) {
   }
 
   btn.disabled = false;
+  if (btnSel) btnSel.disabled = false;
   btn.textContent = 'Enviar para Todos';
 
   let resultado = `${ok} informe(s) enviado(s) com sucesso!`;
