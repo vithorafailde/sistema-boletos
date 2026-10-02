@@ -436,6 +436,13 @@ O cálculo de repasse (`calcRepasseData`/`applyDivisor`/`temComissaoLiquida`) s�
 ### Comprovantes sem PDF
 Depois de processado, cada PDF de comprovante é apagado do servidor (`pdf_path.unlink()`) — não fica arquivo de comprovante salvo em lugar nenhum, só o resultado extraído (em memória no navegador, não persiste após reload).
 
+### Botão "Enviar informe" em cada linha da Conferência
+- Coluna **Informe Mensal** na tabela de resultados: botão por proprietário que dispara o informe direto pra `/enviar_informe`, sem passar pela aba de Informes. Vira badge "Enviado" depois (só na sessão da página, não persiste); sem e-mail aparece "sem e-mail"
+- E-mail: mesma prioridade do Informe Mensal — o salvo em "Editar E-mails" (`/emails_proprietarios`), senão o da coluna N da planilha
+- Payload (`rowsEmail` de `montarEsperados`) é montado com o mesmo formato que `enviarParaTodos` de `index.html` — **se esse formato mudar lá, mudar aqui também** (`calcRepasseData`/`applyDivisor` agora são cópia completa, não só o `repasse`)
+- Se o proprietário está com **"Não bate"**, pede confirmação antes de enviar; os demais envios individuais não pedem (igual ao resto do sistema)
+- Log de auditoria: grava normal em `log_envios.json` como tipo `informe`
+
 ### Integração com "Enviar para Todos" dos Informes Mensais
 - Botão **"Salvar Conferência"** (na tela de Conferência, depois de processar) grava o status de cada proprietário (`bate`/`nao_bate`/`sem_comprovante`) em `data/conferencia_repasse.json`, indexado por mês — mesma string de mês usada em `informes_historico.json` (ex: `"Julho/2026"`)
 - Rotas: `POST /api/conferencia_salvar_resultado` (grava), `GET /api/conferencia_status?mes=X` (lê)

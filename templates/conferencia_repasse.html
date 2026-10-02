@@ -148,6 +148,7 @@ table.main-table { width: 100%; border-collapse: collapse; }
               <th style="min-width:110px">Diferença</th>
               <th style="min-width:120px">Status</th>
               <th style="min-width:160px">Comprovante</th>
+              <th style="min-width:130px">Informe Mensal</th>
             </tr>
           </thead>
           <tbody id="corpoResultados"></tbody>
@@ -267,41 +268,74 @@ function calcRepasseData(row) {
   const taxaImob = paAtivo ? 0 : taxaImobBruta;
   const itensNRep = row.cond_itens_nrep || {};
   const nrepAtivo = row.cond_itens_nrep_ativo || {};
-  const dedPropTotal = Object.entries(itensNRep)
-    .map(([k,v]) => (nrepAtivo[k]!==false) ? (parseFloat(v)||0) : 0)
-    .reduce((s,v) => s+v, 0);
-  let dedsManual = 0;
+  const dedPropItens = Object.entries(itensNRep)
+    .map(([k,v]) => ({ key:k, val: (nrepAtivo[k]!==false) ? (parseFloat(v)||0) : 0 }))
+    .filter(x => x.val > 0);
+  const dedPropTotal = dedPropItens.reduce((s,x) => s+x.val, 0);
+  const deds = [];
   for (let n=1; n<=10; n++) {
     const rawVal = parseFloat(row[`ded${n}_val`])||0;
     if (!rawVal) continue;
-    const sub = row[`ded${n}_subtrair`]!==false;
-    dedsManual += sub ? rawVal : -rawVal;
+    deds.push({ desc: row[`ded${n}_desc`]||'Dedução', val: rawVal, sub: row[`ded${n}_subtrair`]!==false });
   }
+  const dedsManual = deds.reduce((s,d) => s + (d.sub ? d.val : -d.val), 0);
   const multaBruta = parseFloat(row.multa_atraso_val)||0;
   const jurosBruto = parseFloat(row.juros_mora_val)||0;
   const taxaSobRec = paAtivo ? 0 : (multaBruta + jurosBruto) * percImob / 100;
   const repasse = (row.aluguel||0) - taxaImob - dedPropTotal - dedsManual - paVal + multaBruta + jurosBruto - taxaSobRec;
-  return { repasse };
+  return { aluguel: row.aluguel||0, taxaImob, percImob, paAtivo, paVal, dedPropItens, deds, multaBruta, jurosBruto, taxaSobRec, repasse };
 }
 function applyDivisor(rd, n) {
   if (!n || n <= 1) return rd;
-  return { repasse: rd.repasse / n };
+  const f = 1 / n;
+  return {
+    aluguel:       rd.aluguel * f,
+    taxaImob:      rd.taxaImob * f,
+    percImob:      rd.percImob,
+    paAtivo:       rd.paAtivo,
+    paVal:         rd.paVal * f,
+    dedPropItens:  rd.dedPropItens.map(d => Object.assign({}, d, { val: d.val * f })),
+    deds:          rd.deds.map(d => Object.assign({}, d, { val: d.val * f })),
+    multaBruta:    rd.multaBruta * f,
+    jurosBruto:    rd.jurosBruto * f,
+    taxaSobRec:    rd.taxaSobRec * f,
+    repasse:       rd.repasse * f,
+  };
 }
+const LABELS = {
+  cota:'Cota Cond.', agua:'Cons. Agua', gas:'Cons. Gas', energia:'Energia Comum',
+  tx_leitura:'Tx. Leitura', vaga_moto:'Vaga Moto', tag:'Tag/Acesso', salao_festas:'Alug. Salao Festas',
+  melhorias:'Melhorias', outros:'Outros Cond.', fundo_reserva:'Fundo Reserva', correio:'Correio'
+};
 
 // Agrupa os locatários arquivados por proprietário e soma o repasse esperado de cada um
 function montarEsperados(locatarios) {
   const grupos = {};
   (locatarios || []).forEach(row => {
     const props = row.proprietario ? row.proprietario.split(',').map(p => p.trim()).filter(Boolean) : [];
+    const emails = row.email_proprietario ? row.email_proprietario.split(',').map(e => e.trim()) : [];
     const n = props.length || 1;
-    props.forEach(propNome => {
+    props.forEach((propNome, i) => {
       const key = normProp(propNome);
       if (!key) return;
-      if (!grupos[key]) grupos[key] = { nome: propNome, total: 0, imoveis: 0 };
+      if (!grupos[key]) grupos[key] = { nome: propNome, total: 0, imoveis: 0, emailPlanilha: '', rowsEmail: [] };
       const rowCopy = Object.assign({}, row, { _proprietario_individual: propNome });
       const rd = applyDivisor(calcRepasseData(rowCopy), n);
       grupos[key].total += rd.repasse;
       grupos[key].imoveis += 1;
+      if (!grupos[key].emailPlanilha) grupos[key].emailPlanilha = emails[i] || emails[0] || '';
+      // Mesmo formato de linha que o Informe Mensal envia pra /enviar_informe
+      grupos[key].rowsEmail.push({
+        locatario: row.locatario||'', endereco: row.endereco||'', tipo: row.tipo||'',
+        aluguel: rd.aluguel, taxa_imob: rd.taxaImob, perc_imob: rd.percImob,
+        pa_ativo: rd.paAtivo, pa_val: rd.paVal,
+        ded_prop_itens: rd.dedPropItens.map(d => ({label: LABELS[d.key]||d.key, val: d.val})),
+        deds: rd.deds,
+        multa_atraso: rd.multaBruta,
+        juros_mora: rd.jurosBruto,
+        taxa_sob_rec: rd.taxaSobRec,
+        repasse: rd.repasse
+      });
     });
   });
   return grupos;
@@ -335,6 +369,7 @@ async function trocarMes(mes) {
   document.getElementById('cardUpload').style.display = 'none';
   document.getElementById('secaoResultados').style.display = 'none';
   _comprovantes = [];
+  _informesEnviados = {};
   if (!mes) return;
   try {
     const r = await fetch('/api/informes_carregar_mes?mes=' + encodeURIComponent(mes));
@@ -501,6 +536,7 @@ function renderResultados() {
       <td>${diffTxt}</td>
       <td>${badge}</td>
       <td style="font-size:12px;color:var(--muted)">${detalhe || '<span style="color:var(--muted)">nenhum</span>'}</td>
+      <td>${botaoInforme(l.key)}</td>
     </tr>`;
   }).join('');
 
@@ -508,6 +544,50 @@ function renderResultados() {
     `${nBate} bate(m) · ${nNaoBate} não bate(m) · ${nSem} sem comprovante`;
 
   renderSemMatch();
+}
+
+// ─── Envio do Informe Mensal direto da conferência ────────────────────────────
+let _emailsProprietarios = {};
+let _informesEnviados = {};   // chave -> true (só durante esta sessão da página)
+async function carregarEmailsProprietarios() {
+  try {
+    const r = await fetch('/emails_proprietarios');
+    if (r.ok) _emailsProprietarios = await r.json();
+  } catch(e) {}
+}
+function emailDoProprietario(key) {
+  // Mesma prioridade do Informe Mensal: e-mail salvo no cadastro, senão o da planilha (coluna N)
+  return (_emailsProprietarios[key] || (_esperados[key] && _esperados[key].emailPlanilha) || '').trim();
+}
+function botaoInforme(key) {
+  if (_informesEnviados[key]) return '<span class="badge badge-bate">Enviado</span>';
+  if (!emailDoProprietario(key)) return '<span style="font-size:12px;color:var(--muted)" title="Cadastre o e-mail na planilha (coluna N) ou em Editar E-mails no Informe Mensal">sem e-mail</span>';
+  return `<button class="btn btn-outline btn-sm" id="btnInf_${escHtml(key)}" onclick="enviarInforme('${escHtml(key).replace(/'/g, "\\'")}')">Enviar informe</button>`;
+}
+async function enviarInforme(key) {
+  const esp = _esperados[key];
+  const email = emailDoProprietario(key);
+  const mes = document.getElementById('tituloMes').textContent;
+  if (!esp || !email || !mes) return;
+  const linha = calcularStatus().find(l => l.key === key);
+  if (linha && linha.status === 'nao_bate') {
+    if (!confirm(`${esp.nome} está com divergência no repasse (esperado ${brl(linha.esperado)}, recebido ${brl(linha.recebido)}).\n\nEnviar o informe mesmo assim?`)) return;
+  }
+  const btn = document.getElementById('btnInf_' + key);
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+  const total = esp.rowsEmail.reduce((s, r) => s + r.repasse, 0);
+  try {
+    const r = await fetch('/enviar_informe', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ proprietario: esp.nome, email_dest: email, mes, rows: esp.rowsEmail, total })
+    });
+    const j = await r.json();
+    if (j.ok) { _informesEnviados[key] = true; showSalvo('Informe enviado!'); renderResultados(); return; }
+    alert('Erro ao enviar: ' + (j.erro || 'desconhecido'));
+  } catch(e) {
+    alert('Erro ao enviar: ' + e.message);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Enviar informe'; }
 }
 
 async function salvarConferencia() {
@@ -577,6 +657,7 @@ function showSalvo(msg) {
 
 // Init
 carregarMeses();
+carregarEmailsProprietarios();
 </script>
 <div id="toastSalvo" style="position:fixed;bottom:24px;right:24px;background:#2A5C2A;color:#fff;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.22);opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999">Salvo!</div>
 </body>
