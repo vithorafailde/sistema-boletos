@@ -267,6 +267,18 @@ tfoot td { padding: 8px 10px; font-weight: 700; background: #EFF2F2; border-top:
 
 <div class="container">
 
+  <!-- Navegar pelos meses já salvos -->
+  <div class="card" id="barraMeses" style="padding:12px 16px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Navegar pelos meses</span>
+      <select id="selMesNavegar" class="form-input" style="width:auto;min-width:240px;padding:7px 12px;cursor:pointer" onchange="navegarMes(this.value)">
+        <option value="">Mês atual</option>
+      </select>
+      <button class="btn btn-outline btn-sm" id="btnVoltarMesAtual" style="display:none" onclick="voltarMesAtual()">← Voltar ao mês atual</button>
+    </div>
+    <div id="avisoMesArquivado" style="display:none;margin-top:10px;padding:9px 12px;border-radius:8px;background:#FFF3CD;color:var(--yellow);font-size:14px;font-weight:600"></div>
+  </div>
+
   <!-- Upload -->
   <div id="secaoUpload">
     <div class="card">
@@ -621,6 +633,8 @@ function mostrar(d, mesRef) {
   renderTabela(d.locatarios);
   renderSemMatch(d.sem_match);
   // Persiste resultado para que recargas não apaguem os dados
+  // (NÃO persiste quando está navegando num mês arquivado — senão o mês antigo viraria o "mês atual" ao recarregar)
+  if (_mesArquivadoAberto) return;
   const anoMes = new Date().getFullYear() + '-' + String(new Date().getMonth()+1).padStart(2,'0');
   try {
     localStorage.setItem('boletos_dados', JSON.stringify(d));
@@ -1392,6 +1406,7 @@ function filtrar(tipo, btn) {
 
 // ─── Salvar ───────────────────────────────────────────────────────────────────
 async function salvarExtras() {
+  if (_mesArquivadoAberto) return salvarMesArquivado();
   if (!confirm('Confirma o salvamento?\n\nOs dados serão gravados no histórico. A parcela do IPTU só avança quando o mês real mudar.')) return;
   const mes = document.getElementById('inMes').value || '';
   const payload = Object.assign({}, dados, {mes});
@@ -1407,9 +1422,113 @@ async function salvarExtras() {
           body: JSON.stringify({mes, locatarios: dados.locatarios})});
       } catch(e) {}
     }
+    carregarMesesNavegar();
     showSalvo();
   }
 }
+
+// ─── Navegar pelos meses arquivados ───────────────────────────────────────────
+let _mesArquivadoAberto = null;   // ex: "Setembro/2026" enquanto edita um mês passado
+let _mesArquivadoSujo = false;    // true se mexeu em algo e ainda não salvou
+let _dadosAoVivo = null;          // processamento do mês atual, guardado enquanto navega
+let _mesAoVivo = '';
+
+async function carregarMesesNavegar() {
+  const sel = document.getElementById('selMesNavegar');
+  try {
+    const r = await fetch('/api/informes_meses_salvos');
+    const j = await r.json();
+    const atual = _mesArquivadoAberto || '';
+    sel.innerHTML = '<option value="">Mês atual</option>' +
+      (j.meses || []).map(m => `<option value="${escHtml(m)}"${m===atual?' selected':''}>${escHtml(m)}</option>`).join('');
+  } catch(e) {}
+}
+
+async function navegarMes(mes) {
+  if (!mes) { voltarMesAtual(); return; }
+  if (mes === _mesArquivadoAberto) return;
+  if (_mesArquivadoAberto && _mesArquivadoSujo && !confirm(`Há alterações não salvas em ${_mesArquivadoAberto}. Trocar de mês mesmo assim?`)) {
+    document.getElementById('selMesNavegar').value = _mesArquivadoAberto;
+    return;
+  }
+  let locs;
+  try {
+    const r = await fetch('/api/informes_carregar_mes?mes=' + encodeURIComponent(mes));
+    const j = await r.json();
+    locs = j.locatarios || [];
+  } catch(e) { alert('Erro ao carregar o mês.'); document.getElementById('selMesNavegar').value = _mesArquivadoAberto || ''; return; }
+  if (!locs.length) { alert('Esse mês não tem dados salvos.'); document.getElementById('selMesNavegar').value = _mesArquivadoAberto || ''; return; }
+
+  if (!_mesArquivadoAberto) {            // guarda o mês atual pra poder voltar
+    _dadosAoVivo = dados;
+    _mesAoVivo = document.getElementById('inMes').value;
+  }
+  _mesArquivadoAberto = mes;
+  _mesArquivadoSujo = false;
+  document.getElementById('inMes').value = mes;
+  document.getElementById('secaoUpload').style.display = 'none';
+  document.getElementById('secaoProgresso').style.display = 'none';
+  document.getElementById('secaoInforme').style.display = 'none';
+  mostrar({locatarios: locs, sem_match: []}, mes);
+  atualizarAvisoMesArquivado();
+}
+
+function atualizarAvisoMesArquivado() {
+  const aviso = document.getElementById('avisoMesArquivado');
+  const btn = document.getElementById('btnVoltarMesAtual');
+  if (_mesArquivadoAberto) {
+    aviso.style.display = 'block';
+    aviso.textContent = `Você está editando ${_mesArquivadoAberto} (mês já salvo). "Salvar" atualiza só esse mês — o histórico do mês atual não é alterado.`;
+    btn.style.display = '';
+  } else {
+    aviso.style.display = 'none';
+    btn.style.display = 'none';
+  }
+}
+
+function voltarMesAtual() {
+  if (_mesArquivadoAberto && _mesArquivadoSujo && !confirm(`Há alterações não salvas em ${_mesArquivadoAberto}. Voltar mesmo assim?`)) {
+    document.getElementById('selMesNavegar').value = _mesArquivadoAberto;
+    return;
+  }
+  const estavaNavegando = !!_mesArquivadoAberto;
+  _mesArquivadoAberto = null;
+  _mesArquivadoSujo = false;
+  document.getElementById('selMesNavegar').value = '';
+  atualizarAvisoMesArquivado();
+  if (!estavaNavegando) return;
+  document.getElementById('inMes').value = _mesAoVivo;
+  document.getElementById('secaoInforme').style.display = 'none';
+  if (_dadosAoVivo) {
+    mostrar(_dadosAoVivo, _mesAoVivo);
+  } else {
+    dados = null;
+    document.getElementById('resultados').style.display = 'none';
+    document.getElementById('secaoUpload').style.display = 'block';
+  }
+}
+
+async function salvarMesArquivado() {
+  const mes = _mesArquivadoAberto;
+  if (!confirm(`Salvar as alterações de ${mes}?\n\nSó esse mês é atualizado (informes e DIMOB). O histórico do mês atual (IPTU, parcelas, extras) NÃO é alterado.`)) return;
+  const payload = Object.assign({}, dados, {mes, somente_mes: true});
+  try {
+    const r = await fetch('/salvar_extras', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const j = await r.json();
+    if (!j.ok) { alert('Erro ao salvar: ' + (j.erro || 'desconhecido')); return; }
+    const r2 = await fetch('/api/informes_salvar_mes', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({mes, locatarios: dados.locatarios})});
+    const j2 = await r2.json();
+    if (!j2.ok) { alert('Erro ao arquivar o mês: ' + (j2.erro || 'desconhecido')); return; }
+    _mesArquivadoSujo = false;
+    showSalvo();
+  } catch(e) { alert('Erro ao salvar: ' + e.message); }
+}
+
+// Qualquer edição na tabela enquanto navega num mês arquivado marca como "não salvo"
+document.addEventListener('input', e => { if (_mesArquivadoAberto && e.target.closest && e.target.closest('#corpo')) _mesArquivadoSujo = true; });
+document.addEventListener('change', e => { if (_mesArquivadoAberto && e.target.closest && e.target.closest('#corpo')) _mesArquivadoSujo = true; });
+carregarMesesNavegar();
 
 
 // ─── API Modal ────────────────────────────────────────────────────────────────
@@ -1439,6 +1558,7 @@ async function salvarApi() {
 
 // ─── Novo processamento ───────────────────────────────────────────────────────
 function novoProcessamento() {
+  if (_mesArquivadoAberto) { alert('Volte ao mês atual (botão "Voltar ao mês atual") antes de iniciar um novo processamento.'); return; }
   dados = null;
   try { localStorage.removeItem('boletos_dados'); localStorage.removeItem('boletos_mes'); localStorage.removeItem('boletos_salvo_em'); } catch(e) {}
   document.getElementById('resultados').style.display = 'none';

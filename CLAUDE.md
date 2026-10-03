@@ -192,6 +192,12 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 - `data/informes_historico.json` está no `.railwayignore` (igual ao `historico.json`) — **não remover de lá**, senão cada deploy apaga os meses arquivados em produção
 - Só funciona pros meses salvos **depois** dessa feature existir — meses anteriores não têm registro nesse arquivo
 
+### Navegar pelos meses na tela de Boletos (editar mês passado)
+- Barra **"Navegar pelos meses"** no topo de `/boletos` (`#selMesNavegar`): lista os meses de `informes_historico.json` (mesmos meses do Informe Mensal). Escolher um mês carrega o processamento salvo daquele mês na tabela normal, pra editar e salvar. **Só aparecem meses salvos (botão "Salvar") depois que o arquivamento existe.**
+- Enquanto navega (`_mesArquivadoAberto`): `inMes` vira o mês escolhido, aparece aviso amarelo + botão "Voltar ao mês atual", e o processamento do mês atual fica guardado em memória (`_dadosAoVivo`) — **`mostrar()` NÃO persiste em localStorage nesse modo**, senão o mês antigo viraria o "mês atual" ao recarregar
+- **Salvar nesse modo** (`salvarMesArquivado`) chama `/salvar_extras` com `somente_mes: true` + `/api/informes_salvar_mes`. Com `somente_mes` o backend **não grava `historico.json`** (IPTU/parcelas/extras do próximo processamento — um mês antigo sobrescreveria o do mês atual) e **refaz o DIMOB daquele mês** conforme a tela: se zerou multa/juros/abono, remove o que estava salvo. **Não tirar o `somente_mes`.**
+- "Novo processamento" fica bloqueado enquanto navega num mês arquivado; trocar de mês/voltar com alteração não salva pede confirmação (`_mesArquivadoSujo`)
+
 ### Cálculo do repasse (`calcRepasseData(row)`)
 ```
 repasse = aluguel

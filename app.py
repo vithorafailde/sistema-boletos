@@ -2310,7 +2310,11 @@ def enviar_informe():
 @login_required
 def salvar_extras():
     historico = ler_historico()
-    for row in (request.json or {}).get("locatarios", []):
+    # somente_mes=True: edição de um mês JÁ ARQUIVADO (navegação por meses). Não pode mexer no
+    # historico.json (IPTU/parcelas/extras que alimentam o PRÓXIMO processamento) — senão um mês
+    # antigo sobrescreveria o histórico do mês atual.
+    somente_mes = bool((request.json or {}).get("somente_mes"))
+    for row in ([] if somente_mes else (request.json or {}).get("locatarios", [])):
         chave = row.get("chave") or norm(row.get("locatario", ""))
         if not chave:
             continue
@@ -2341,7 +2345,8 @@ def salvar_extras():
             **{f"ded{n}_subtrair": row.get(f"ded{n}_subtrair", True)
                for n in range(1, 11)},
         }
-    salvar_historico(historico)
+    if not somente_mes:
+        salvar_historico(historico)
 
     # Salva multa/juros no dimob_historico para uso na DIMOB
     mes_ref = (request.json or {}).get("mes", "")  # ex: "Junho/2026"
@@ -2369,7 +2374,16 @@ def salvar_extras():
                 juros = float(row.get("juros_mora_val") or 0)
                 abono = float(row.get("abono_val") or 0)
                 if not (multa or juros or abono):
+                    # Mês arquivado editado: se zerou multa/juros/abono na tela, remove o que estava salvo daquele mês
+                    if somente_mes and chave in hist_dimob[ano_str]:
+                        hist_dimob[ano_str][chave].get("multa_juros", {}).pop(str(mes_num), None)
+                        hist_dimob[ano_str][chave].get("abono", {}).pop(str(mes_num), None)
                     continue
+                if somente_mes:
+                    if not (multa or juros):
+                        hist_dimob[ano_str].get(chave, {}).get("multa_juros", {}).pop(str(mes_num), None)
+                    if not abono:
+                        hist_dimob[ano_str].get(chave, {}).get("abono", {}).pop(str(mes_num), None)
                 if chave not in hist_dimob[ano_str]:
                     hist_dimob[ano_str][chave] = {}
                 if multa or juros:
