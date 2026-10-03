@@ -576,18 +576,38 @@ async function enviarInforme(key) {
   const btn = document.getElementById('btnInf_' + key);
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
   const total = esp.rowsEmail.reduce((s, r) => s + r.repasse, 0);
+  const corpo = JSON.stringify({ proprietario: esp.nome, email_dest: email, mes, rows: esp.rowsEmail, total });
   try {
-    const r = await fetch('/enviar_informe', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ proprietario: esp.nome, email_dest: email, mes, rows: esp.rowsEmail, total })
+    // Envios entram numa fila (um por vez, com intervalo): clicar em vários botões rápido estourava o limite do Resend (HTTP 429)
+    const j = await enfileirarEnvio(async () => {
+      let res = await postInforme(corpo);
+      if (!res.ok && /HTTP 429|rate.?limit|too many/i.test(res.erro || '')) {
+        await new Promise(r => setTimeout(r, 1500));
+        res = await postInforme(corpo);
+      }
+      return res;
     });
-    const j = await r.json();
     if (j.ok) { _informesEnviados[key] = true; showSalvo('Informe enviado!'); renderResultados(); return; }
-    alert('Erro ao enviar: ' + (j.erro || 'desconhecido'));
+    alert(`Erro ao enviar o informe de ${esp.nome} (${email}):\n\n${j.erro || 'erro desconhecido'}`);
   } catch(e) {
-    alert('Erro ao enviar: ' + e.message);
+    alert(`Erro ao enviar o informe de ${esp.nome}: ${e.message}`);
   }
   if (btn) { btn.disabled = false; btn.textContent = 'Enviar informe'; }
+}
+let _filaEnvio = Promise.resolve();
+function enfileirarEnvio(tarefa) {
+  const p = _filaEnvio.then(tarefa);
+  _filaEnvio = p.catch(() => {}).then(() => new Promise(r => setTimeout(r, 700)));
+  return p;
+}
+// Devolve sempre {ok, erro}: resposta que não é JSON (sessão expirada, erro 500) vira mensagem legível
+async function postInforme(corpo) {
+  const r = await fetch('/enviar_informe', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: corpo });
+  const txt = await r.text();
+  try { return JSON.parse(txt); } catch(e) {
+    if (r.redirected || /<title>.*(login|Redirecting)/i.test(txt)) return { ok: false, erro: 'Sessão expirada — faça login novamente e tente de novo.' };
+    return { ok: false, erro: `O servidor respondeu com erro (HTTP ${r.status}). ${txt.replace(/<[^>]+>/g, ' ').trim().slice(0, 200)}` };
+  }
 }
 
 async function salvarConferencia() {

@@ -442,6 +442,7 @@ Depois de processado, cada PDF de comprovante é apagado do servidor (`pdf_path.
 - Payload (`rowsEmail` de `montarEsperados`) é montado com o mesmo formato que `enviarParaTodos` de `index.html` — **se esse formato mudar lá, mudar aqui também** (`calcRepasseData`/`applyDivisor` agora são cópia completa, não só o `repasse`)
 - Se o proprietário está com **"Não bate"**, pede confirmação antes de enviar; os demais envios individuais não pedem (igual ao resto do sistema)
 - Log de auditoria: grava normal em `log_envios.json` como tipo `informe`
+- Envios da Conferência passam por uma **fila** (`enfileirarEnvio`: um por vez, 700 ms de intervalo) e repetem 1x se o Resend devolver HTTP 429 — clicar em vários botões rápido estourava o limite de requisições. `postInforme` transforma resposta que não é JSON (sessão expirada, erro 500) em mensagem legível com o status HTTP. **Não voltar pra `fetch` direto no clique.**
 
 ### Integração com "Enviar para Todos" dos Informes Mensais
 - Botão **"Salvar Conferência"** (na tela de Conferência, depois de processar) grava o status de cada proprietário (`bate`/`nao_bate`/`sem_comprovante`) em `data/conferencia_repasse.json`, indexado por mês — mesma string de mês usada em `informes_historico.json` (ex: `"Julho/2026"`)
