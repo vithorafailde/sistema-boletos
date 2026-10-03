@@ -178,8 +178,11 @@ function normProp(s) {
 const ALIAS_PALAVRAS = { ZHANG: 'CHANG' };
 // Quando o favorecido contém TODAS as palavras de "favorecido", o comprovante é atribuído ao proprietário que contém TODAS as de "proprietario".
 // Pedido explícito: favorecido "Marcia Marcondes" entra em "Francisco Carlos".
+// Pedido explícito: favorecidos "Vithor Alves Failde" e "Maria de Lourdes Padrao Alves Failde" entram em "Manoel Failde" (não em "Rosana Alves").
 const ATRIBUICOES_FIXAS = [
   { favorecido: ['MARCIA', 'MARCONDES'], proprietario: ['FRANCISCO', 'CARLOS'] },
+  { favorecido: ['VITHOR', 'FAILDE'], proprietario: ['MANOEL', 'FAILDE'] },
+  { favorecido: ['LOURDES', 'FAILDE'], proprietario: ['MANOEL', 'FAILDE'] },
 ];
 const STOPWORDS_CURTAS =new Set(['DE','DA','DO','DI','DU','E','EM','NA','NO']);
 function normPalavras(nome) {
@@ -475,7 +478,8 @@ function montarConferencia() {
     const fixa = ATRIBUICOES_FIXAS.find(a => a.favorecido.every(p => palavrasFav.includes(p)));
     if (fixa) {
       const alvo = chaves.find(k => { const pk = normPalavras(_esperados[k].nome); return fixa.proprietario.every(p => pk.includes(p)); });
-      if (alvo) { c._chaveMatch = alvo; c._score = 1; return; }
+      // Se o proprietário-alvo não está no mês, fica sem correspondência (não cai no score por nome, que casaria com outra pessoa)
+      c._chaveMatch = alvo || null; c._score = alvo ? 1 : 0; return;
     }
     let melhorChave = null, melhorScore = 0;
     chaves.forEach(k => {
