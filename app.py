@@ -615,12 +615,10 @@ def aplicar_reajustes_excel(path, contratos_aplicar):
                 'num_linha':       nl,
                 'aplicado_em':     date.today().isoformat(),
             })
-            # Reajuste aplicado DEPOIS do mês seguinte ao aniversário: o aluguel novo só vale a partir do
-            # mês em que foi aplicado (no mínimo) — senão o DIMOB infla os meses anteriores. Ajustável na tela do DIMOB.
-            if mes_aplicacao and date.today().month > mes_aplicacao:
-                reg_dimob['mes_efetivo'] = date.today().month
-            else:
-                reg_dimob.pop('mes_efetivo', None)
+            # DIMOB conta o reajuste a partir do mês em que ele era DEVIDO (mês seguinte ao aniversário),
+            # mesmo que a aplicação tenha atrasado — decisão do usuário. Por isso NÃO grava mes_efetivo aqui
+            # (só existe se for ajustado à mão no seletor "Novo vale desde" do DIMOB). Reajuste novo zera o ajuste antigo.
+            reg_dimob.pop('mes_efetivo', None)
 
             ws.cell(row=nl, column=6).value = novo_alug   # col F – único campo alterado
             n += 1
