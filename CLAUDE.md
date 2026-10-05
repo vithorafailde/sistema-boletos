@@ -128,6 +128,9 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 - Badge roxo "Renovar contrato" na tabela; filtro dedicado na barra de filtros
 
 ### Aplicação do reajuste
+- **Travas ao aplicar (`aplicar_reajustes_excel`)**: (1) rejeita `novo_aluguel` ≤ 0 ou não numérico; (2) confere que a linha da planilha é do **mesmo locatário** (col E) — senão recusa ("recalcule os reajustes") em vez de gravar no contrato errado; (3) o registro do DIMOB é **atualizado (`.update`), não substituído** — antes apagava multa/juros/abono já salvos daquele locatário; (4) devolve `linhas_ok`: **a tela só marca como "Já reajustado" as linhas que o servidor gravou de fato** (as que deram erro continuam pendentes e selecionadas); (5) se nenhum foi gravado, `ok=false`
+- Cada contrato aplicado é registrado em `reajustes_confirmados.json` (chave `locatario|DD/MM`): o registro do DIMOB é por locatário e não distingue **dois contratos do mesmo locatário** (ex.: Isidro, QUN YE) — sem isso aplicar um fazia o outro sumir de "Atrasados". O "registrado" via DIMOB agora exige também o mesmo `num_linha`
+- **Valor manual**: aceita `2500.50`, `2500,50` e `2.500,50` (vírgula presente → ponto é milhar). Só funciona com o contrato **marcado** (digitar já marca) e depois de clicar em "Aplicar Selecionados na Planilha". Limpar o campo não desmarca o contrato (aplicaria o valor calculado)
 - Só grava **coluna F** (aluguel) na planilha — nenhuma outra coluna é alterada
 - A data de aniversário (col H) **não muda** — é sempre DD/MM repetida todo ano
 - Escrita atômica: salva em `.tmp` depois renomeia

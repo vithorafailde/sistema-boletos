@@ -402,7 +402,10 @@ function toggleZerado(num_linha) {
 }
 
 function setManual(num_linha, valor) {
-  const v = parseFloat(String(valor).replace(',', '.'));
+  // Aceita "2500.50", "2500,50" e "2.500,50" (se tem vírgula, o ponto é separador de milhar)
+  let t = String(valor).trim();
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  const v = parseFloat(t);
   if (!isNaN(v) && v > 0) {
     manuais[num_linha] = v;
     selecionados.add(num_linha);  // seleciona automaticamente ao digitar
@@ -479,11 +482,12 @@ async function aplicarReajustes() {
       // Mostrar botão de download (fora do painelAplicar, não some)
       document.getElementById('painelDownload').style.display = 'block';
       // Atualiza estado local sem re-chamar o BACEN (evita double-apply e mantém download visível)
-      const aplicados = new Set(para_aplicar.map(c => c.num_linha));
+      // Só os que o servidor confirmou que gravou (os que deram erro continuam pendentes)
+      const aplicados = new Set(data.linhas_ok || para_aplicar.map(c => c.num_linha));
       todosContratos = todosContratos.map(c => {
         if (!aplicados.has(c.num_linha)) return c;
         return { ...c,
-          aluguel:       zerados.has(c.num_linha) ? c.aluguel : (c.novo_aluguel ?? c.aluguel),
+          aluguel:       zerados.has(c.num_linha) ? c.aluguel : (manuais[c.num_linha] ?? c.novo_aluguel ?? c.aluguel),
           status:        'OK',
           aplicavel:     false,
           acumulado_pct: null,
@@ -492,7 +496,7 @@ async function aplicarReajustes() {
           diferenca:     null,
         };
       });
-      selecionados.clear();
+      aplicados.forEach(nl => selecionados.delete(nl));
       zerados.clear();
       manuais = {};
       arquivoSelecionado = null;

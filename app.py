@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 import urllib.request
 import urllib.error
 import json as _json
+import math
 from pathlib import Path
 from functools import wraps
 from datetime import datetime, date, timedelta
@@ -533,7 +534,7 @@ def ler_excel_reajustes(path):
             # ATRASADO: o mês de aplicação já passou e não há registro de que o reajuste foi feito.
             # Não conta contrato que já tinha terminado antes do aniversário.
             rec = dimob_ano.get(norm(str(loc).strip()))
-            registrado = (bool(rec) and rec.get('mes_aplicacao') == mes_aplicacao) or chave_rej in confirmados_ano
+            registrado = (bool(rec) and rec.get('mes_aplicacao') == mes_aplicacao and rec.get('num_linha') == num_linha) or chave_rej in confirmados_ano
             ja_encerrado = data_fim is not None and data_fim < aniv
             if not registrado and not ja_encerrado:
                 status = 'ATRASADO'
@@ -609,12 +610,14 @@ def aplicar_reajustes_excel(path, contratos_aplicar):
 
     contratos_aplicar: lista de dicts com ao menos:
         num_linha, novo_aluguel, locatario, mes_reajuste
-    Retorna (n_atualizados, erros[])
+    Retorna (n_atualizados, erros[], chaves_aplicadas[], linhas_ok[])
     """
     from openpyxl import load_workbook as _lw
     wb = _lw(str(path))
     ws = wb.active
     erros = []
+    aplicadas = []
+    linhas_ok = []
     n = 0
 
     historico_dimob = ler_dimob_historico()
@@ -626,24 +629,35 @@ def aplicar_reajustes_excel(path, contratos_aplicar):
         try:
             nl        = int(c['num_linha'])
             novo_alug = float(c['novo_aluguel'])
+            if not (math.isfinite(novo_alug) and novo_alug > 0):
+                raise ValueError(f"valor inválido ({c.get('novo_aluguel')})")
+
+            locatario = c.get('locatario', '')
+            # Trava de segurança: a linha da planilha tem que ser do mesmo locatário (evita gravar no contrato errado)
+            loc_planilha = ws.cell(row=nl, column=5).value
+            if locatario and norm(loc_planilha) != norm(locatario):
+                raise ValueError(f"a linha {nl} da planilha é de '{loc_planilha}', não de '{locatario}' — recalcule os reajustes e tente de novo")
 
             # Lê aluguel antigo ANTES de sobrescrever — guarda no histórico DIMOB
             aluguel_antigo = safe_float(ws.cell(row=nl, column=6).value)
-            locatario      = c.get('locatario', '')
             mes_rej        = c.get('mes_reajuste')
             mes_aplicacao  = (int(mes_rej) % 12 + 1) if mes_rej else None
             chave_dimob    = norm(locatario) if locatario else f"linha_{nl}"
 
-            historico_dimob[ano_atual][chave_dimob] = {
+            # ATUALIZA (não substitui) — substituir apagava multa/juros/abono do DIMOB já salvos pra esse locatário
+            historico_dimob[ano_atual].setdefault(chave_dimob, {}).update({
                 'aluguel_antigo':  aluguel_antigo,
                 'aluguel_novo':    novo_alug,
                 'locatario':       locatario,
                 'mes_aplicacao':   mes_aplicacao,
                 'num_linha':       nl,
-            }
+            })
 
             ws.cell(row=nl, column=6).value = novo_alug   # col F – único campo alterado
             n += 1
+            linhas_ok.append(nl)
+            if c.get('chave_reajuste'):
+                aplicadas.append(c['chave_reajuste'])
         except Exception as e:
             erros.append(f"Linha {c.get('num_linha','?')} ({c.get('locatario','')}): {e}")
 
@@ -656,7 +670,7 @@ def aplicar_reajustes_excel(path, contratos_aplicar):
     tmp = Path(str(path) + '.tmp')
     wb.save(str(tmp))
     tmp.replace(Path(path))
-    return n, erros
+    return n, erros, aplicadas, linhas_ok
 
 
 def similaridade(palavras_a, palavras_b):
@@ -2785,13 +2799,28 @@ def api_aplicar_reajustes():
         return jsonify({'ok': False, 'erro': 'Planilha não encontrada no servidor.'})
 
     try:
-        n, erros = aplicar_reajustes_excel(excel_path, contratos_aplicar)
+        n, erros, aplicadas, linhas_ok = aplicar_reajustes_excel(excel_path, contratos_aplicar)
     except Exception as e:
         return jsonify({'ok': False, 'erro': f'Erro ao atualizar planilha: {e}'})
 
+    # Registra CADA contrato aplicado (locatário + DD/MM) — o registro do DIMOB é por locatário e
+    # não distingue dois contratos do mesmo locatário; sem isso o 2º contrato sumia de "Atrasados".
+    if aplicadas:
+        try:
+            ano = str(date.today().year)
+            conf = ler_reajustes_confirmados()
+            conf.setdefault(ano, {})
+            for k in aplicadas:
+                conf[ano][k] = True
+            salvar_reajustes_confirmados(conf)
+        except Exception:
+            pass
+
     return jsonify({
-        'ok': True,
+        'ok': n > 0,
+        'erro': None if n > 0 else ('Nenhum contrato foi atualizado. ' + '; '.join(erros)),
         'atualizados': n,
+        'linhas_ok': linhas_ok,
         'erros': erros,
         'msg': (f'{n} contrato(s) atualizado(s) na planilha. '
                 'O sistema de boletos já usará os novos valores no próximo processamento.')
