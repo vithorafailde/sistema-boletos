@@ -111,7 +111,11 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 - `OK` → mes_aplicacao ≤ hoje.month (já foi reajustado este ciclo)
 - Contratos OK: **não calcular** acumulado, não mostrar novo aluguel, não mostrar diferença
 - Lógica correta: `mes_aplicacao = data_rej.month % 12 + 1`
-- Ordenação: RENOVAR > ESTE_MES > FUTURO > OK
+- **O DIA do aniversário nunca decide nada** — só o mês. Aniversário 29/07 já pode ser reajustado em 01/08. (O único uso do dia é `dr.day >= 15` pra estimar IPCA ainda não publicado.)
+- **1º ano conta em MESES COMPLETOS, nunca em dias** (ideia do usuário): o contrato só entra no ciclo quando o **mês do aniversário** está **12+ meses depois do mês de `data_inicio`** (`meses_ate_aniv >= 12`, ignora o dia). Início 30/09/2025 + aniversário 29/09 → set/2026 = 12 meses → reajusta em out/2026. Antes havia uma regra de **365 dias** que bloqueava contratos que começam 1 dia depois do aniversário (364 dias) — **não voltar pra contagem em dias**. Contrato que não completou 12 meses fica `status='OK'` com `primeiro_ano=True` (badge cinza "Menos de 1 ano"), não vira ESTE_MES/FUTURO/ATRASADO — assim contrato recém-assinado não aparece pra reajuste. Sem `data_inicio`, assume que já completou. O campo `vigencia_ok` não existe mais.
+- **`ATRASADO`** (pedido explícito): o mês de aplicação já passou neste ano e **não há registro** de reajuste — antes esses contratos viravam "Já reajustados" em silêncio e sumiam. Calcula igual a ESTE_MES (mesma janela, número-índice) e é aplicável, **mas NÃO vem pré-selecionado** (pode haver falso positivo). "Registrado" = existe `dimob_historico[ano][locatario]` com o mesmo `mes_aplicacao` (gravado ao aplicar pelo sistema ou em "Salvar Alug. Anteriores" do DIMOB) **ou** foi marcado "Já foi reajustado" (`data/reajustes_confirmados.json`, chave `locatario|DD/MM`, por ano; rota `POST /api/reajustes_confirmar`; está no `.railwayignore`). Contratos no 1º ano (regra dos 12 meses acima) e já encerrados antes do aniversário (`data_fim < aniversário`) não viram ATRASADO.
+- Aniversário em **dezembro** aplicado em janeiro: `data_reajuste_iso` usa o dezembro do ANO ANTERIOR (antes usava o ano corrente e a janela caía em meses futuros sem dados)
+- Ordenação: RENOVAR > ESTE_MES > ATRASADO > FUTURO > OK
 
 ### Status RENOVAR — regras que NÃO podem mudar
 - Detectado em `ler_excel_reajustes()` **independente** do status de reajuste
@@ -583,7 +587,7 @@ Todos os botões de salvar têm `confirm()` antes de executar:
 - Mensagem "Planilha encontrada" na página `/reajustes`
 - Botão "Exportar CSV" ou "Exportar Excel" na página de boletos — removido a pedido
 - Botão "- 1 Parcela IPTU" — removido a pedido
-- Verificação de "vigência mínima de 12 meses"
+- Verificação de vigência mínima **em dias** (ex: 365 dias) — a regra em vigor conta **meses completos** (ver "1º ano conta em MESES COMPLETOS" na seção de Reajustes)
 - Fonte alternativa de dados (IPEA, FGV) para qualquer índice
 - Janela de 12 meses (decisão: 13 meses — BACEN Cidadão)
 - Coluna "VENCIDO X dias" ou qualquer conceito de atraso
