@@ -976,8 +976,14 @@ def ler_excel(path):
             percentual_imob = 0.0
 
         email_prop = str(row[13]).strip() if len(row) > 13 and row[13] else ""
+        # Data de início do contrato (col I) — usada pra identificar CONTRATO NOVO (dias proporcionais no boleto)
+        try:
+            _di = parse_data_reajuste(row[8]) if len(row) > 8 and row[8] else None
+        except Exception:
+            _di = None
 
         contratos[chave_final] = {
+            "data_inicio": _di.isoformat() if _di else "",
             "locatario": locatario,
             "proprietario": proprietario,
             "endereco": endereco,
@@ -1895,6 +1901,7 @@ def montar_resultado(contratos, condos_lidos, boletos_extras):
             "email_proprietario": ct.get("email_proprietario", ""),
             "endereco": ct["endereco"],
             "tipo": ct["tipo"],
+            "data_inicio": ct.get("data_inicio", ""),
             "aluguel": ct["aluguel"],
             "cond_repasse": round(cond_repasse, 2),
             "cond_nao_repasse": round(cond_nao_repasse, 2),
@@ -2394,7 +2401,9 @@ def salvar_extras():
             "abono_parcela": row.get("abono_parcela") or "",
             "seg_fianca": row.get("seg_fianca") or 0,
             "seg_incendio": row.get("seg_incendio") or 0,
-            "cond_cota": float((row.get("cond_itens_rep") or {}).get("cota") or 0),
+            # Contrato novo com dias proporcionais: guarda a cota CHEIA (original), não a proporcional,
+            # senão o mês seguinte compara/sugere um valor reduzido.
+            "cond_cota": float((((row.get("_orig_prop") or {}).get("cond_itens_rep")) or row.get("cond_itens_rep") or {}).get("cota") or 0),
             **{f"ded{n}_desc":     row.get(f"ded{n}_desc") or ""
                for n in range(1, 11)},
             **{f"ded{n}_val":      row.get(f"ded{n}_val")  or 0

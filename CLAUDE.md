@@ -242,6 +242,17 @@ repasse = aluguel
 - **Integração DIMOB:** ao clicar "Salvar", multa+juros são gravados em `dimob_historico.json` por locatário/mês. Na DIMOB, o valor do mês correspondente já inclui multa+juros automaticamente.
 - Email de informe: `_gerar_html_email` renderiza linhas separadas de multa, juros e taxa sobre eles quando presentes — o payload do frontend deve incluir `multa_atraso`, `juros_mora`, `taxa_sob_rec`
 
+### Contrato novo — dias proporcionais no boleto
+- **Pedido explícito (out/2026):** ao enviar a planilha, o sistema lê a **data de início (col I)** de cada contrato (`ler_excel` → `data_inicio` ISO → `montar_resultado`). Contrato cujo início cai **no mês de referência** (`#inMes`) é "contrato novo" e ganha, em cima do card "Total do Boleto", um painel amarelo **"Contrato novo — início dd/mm/aaaa — Dias a cobrar: [__] de N"** (placeholder = dias do início ao fim do mês).
+- Ao preencher os dias, **`aplicarDiasProporcionais(idx, dias)`** multiplica por `dias / dias_do_mês` (arredonda 2 casas): **aluguel, `taxa_imob` e todos os itens de `cond_itens_rep`** (cota, água, gás, energia... os que o sistema LÊ dos PDFs/planilha) e recalcula `cond_repasse`. Repasse, rodapé, informes e e-mails saem proporcionais porque usam esses mesmos campos.
+- **Não escala:** itens que o proprietário arca (`cond_itens_nrep`: fundo de reserva, correio, melhorias, outros), IPTU, seguros, extras e abono (são digitados à mão — o usuário já digita o valor que quiser).
+- Campo vazio / 0 / dias = dias do mês → volta ao valor cheio. Dias maior que o mês → alerta e ignora.
+- Os valores cheios ficam em `row._orig_prop` (`aluguel`, `taxa_imob`, `cond_itens_rep`, `cond_repasse`) e os dias em `row.dias_proporcionais` — persistem junto com `dados` (localStorage/servidor/arquivo mensal).
+- **`salvar_extras` grava a cota CHEIA** (`_orig_prop.cond_itens_rep.cota`) em `cond_cota` do histórico — senão o mês seguinte compararia/sugeriria a cota reduzida e o banner de "cota divergente" dispararia.
+- Se o usuário digitar a cota à mão com dias ativos (`recalcCota`), o valor é tratado como proporcional e o "cheio" é recalculado.
+- A discriminação (col. 2) foi extraída pra `montarCharges(row)` (id `charges_<idx>`) pra poder ser redesenhada.
+- **DIMOB/Informe Anual não são proporcionais no 1º mês** — usam o aluguel cheio da planilha (fora do escopo deste pedido).
+
 ### Checkbox "lançar como repasse" no Total do Boleto
 - **Pedido explícito:** cada item do card **Total do Boleto** (água, gás, energia, cota, IPTU, IPTU Vaga, Seg. Fiança, Seg. Incêndio, extras fixos 1-5, extras do mês 1-3) tem um checkbox ao lado do valor. Marcado, lança aquele valor como repasse ao proprietário — sem precisar digitar na mão. Antes o usuário tinha que copiar o valor manualmente pra um campo de Dedução Manual vazio.
 - **Não é um mecanismo novo de cálculo** — só ocupa automaticamente um slot livre das **Deduções Manuais** (`ded1` a `ded10`) com `desc`/`val` do item e `subtrair=false` (soma). Reaproveita 100% do cálculo de repasse já existente (`renderRepasse`, `calcRepasseData`, `atualizarRodape`) — nenhuma dessas funções precisou mudar.

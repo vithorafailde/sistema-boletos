@@ -703,6 +703,117 @@ const LABELS = {
   melhorias:'Melhorias', outros:'Outros Cond.', fundo_reserva:'Fundo Reserva', correio:'Correio'
 };
 
+// Discriminação de cobranças (col. 2) — função separada pra poder redesenhar quando os dias proporcionais mudam
+function montarCharges(row) {
+  let charges = '';
+  charges += chargeRow('Aluguel', row.aluguel, 'font-weight:700');
+
+  if (row.tem_cond && row.cond_info.length > 0) {
+    const info = row.cond_info[0];
+    charges += `<div class="charge-separator"></div>`;
+    charges += `<div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:2px">${info.edificio||'Condominio'} ${info.unidade||''}</div>`;
+    const itens = row.cond_itens_rep || {};
+    for (const [k, v] of Object.entries(itens)) {
+      if (v && k !== 'cota') charges += chargeRow(LABELS[k]||k, v);
+    }
+    const itensNR = row.cond_itens_nrep || {};
+    for (const [k, v] of Object.entries(itensNR)) {
+      if (v) charges += chargeRowNR(LABELS[k]||k, v);
+    }
+  } else if (!row.tem_cond) {
+    charges += `<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:3px">Sem condominio</div>`;
+  }
+  return charges;
+}
+
+// ─── Contrato novo: dias proporcionais ───────────────────────────────────────
+// Contrato que começou no mês de referência paga só os dias que ficou. Ao informar os dias, aluguel,
+// taxa da imobiliária e os itens de condomínio/consumos lidos (cota, água, gás, energia...) são
+// recalculados na proporção dias/dias_do_mês. Os valores originais ficam em row._orig_prop
+// (daí dá pra mudar os dias ou limpar o campo e voltar ao valor cheio).
+const _r2 = v => Math.round((v || 0) * 100) / 100;
+const _pad2 = n => String(n).padStart(2, '0');
+
+function diasDoMesRef() {
+  const norm = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const [nome, ano] = (document.getElementById('inMes').value || '').trim().split('/');
+  let m = M.findIndex(x => norm(x) === norm(nome));
+  let a = parseInt(ano, 10);
+  if (m < 0 || !a) { const d = new Date(); m = d.getMonth(); a = d.getFullYear(); }
+  return { m, a, dias: new Date(a, m + 1, 0).getDate() };
+}
+
+// Devolve dados do contrato novo (início dentro do mês de referência) ou null
+function infoContratoNovo(row) {
+  if (!row.data_inicio) return null;
+  const [y, mo, d] = String(row.data_inicio).split('-').map(Number);
+  const ref = diasDoMesRef();
+  if (!y || y !== ref.a || mo - 1 !== ref.m) return null;
+  return { dia: d, dias: ref.dias, sugestao: ref.dias - d + 1, inicio: `${_pad2(d)}/${_pad2(mo)}/${y}` };
+}
+
+function painelDiasProporcionais(idx, row) {
+  const info = infoContratoNovo(row);
+  if (!info) return '';
+  const dias = parseInt(row.dias_proporcionais, 10) || '';
+  return `<div id="propbox_${idx}" style="margin-bottom:6px;padding:7px 9px;background:#FFF3CD;border:1px solid #E5C76B;border-radius:7px;font-size:13px">
+    <div style="font-weight:700;color:var(--yellow)">Contrato novo — início ${info.inicio}</div>
+    <div style="display:flex;align-items:center;gap:5px;margin-top:5px;color:var(--text)">
+      Dias a cobrar:
+      <input class="input-val" type="number" min="1" max="${info.dias}" step="1" placeholder="${info.sugestao}"
+        value="${dias}" style="width:58px" onchange="aplicarDiasProporcionais(${idx}, this.value)">
+      de ${info.dias}
+    </div>
+    <div id="propinfo_${idx}" style="margin-top:4px;font-size:12px;color:var(--muted)">${textoPropInfo(row, info)}</div>
+  </div>`;
+}
+
+function textoPropInfo(row, info) {
+  const d = parseInt(row.dias_proporcionais, 10);
+  if (!d) return `Em branco = mês inteiro. Pelo início, seriam ${info.sugestao} dias.`;
+  return `Valores proporcionais: ${d}/${info.dias} do mês (aluguel, condomínio e consumos).`;
+}
+
+function aplicarDiasProporcionais(idx, valor) {
+  const row = dados.locatarios[idx];
+  const info = infoContratoNovo(row);
+  if (!info) return;
+  if (!row._orig_prop) {
+    row._orig_prop = { aluguel: row.aluguel, taxa_imob: row.taxa_imob,
+                       cond_itens_rep: Object.assign({}, row.cond_itens_rep || {}), cond_repasse: row.cond_repasse };
+  }
+  const o = row._orig_prop;
+  let dias = parseInt(valor, 10);
+  if (dias > info.dias) {
+    alert(`O mês tem ${info.dias} dias. Informe um número de 1 a ${info.dias}.`);
+    dias = 0;
+    const inp = document.querySelector(`#propbox_${idx} input`); if (inp) inp.value = '';
+  }
+  const prop = dias > 0 && dias < info.dias;          // 0, vazio ou mês inteiro = valor cheio
+  const f = prop ? dias / info.dias : 1;
+  row.dias_proporcionais = prop ? dias : 0;
+
+  row.aluguel   = _r2(o.aluguel * f);
+  row.taxa_imob = _r2(o.taxa_imob * f);
+  const itens = {};
+  let soma = 0;
+  for (const [k, v] of Object.entries(o.cond_itens_rep || {})) { itens[k] = _r2(v * f); soma += itens[k]; }
+  row.cond_itens_rep = itens;
+  row.cond_repasse = _r2(soma);
+
+  // Atualiza o que está na tela: discriminação (col. 2), cota (col. 3), total e repasse
+  const ch = document.getElementById('charges_' + idx);
+  if (ch) ch.innerHTML = montarCharges(row);
+  const cota = document.getElementById('cota_' + idx);
+  if (cota) cota.value = itens.cota || '';
+  const pi = document.getElementById('propinfo_' + idx);
+  if (pi) pi.textContent = textoPropInfo(row, info);
+  // multa já digitada em % acompanha o aluguel novo
+  if (row.multa_atraso_perc) row.multa_atraso_val = _r2(row.aluguel * row.multa_atraso_perc / 100);
+  renderTotal(idx);
+  atualizarRodape();
+}
+
 function renderTabela(lista) {
   const corpo = document.getElementById('corpo');
   corpo.innerHTML = '';
@@ -730,24 +841,7 @@ function renderTabela(lista) {
       </td>`;
 
     // Col 2: Discriminação de cobranças
-    let charges = '';
-    charges += chargeRow('Aluguel', row.aluguel, 'font-weight:700');
-
-    if (row.tem_cond && row.cond_info.length > 0) {
-      const info = row.cond_info[0];
-      charges += `<div class="charge-separator"></div>`;
-      charges += `<div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:2px">${info.edificio||'Condominio'} ${info.unidade||''}</div>`;
-      const itens = row.cond_itens_rep || {};
-      for (const [k, v] of Object.entries(itens)) {
-        if (v && k !== 'cota') charges += chargeRow(LABELS[k]||k, v);
-      }
-      const itensNR = row.cond_itens_nrep || {};
-      for (const [k, v] of Object.entries(itensNR)) {
-        if (v) charges += chargeRowNR(LABELS[k]||k, v);
-      }
-    } else if (!row.tem_cond) {
-      charges += `<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:3px">Sem condominio</div>`;
-    }
+    const charges = montarCharges(row);
 
     // Col 3: IPTU / Seguros / Extras
     const iptuVal = parseFloat(row.iptu) || 0;
@@ -977,7 +1071,7 @@ function renderTabela(lista) {
       </td>`;
 
     // Col 4: Total discriminado
-    const col4 = `<td><div class="total-box" id="totalbox_${idx}"></div></td>`;
+    const col4 = `<td>${painelDiasProporcionais(idx, row)}<div class="total-box" id="totalbox_${idx}"></div></td>`;
 
     // Col 5: Repasse ao Proprietário — inicializa ded com hist
     if (!row.cond_itens_nrep_ativo) {
@@ -1068,7 +1162,7 @@ function renderTabela(lista) {
         </div>
       </td>`;
 
-    tr.innerHTML = nomeTd + `<td><div class="charge-list">${charges}</div></td>` + col3 + col4 + col5;
+    tr.innerHTML = nomeTd + `<td><div class="charge-list" id="charges_${idx}">${charges}</div></td>` + col3 + col4 + col5;
     corpo.appendChild(tr);
     renderTotal(idx);
   });
@@ -1310,6 +1404,14 @@ function recalcCota(idx, val) {
   row.cond_itens_rep['cota'] = novo;
   row.cond_cota = novo;
   row.cond_repasse = Math.round((row.cond_repasse - old + novo) * 100) / 100;
+  if (row._orig_prop && row.dias_proporcionais) {      // cota digitada = valor proporcional; guarda o cheio pra recalcular depois
+    const info = infoContratoNovo(row);
+    if (info) {
+      const f = row.dias_proporcionais / info.dias;
+      row._orig_prop.cond_itens_rep.cota = _r2(novo / f);
+      row._orig_prop.cond_repasse = _r2(row.cond_repasse / f);
+    }
+  }
   renderTotal(idx);
   atualizarRodape();
 }
