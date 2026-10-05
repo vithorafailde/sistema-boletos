@@ -74,12 +74,12 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 
 ## Sistema de Reajustes — Regras que NÃO podem mudar
 
-### Janela de cálculo: 12 variações mensais (mês seguinte ao aniversário anterior até o aniversário atual)
-- A janela é de **12 variações mensais**: do mês M+1 do ano anterior até o mês M do ano atual
-- Ex.: aniversário em abril/2026 → janela **mai/2025 a abr/2026** (12 variações)
-- A variação de abr/2025 representa mar→abr/2025 e **não pertence** ao período abr/2025→abr/2026
-- Equivale ao cálculo do BACEN Cidadão
-- Função: `calcular_acumulado_12m()` usa `range(11, -1, -1)` — **NÃO alterar para 12 ou 13**
+### Janela de cálculo: 12 variações mensais — do MÊS DO ANIVERSÁRIO do ano anterior até o mês ANTERIOR ao aniversário atual
+- **Regra do usuário (decisão de out/2026, vale "sempre"): "considera o mês que a pessoa entrou até o 12º mês que fecha o contrato — se entrou em julho, julho até junho"** → aniversário em julho/2026 → janela **jul/2025 a jun/2026** (12 variações). O **mês do aniversário atual NÃO entra** na conta.
+- **Histórico (não confundir):** até out/2026 o sistema usava 13 variações (jul/2025 a jul/2026, "igual ao BACEN Cidadão"). O usuário trocou explicitamente pra 12 (jul → jun). **Não voltar pra 13.** Exemplo da diferença (IGPM, aniversário jul/2026): 13 var. = 1,9690%; 12 var. jul→jun = **3,1614%**.
+- Ex.: aniversário abril/2026 → janela **abr/2025 a mar/2026**; aniversário janeiro/2026 → jan/2025 a dez/2025
+- Implementação: `calcular_acumulado_12m()` usa `range(12, 0, -1)` e `calcular_por_numero_indice()` usa Index(mês anterior ao aniv, ano atual) / Index(mês anterior ao aniv, ano anterior) − 1 (ex.: jul/2026 → Index(2026-06)/Index(2025-06)). As duas dão as mesmas 12 variações. Retornam `meses_base = 12` quando a janela está completa.
+- Como o mês do aniversário não entra, **não existe mais a estimativa de IPCA ainda não publicado** (o antigo bloco 4a, "aniversário antes do dia 15", foi removido) — nenhum dado é inventado.
 
 ### Fonte dos índices — duas estratégias por status
 
@@ -93,8 +93,8 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 - IPCA: número-índice BACEN série **1737** via `calcular_por_numero_indice`
 - INPC: número-índice BACEN série **1617** via `calcular_por_numero_indice`
 - `calcular_por_numero_indice` usa denominador = mês ANTERIOR ao aniversário do ano anterior
-  - Ex.: aniversário abr/2026 → Index(2026-04) / Index(2025-03) − 1 (13 variações, igual BACEN Cidadão)
-  - **NÃO usar** Index(aniv_ano_anterior) como denominador — isso dá só 12 variações e diverge do BACEN
+  - Ex.: aniversário abr/2026 → Index(2026-03) / Index(2025-03) − 1 (12 variações, abr/2025 a mar/2026)
+  - Janela atual = 12 variações (jul → jun). Ver a seção "Janela de cálculo" acima — decisão do usuário
 - Retorna `meses_base = 12` quando dados completos
 
 **Contratos FUTURO** → variação mensal composta (dados parciais):
@@ -347,7 +347,7 @@ repasse = aluguel
 **Problema:** A lista `MESES_PT` em `salvar_extras` tinha "março" E "marco", totalizando 13 elementos. Isso fazia todos os meses a partir de abril serem gravados com número errado (+1) no `dimob_historico.json`.  
 **Fix:** Substituída por dict `{"jan":1,"fev":2,...,"dez":12}` usando os 3 primeiros caracteres do mês.
 
-### 5. IPCA divergindo do BACEN Cidadão
+### 5. IPCA divergindo do BACEN Cidadão  *(HISTÓRICO — superado: em out/2026 o usuário trocou a janela de 13 para 12 variações, jul → jun; ver "Janela de cálculo")*
 **Problema:** `calcular_por_numero_indice` usava `Index(aniv_atual) / Index(aniv_ano_anterior) − 1` = 12 variações mensais, enquanto o BACEN Cidadão inclui o próprio mês de aniversário = 13 variações.  
 **Fix:** Denominador alterado para o mês ANTERIOR ao aniversário do ano anterior — `Index(abr/2026) / Index(mar/2025) − 1` — igual ao IGPM (produto 13m). **Não reverter.**
 
@@ -508,7 +508,7 @@ Depois de processado, cada PDF de comprovante é apagado do servidor (`pdf_path.
 
 - Aparece **só em contratos `ESTE_MES`**, na coluna do percentual acumulado (abaixo do valor calculado)
 - Backend (`api_calcular_reajustes`) calcula `c['confere_calculo_exato']` (bool) e `c['confere_motivo']` (texto) por contrato
-- **Gatilho único:** a variação mensal do **último mês da janela** (o próprio mês do aniversário) veio negativa na série BACEN — usa `historicos_mensal[idx_efetivo]` na chave do mês/ano do aniversário. Vale para qualquer índice (IPCA, INPC ou IGPM)
+- **Gatilho único:** a variação mensal do **último mês da janela** (o mês ANTERIOR ao aniversário: entrou em julho → junho) veio negativa na série BACEN — usa `historicos_mensal[idx_efetivo]` na chave desse mês. Vale para qualquer índice (IPCA, INPC ou IGPM)
 - **NÃO existe gatilho por "índice ser IGPM"** — foi cogitado e descartado explicitamente; IGPM só dispara o aviso se o último mês vier negativo, igual aos outros índices
 - `confere_motivo` é só texto informativo (ex.: "Variação de Junho/2026 negativa") — não é um link, é texto puro
 - Sem emoji (segue a regra geral de não usar emojis na interface)
@@ -589,7 +589,7 @@ Todos os botões de salvar têm `confirm()` antes de executar:
 - Botão "- 1 Parcela IPTU" — removido a pedido
 - Verificação de vigência mínima **em dias** (ex: 365 dias) — a regra em vigor conta **meses completos** (ver "1º ano conta em MESES COMPLETOS" na seção de Reajustes)
 - Fonte alternativa de dados (IPEA, FGV) para qualquer índice
-- Janela de 12 meses (decisão: 13 meses — BACEN Cidadão)
+- Janela de 13 variações (a regra em vigor é **12 variações, jul → jun** — ver seção "Janela de cálculo")
 - Coluna "VENCIDO X dias" ou qualquer conceito de atraso
 - Alterar a coluna H (data de aniversário) ao aplicar reajuste
 - SMTP direto no Railway (portas 465/587 bloqueadas) — usar sempre Resend via HTTPS

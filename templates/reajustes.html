@@ -605,10 +605,10 @@ function renderTabela() {
     const chkHtml = c.aplicavel
       ? `<input type="checkbox" ${selecionados.has(c.num_linha)?'checked':''} onchange="toggleSelecionado(${c.num_linha});renderTabela();">`
       : '';
-    const aviso12 = c.meses_base === 13
+    const aviso12 = c.meses_base >= 12
       ? ` <small style="color:var(--muted)">12/12m</small>`
       : (c.meses_base > 0
-          ? ` <small style="color:var(--orange)">${c.meses_base - 1}/12m</small>`
+          ? ` <small style="color:var(--orange)">${c.meses_base}/12m</small>`
           : '');
     const metodoHtml = '';
 

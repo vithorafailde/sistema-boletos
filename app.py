@@ -388,18 +388,19 @@ def buscar_indice_igpm_ipea(tentativas=3):
 
 def calcular_por_numero_indice(hist_indice, data_aniversario):
     """Calcula variação pelo número-índice publicado (máxima precisão).
-    Fórmula: Index(mes_aniv_atual) / Index(mês_anterior_ao_aniv_ano_anterior) − 1
-    = 13 variações mensais — equivalente ao BACEN Cidadão e ao IGPM (produto 13m).
-    Ex.: aniversário abr/2026 → Index(2026-04) / Index(2025-03) − 1
+    Janela: 12 variações mensais, do MÊS DO ANIVERSÁRIO do ano anterior até o mês ANTERIOR ao
+    aniversário atual (entrou em julho → julho ... junho).
+    Fórmula: Index(mês anterior ao aniv, ano atual) / Index(mês anterior ao aniv, ano anterior) − 1
+    Ex.: aniversário jul/2026 → Index(2026-06) / Index(2025-06) − 1  (= jul/2025 a jun/2026)
     Retorna (percentual_float, 12) ou (None, 0) se dados ausentes.
     """
-    key_fim = f"{data_aniversario.year}-{data_aniversario.month:02d}"
-    m_ini = data_aniversario.month - 1
-    a_ini = data_aniversario.year - 1
-    if m_ini == 0:
-        m_ini = 12
-        a_ini -= 1
-    key_ini = f"{a_ini}-{m_ini:02d}"
+    m_fim = data_aniversario.month - 1
+    a_fim = data_aniversario.year
+    if m_fim == 0:
+        m_fim = 12
+        a_fim -= 1
+    key_fim = f"{a_fim}-{m_fim:02d}"
+    key_ini = f"{a_fim - 1}-{m_fim:02d}"
     val_fim = hist_indice.get(key_fim)
     val_ini = hist_indice.get(key_ini)
     if not val_ini or not val_fim:
@@ -408,16 +409,16 @@ def calcular_por_numero_indice(hist_indice, data_aniversario):
 
 
 def calcular_acumulado_12m(historico, data_aniversario):
-    """Calcula o índice acumulado de 13 meses (aniversário anterior até aniversário atual, inclusive).
-    Ex.: aniversário abril/2026 → janela abr/2025 a abr/2026 (13 variações mensais).
-    Equivale ao cálculo do BACEN Cidadão.
-    Retorna (percentual_float, meses_encontrados).
+    """Calcula o índice acumulado de 12 meses: do MÊS DO ANIVERSÁRIO do ano anterior até o mês
+    ANTERIOR ao aniversário atual (entrou em julho → considera julho até junho).
+    Ex.: aniversário julho/2026 → janela jul/2025 a jun/2026 (12 variações mensais).
+    Retorna (percentual_float, meses_encontrados) — 12 = janela completa.
     """
     ano_ref = data_aniversario.year
     mes_ref = data_aniversario.month
-    # 13 meses: de (ano_ref-1, mes_ref) até (ano_ref, mes_ref) — ambos inclusive
+    # 12 meses: de (ano_ref-1, mes_ref) até (ano_ref, mes_ref-1) — ambos inclusive
     keys = []
-    for i in range(12, -1, -1):
+    for i in range(12, 0, -1):
         m = mes_ref - i
         a = ano_ref
         while m <= 0:
@@ -2635,33 +2636,9 @@ def api_calcular_reajustes():
                 historicos_indice[idx] = hist_i
             # falha silenciosa — fallback automático para série mensal no cálculo
 
-    # 4a. Para contratos ESTE_MES com IPCA e aniversário antes do dia 15:
-    #     o IPCA do mês de aniversário pode não estar publicado ainda no BACEN.
-    #     Nesse caso, replica o % do mês anterior no lugar do mês ausente.
-    for c in contratos:
-        if c['status'] != 'ESTE_MES' or c.get('indice_norm') != 'IPCA':
-            continue
-        dr = date.fromisoformat(c['data_reajuste_iso'])
-        if dr.day >= 15:
-            continue
-        key_aniv = f"{dr.year}-{dr.month:02d}"
-        m_p = dr.month - 1 if dr.month > 1 else 12
-        a_p = dr.year if dr.month > 1 else dr.year - 1
-        key_prev = f"{a_p}-{m_p:02d}"
-        # Série mensal 433 — usada pelo fallback e pelo acumulado FUTURO
-        hm = historicos_mensal.get('IPCA', {})
-        if key_aniv not in hm and key_prev in hm:
-            hm[key_aniv] = hm[key_prev]
-        # Série número-índice 1737 — estima Index(M) replicando a variação de M-1
-        hi = historicos_indice.get('IPCA', {})
-        if key_aniv not in hi and key_prev in hi:
-            m_p2 = m_p - 1 if m_p > 1 else 12
-            a_p2 = a_p if m_p > 1 else a_p - 1
-            key_prev2 = f"{a_p2}-{m_p2:02d}"
-            if key_prev2 in hi:
-                hi[key_aniv] = hi[key_prev] ** 2 / hi[key_prev2]
-            else:
-                hi[key_aniv] = hi[key_prev]
+    # (Antes havia aqui um bloco que estimava o IPCA do mês do aniversário quando ainda não
+    #  publicado, replicando o mês anterior. Com a janela jul→jun o mês do aniversário não entra
+    #  mais no cálculo, então esse bloco foi removido — nenhum dado é estimado.)
 
     # 4. Calcular acumulado e novo aluguel — apenas para contratos ESTE_MES e FUTURO
     #    Contratos OK (já reajustados) não precisam de cálculo: o Excel já está correto
@@ -2733,19 +2710,22 @@ def api_calcular_reajustes():
         c['aplicavel'] = (c['status'] in ('ESTE_MES', 'RENOVAR', 'ATRASADO')) and c['novo_aluguel'] is not None
 
         # ── Aviso: sugerir conferência no site Cálculo Exato ──────────────
-        # Gatilho único: a variação do último mês da janela (mês do aniversário)
-        # veio negativa no BACEN — vale para qualquer índice, inclusive IGPM.
+        # Gatilho único: a variação do último mês da janela (o mês ANTERIOR ao aniversário:
+        # entrou em julho → janela jul..jun, último = junho) veio negativa no BACEN —
+        # vale para qualquer índice, inclusive IGPM.
         # Só para ESTE_MES — é onde o valor calculado importa de fato para aplicar.
         c['confere_calculo_exato'] = False
         c['confere_motivo']        = None
         if c['status'] == 'ESTE_MES' and acum is not None:
             try:
                 idx_efetivo = indice_aplicado or c['indice_norm']
-                key_ultimo  = f"{data_rej.year}-{data_rej.month:02d}"
+                m_ult = data_rej.month - 1 if data_rej.month > 1 else 12
+                a_ult = data_rej.year if data_rej.month > 1 else data_rej.year - 1
+                key_ultimo  = f"{a_ult}-{m_ult:02d}"
                 val_ultimo  = historicos_mensal.get(idx_efetivo, {}).get(key_ultimo)
                 if val_ultimo is not None and val_ultimo < 0:
                     c['confere_calculo_exato'] = True
-                    c['confere_motivo'] = f"Variação de {MESES_NOMES[data_rej.month - 1]}/{data_rej.year} negativa"
+                    c['confere_motivo'] = f"Variação de {MESES_NOMES[m_ult - 1]}/{a_ult} negativa"
             except Exception:
                 pass
 
