@@ -26,7 +26,6 @@ INFORMES_HISTORICO_FILE = DATA_DIR / "informes_historico.json"
 BOLETOS_ATUAL_FILE = DATA_DIR / "boletos_atual.json"
 LOCATARIOS_EMAILS_FILE = DATA_DIR / "locatarios_emails.json"
 CONFERENCIA_REPASSE_FILE = DATA_DIR / "conferencia_repasse.json"
-REAJUSTES_CONFIRMADOS_FILE = DATA_DIR / "reajustes_confirmados.json"
 LOG_ENVIOS_FILE = DATA_DIR / "log_envios.json"
 
 MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -417,7 +416,7 @@ def calcular_reajuste(status, idx_norm, data_rej, hist_mensal, hist_indice):
     (último mês da janela, usado no aviso do Cálculo Exato).
     """
     indices = ['IPCA', 'IGPM'] if idx_norm == 'MAIOR_IPCA_IGPM' else [idx_norm]
-    usa_num_indice = status in ('ESTE_MES', 'ATRASADO')
+    usa_num_indice = (status == 'ESTE_MES')
     m_ult = data_rej.month - 1 if data_rej.month > 1 else 12
     a_ult = data_rej.year if data_rej.month > 1 else data_rej.year - 1
     cands = []
@@ -473,17 +472,13 @@ def ler_excel_reajustes(path):
 
     Status baseado no mês do aniversário (o DIA do aniversário não importa — só o mês):
       ESTE_MES  → mês atual == mês SEGUINTE ao aniversário (reajustar agora)
-      ATRASADO  → o mês de aplicação já passou este ano e não há reajuste registrado
       FUTURO    → aniversário ainda não chegou este ano
-      OK        → já reajustado (registrado) ou fora da época de reajuste
+      OK        → já reajustado ou fora da época de reajuste
     """
     wb = load_workbook(str(path), data_only=True)
     ws = wb.active
     contratos = []
     hoje = date.today()
-    # Reajustes já registrados neste ano: pelo sistema (dimob_historico) ou confirmados à mão
-    dimob_ano       = ler_dimob_historico().get(str(hoje.year), {})
-    confirmados_ano = ler_reajustes_confirmados().get(str(hoje.year), {})
 
     for num_linha, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         loc  = row[4] if len(row) > 4 else None   # col E – Locatário
@@ -514,8 +509,6 @@ def ler_excel_reajustes(path):
         except ValueError:
             aniv = data_rej.replace(year=ano_aniv, day=28)
 
-        chave_rej = _chave_reajuste(str(loc).strip(), data_rej.strftime('%d/%m'))
-
         # 1º ANO: conta em MESES COMPLETOS, ignorando o dia. O contrato só entra no ciclo de reajuste
         # quando o mês do aniversário está 12+ meses depois do mês de início (início 09/2025 →
         # aniversário 09/2026 = 12 meses → reajusta em 10/2026). Contar em dias (365) bloqueava
@@ -531,13 +524,6 @@ def ler_excel_reajustes(path):
             status = 'FUTURO'
         else:
             status = 'OK'
-            # ATRASADO: o mês de aplicação já passou e não há registro de que o reajuste foi feito.
-            # Não conta contrato que já tinha terminado antes do aniversário.
-            rec = dimob_ano.get(norm(str(loc).strip()))
-            registrado = (bool(rec) and rec.get('mes_aplicacao') == mes_aplicacao and rec.get('num_linha') == num_linha) or chave_rej in confirmados_ano
-            ja_encerrado = data_fim is not None and data_fim < aniv
-            if not registrado and not ja_encerrado:
-                status = 'ATRASADO'
 
         # RENOVAR: contrato terminou no mês passado → no mês seguinte ao fim
         # aparece o sinal de renovação, independente do status de reajuste.
@@ -563,37 +549,13 @@ def ler_excel_reajustes(path):
             'data_fim':          data_fim.strftime('%d/%m/%Y') if data_fim else '',
             'status':            status,
             'mes_reajuste':      data_rej.month,
-            'chave_reajuste':    chave_rej,
             'primeiro_ano':      primeiro_ano,
         })
 
-    # Ordenar: renovar > este mês > atrasados > futuros > já feitos
-    ordem = {'RENOVAR': 0, 'ESTE_MES': 1, 'ATRASADO': 2, 'FUTURO': 3, 'OK': 4}
+    # Ordenar: renovar > este mês > futuros > já feitos
+    ordem = {'RENOVAR': 0, 'ESTE_MES': 1, 'FUTURO': 2, 'OK': 3}
     contratos.sort(key=lambda c: (ordem.get(c['status'], 4), c['mes_reajuste']))
     return contratos
-
-
-# ─── Reajustes confirmados manualmente ("já foi reajustado") ──────────────────
-
-def _chave_reajuste(locatario, data_reajuste_ddmm):
-    """Identifica um contrato pro registro de reajustes: locatário + DD/MM do aniversário
-    (o mesmo locatário pode ter dois contratos com aniversários diferentes)."""
-    return f"{norm(locatario)}|{data_reajuste_ddmm}"
-
-def ler_reajustes_confirmados():
-    if REAJUSTES_CONFIRMADOS_FILE.exists():
-        try:
-            with open(REAJUSTES_CONFIRMADOS_FILE, encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
-
-def salvar_reajustes_confirmados(dados):
-    tmp = REAJUSTES_CONFIRMADOS_FILE.with_suffix('.tmp')
-    with open(tmp, 'w', encoding='utf-8') as f:
-        json.dump(dados, f, ensure_ascii=False, indent=2)
-    tmp.replace(REAJUSTES_CONFIRMADOS_FILE)
 
 
 def _avancar_aniversario(d):
@@ -610,13 +572,12 @@ def aplicar_reajustes_excel(path, contratos_aplicar):
 
     contratos_aplicar: lista de dicts com ao menos:
         num_linha, novo_aluguel, locatario, mes_reajuste
-    Retorna (n_atualizados, erros[], chaves_aplicadas[], linhas_ok[])
+    Retorna (n_atualizados, erros[], linhas_ok[])
     """
     from openpyxl import load_workbook as _lw
     wb = _lw(str(path))
     ws = wb.active
     erros = []
-    aplicadas = []
     linhas_ok = []
     n = 0
 
@@ -645,19 +606,25 @@ def aplicar_reajustes_excel(path, contratos_aplicar):
             chave_dimob    = norm(locatario) if locatario else f"linha_{nl}"
 
             # ATUALIZA (não substitui) — substituir apagava multa/juros/abono do DIMOB já salvos pra esse locatário
-            historico_dimob[ano_atual].setdefault(chave_dimob, {}).update({
+            reg_dimob = historico_dimob[ano_atual].setdefault(chave_dimob, {})
+            reg_dimob.update({
                 'aluguel_antigo':  aluguel_antigo,
                 'aluguel_novo':    novo_alug,
                 'locatario':       locatario,
                 'mes_aplicacao':   mes_aplicacao,
                 'num_linha':       nl,
+                'aplicado_em':     date.today().isoformat(),
             })
+            # Reajuste aplicado DEPOIS do mês seguinte ao aniversário: o aluguel novo só vale a partir do
+            # mês em que foi aplicado (no mínimo) — senão o DIMOB infla os meses anteriores. Ajustável na tela do DIMOB.
+            if mes_aplicacao and date.today().month > mes_aplicacao:
+                reg_dimob['mes_efetivo'] = date.today().month
+            else:
+                reg_dimob.pop('mes_efetivo', None)
 
             ws.cell(row=nl, column=6).value = novo_alug   # col F – único campo alterado
             n += 1
             linhas_ok.append(nl)
-            if c.get('chave_reajuste'):
-                aplicadas.append(c['chave_reajuste'])
         except Exception as e:
             erros.append(f"Linha {c.get('num_linha','?')} ({c.get('locatario','')}): {e}")
 
@@ -670,7 +637,7 @@ def aplicar_reajustes_excel(path, contratos_aplicar):
     tmp = Path(str(path) + '.tmp')
     wb.save(str(tmp))
     tmp.replace(Path(path))
-    return n, erros, aplicadas, linhas_ok
+    return n, erros, linhas_ok
 
 
 def similaridade(palavras_a, palavras_b):
@@ -920,6 +887,11 @@ def calcular_meses_dimob(contrato, ano, historico_dimob):
     chave    = norm(contrato['locatario'])
     hist_ano = historico_dimob.get(str(ano), {})
     hist_c   = hist_ano.get(chave, {})
+    # Mês em que o aluguel novo REALMENTE passou a valer (reajuste aplicado em atraso / ajustado à mão).
+    # Sem isso o DIMOB assume o mês seguinte ao aniversário e infla os meses entre o aniversário e a aplicação.
+    mes_ef = hist_c.get('mes_efetivo')
+    if isinstance(mes_ef, int) and 1 <= mes_ef <= 12:
+        mes_aplicacao = mes_ef
     aluguel_antigo_raw = hist_c.get('aluguel_antigo')
     # Divide aluguel_antigo pelo nº de proprietários (histórico guarda valor total)
     aluguel_antigo = round(aluguel_antigo_raw / n, 2) if aluguel_antigo_raw is not None and n > 1 else aluguel_antigo_raw
@@ -2646,8 +2618,7 @@ def api_calcular_reajustes():
     #    Estratégia: número-índice (precisão máxima) para contratos ESTE_MES,
     #    variação mensal composta (BACEN SGS) para contratos FUTURO (dados parciais).
     indices_necessarios = set(c['indice_norm'] for c in contratos)
-    # ATRASADO calcula igual a ESTE_MES (mesma janela e número-índice) — só que aplicado com atraso
-    tem_este_mes = any(c['status'] in ('ESTE_MES', 'ATRASADO') for c in contratos)
+    tem_este_mes = any(c['status'] == 'ESTE_MES' for c in contratos)
 
     # MAIOR_IPCA_IGPM requer dados de ambos os índices
     indices_busca = set()
@@ -2717,7 +2688,7 @@ def api_calcular_reajustes():
             c['diferenca']    = None
 
         # Aplicavel no mes de aplicacao — tanto reajuste normal quanto renovação
-        c['aplicavel'] = (c['status'] in ('ESTE_MES', 'RENOVAR', 'ATRASADO')) and c['novo_aluguel'] is not None
+        c['aplicavel'] = (c['status'] in ('ESTE_MES', 'RENOVAR')) and c['novo_aluguel'] is not None
 
         # ── Aviso: sugerir conferência no site Cálculo Exato ──────────────
         # Gatilho único: a variação do ÚLTIMO mês da janela (o mês anterior ao aniversário) veio negativa no BACEN —
@@ -2740,8 +2711,7 @@ def api_calcular_reajustes():
     renovar     = sum(1 for c in contratos if c['status'] == 'RENOVAR')
     este_mes    = sum(1 for c in contratos if c['status'] == 'ESTE_MES')
     futuros     = sum(1 for c in contratos if c['status'] == 'FUTURO')
-    atrasados   = sum(1 for c in contratos if c['status'] == 'ATRASADO')
-    ok_count    = total - renovar - este_mes - futuros - atrasados
+    ok_count    = total - renovar - este_mes - futuros
     com_calculo = sum(1 for c in contratos if c['acumulado_pct'] is not None)
     aplicaveis  = sum(1 for c in contratos if c.get('aplicavel'))
 
@@ -2753,7 +2723,6 @@ def api_calcular_reajustes():
             'renovar': renovar,
             'este_mes': este_mes,
             'futuros': futuros,
-            'atrasados': atrasados,
             'ok': ok_count,
             'com_calculo': com_calculo,
             'aplicaveis': aplicaveis,
@@ -2761,25 +2730,6 @@ def api_calcular_reajustes():
             'data_consulta': hoje.strftime('%d/%m/%Y'),
         }
     })
-
-
-@app.route('/api/reajustes_confirmar', methods=['POST'])
-@login_required
-def api_reajustes_confirmar():
-    """Marca contratos ATRASADO como "já reajustado" (ex.: foi reajustado direto na planilha,
-    sem passar pelo sistema). Vale pro ano corrente. Não altera a planilha."""
-    contratos = (request.get_json(silent=True) or {}).get('contratos') or []
-    chaves = [(c.get('chave_reajuste') or '').strip() for c in contratos]
-    chaves = [k for k in chaves if k]
-    if not chaves:
-        return jsonify({'ok': False, 'erro': 'Nenhum contrato informado.'})
-    ano = str(date.today().year)
-    conf = ler_reajustes_confirmados()
-    conf.setdefault(ano, {})
-    for k in chaves:
-        conf[ano][k] = True
-    salvar_reajustes_confirmados(conf)
-    return jsonify({'ok': True, 'confirmados': len(chaves)})
 
 
 @app.route('/api/aplicar_reajustes', methods=['POST'])
@@ -2799,22 +2749,9 @@ def api_aplicar_reajustes():
         return jsonify({'ok': False, 'erro': 'Planilha não encontrada no servidor.'})
 
     try:
-        n, erros, aplicadas, linhas_ok = aplicar_reajustes_excel(excel_path, contratos_aplicar)
+        n, erros, linhas_ok = aplicar_reajustes_excel(excel_path, contratos_aplicar)
     except Exception as e:
         return jsonify({'ok': False, 'erro': f'Erro ao atualizar planilha: {e}'})
-
-    # Registra CADA contrato aplicado (locatário + DD/MM) — o registro do DIMOB é por locatário e
-    # não distingue dois contratos do mesmo locatário; sem isso o 2º contrato sumia de "Atrasados".
-    if aplicadas:
-        try:
-            ano = str(date.today().year)
-            conf = ler_reajustes_confirmados()
-            conf.setdefault(ano, {})
-            for k in aplicadas:
-                conf[ano][k] = True
-            salvar_reajustes_confirmados(conf)
-        except Exception:
-            pass
 
     return jsonify({
         'ok': n > 0,
@@ -2953,7 +2890,9 @@ def api_dimob_calcular():
             'cpf_locatario':    c['cpf_locatario'],
             'aluguel_atual':    c['aluguel'],
             'aluguel_antigo':   aluguel_antigo,
-            'mes_aplicacao':     c['mes_aplicacao'],
+            'mes_aplicacao':     (hist_c.get('mes_efetivo') if isinstance(hist_c.get('mes_efetivo'), int) else c['mes_aplicacao']),
+            'mes_aplicacao_planilha': c['mes_aplicacao'],
+            'mes_efetivo_manual': isinstance(hist_c.get('mes_efetivo'), int),
             'meses':             meses,
             'total':             total,
             'comissao':          comissao,
@@ -2993,12 +2932,20 @@ def api_dimob_salvar_historico():
         if not locatario or not aluguel_antigo:
             continue
         chave = norm(locatario)
-        historico[ano][chave] = {
+        # ATUALIZA (não substitui): substituir apagava multa/juros/abono já salvos desse locatário
+        reg = historico[ano].setdefault(chave, {})
+        reg.update({
             'aluguel_antigo': float(aluguel_antigo),
             'aluguel_novo':   float(c.get('aluguel_novo', 0)),
             'locatario':      locatario,
             'mes_aplicacao':  c.get('mes_aplicacao'),
-        }
+        })
+        try:
+            mes_ef = int(c.get('mes_efetivo')) if c.get('mes_efetivo') else None
+        except (TypeError, ValueError):
+            mes_ef = None
+        if mes_ef and 1 <= mes_ef <= 12:
+            reg['mes_efetivo'] = mes_ef
 
     salvar_dimob_historico(historico)
     return jsonify({'ok': True, 'salvos': len(contratos)})

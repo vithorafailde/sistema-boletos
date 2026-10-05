@@ -424,6 +424,9 @@ function renderizarTabela(data) {
         <div class="cc-sep"></div>
         ${alugAntHtml}
         <div class="cc-sep"></div>
+        <div><span class="cc-lbl" title="Mês em que o aluguel novo passou a ser cobrado de fato. Os meses antes disso usam o aluguel anterior.">Novo vale desde</span>
+          <select class="sel-saida" onchange="marcarMesVigencia(${idx},this.value)" style="${c.mes_efetivo_manual ? 'border-color:var(--accent);font-weight:700;' : ''}">${MESES.map((m,i) => `<option value="${i+1}"${(c.mes_aplicacao||0)===i+1?' selected':''}>${m}</option>`).join('')}</select></div>
+        <div class="cc-sep"></div>
         <div>${badgeHtml}</div>
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
           <div><span class="cc-lbl">Saída</span><select class="sel-saida" onchange="atualizarSaida(${idx},this.value)">${saidaOpts}</select></div>
@@ -474,6 +477,19 @@ function atualizarFiltroInfo() {
 }
 
 let alteracoesHist = {}; // idx → valor digitado
+let alteracoesMes  = {}; // idx → mês (1-12) em que o aluguel novo passou a valer
+
+function atualizarBtnSalvarHist() {
+  document.getElementById('btnSalvarHist').style.display =
+    (Object.keys(alteracoesHist).length + Object.keys(alteracoesMes).length) > 0 ? '' : 'none';
+}
+function marcarMesVigencia(idx, valor) {
+  const c = dadosCalculados[idx];
+  const m = parseInt(valor, 10);
+  if (!m || m === c.mes_aplicacao) delete alteracoesMes[idx];
+  else alteracoesMes[idx] = m;
+  atualizarBtnSalvarHist();
+}
 
 function marcarAlterado(idx, valor) {
   const v = parseFloat(String(valor).replace(',', '.'));
@@ -482,25 +498,32 @@ function marcarAlterado(idx, valor) {
   } else {
     delete alteracoesHist[idx];
   }
-  document.getElementById('btnSalvarHist').style.display =
-    Object.keys(alteracoesHist).length > 0 ? '' : 'none';
+  atualizarBtnSalvarHist();
 }
 
 async function salvarHistoricoManual() {
-  if (!dadosCalculados || Object.keys(alteracoesHist).length === 0) return;
-  if (!confirm('Confirma o salvamento dos aluguéis anteriores?\n\nOs valores serão gravados no histórico e os informes serão recalculados.')) return;
+  if (!dadosCalculados || (Object.keys(alteracoesHist).length + Object.keys(alteracoesMes).length) === 0) return;
+  // Junta o que mudou: aluguel anterior digitado e/ou mês em que o novo valor passou a valer
+  const idxs = [...new Set([...Object.keys(alteracoesHist), ...Object.keys(alteracoesMes)])];
+  const semAnterior = idxs.filter(i => !(alteracoesHist[i] || dadosCalculados[i].aluguel_antigo));
+  if (semAnterior.length) {
+    alert('Informe o "Alug. anterior" de: ' + semAnterior.map(i => dadosCalculados[i].locatario).join(', ') + '\n\nSem ele não dá pra saber o valor dos meses antes do reajuste.');
+    return;
+  }
+  if (!confirm('Confirma o salvamento?\n\nOs valores (aluguel anterior e mês em que o novo aluguel passou a valer) serão gravados no histórico e os informes serão recalculados.')) return;
 
   const btn = document.getElementById('btnSalvarHist');
   btn.disabled = true;
   btn.textContent = 'Salvando...';
 
-  const payload = Object.entries(alteracoesHist).map(([idx, aluguel_antigo]) => {
+  const payload = idxs.map(idx => {
     const c = dadosCalculados[idx];
     return {
       locatario:     c.locatario,
-      aluguel_antigo,
+      aluguel_antigo: alteracoesHist[idx] || c.aluguel_antigo,
       aluguel_novo:  c.aluguel_atual,
-      mes_aplicacao: c.mes_aplicacao,
+      mes_aplicacao: c.mes_aplicacao_planilha,        // mês seguinte ao aniversário (planilha)
+      mes_efetivo:   alteracoesMes[idx] || (c.mes_efetivo_manual ? c.mes_aplicacao : null),  // mês em que o novo valor passou a valer
     };
   });
 
@@ -515,6 +538,7 @@ async function salvarHistoricoManual() {
 
     // Recalcula automaticamente com o histórico salvo
     alteracoesHist = {};
+    alteracoesMes = {};
     document.getElementById('btnSalvarHist').style.display = 'none';
     showSalvo();
     await calcular();

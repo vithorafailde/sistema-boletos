@@ -4,7 +4,6 @@ data/historico.json
 data/informes_historico.json
 data/boletos_atual.json
 data/conferencia_repasse.json
-data/reajustes_confirmados.json
 __pycache__/
 *.pyc
 *.tmp
