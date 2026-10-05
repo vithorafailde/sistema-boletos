@@ -612,19 +612,6 @@ function renderTabela() {
           : '');
     const metodoHtml = '';
 
-    // As duas janelas (mês de entrada x mês seguinte): vale a MAIOR — destaca a que valeu
-    const fmtJ = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:4, maximumFractionDigits:4}) + '%';
-    const janelasHtml = (c.acum_entrada != null && c.acum_seguinte != null) ? `
-      <div style="margin-top:4px;font-size:12px;color:var(--muted);line-height:1.5;">
-        <span style="${c.janela_aplicada === 'entrada' ? 'font-weight:700;color:var(--text)' : ''}">Mês de entrada: ${fmtJ(c.acum_entrada)}</span><br>
-        <span style="${c.janela_aplicada === 'seguinte' ? 'font-weight:700;color:var(--text)' : ''}">Mês seguinte: ${fmtJ(c.acum_seguinte)}</span>
-        <span style="font-style:italic"> — vale o maior</span>
-      </div>` : '';
-    const aguardandoHtml = c.aguardando_indice ? `
-      <div style="margin-top:4px;font-size:13px;color:var(--orange);font-weight:700;">
-        Aguardando índice de ${esc(c.aguardando_indice)} — o valor pode subir quando for publicado
-      </div>` : '';
-
     // Aviso: conferir o valor no site Cálculo Exato (variação do último mês negativa)
     const confereHtml = c.status === 'ESTE_MES' && c.confere_calculo_exato ? `
       <div style="margin-top:4px;font-size:14px;color:var(--yellow);font-weight:700;">
@@ -688,7 +675,7 @@ function renderTabela() {
       <td style="white-space:nowrap">${esc(c.data_reajuste)}</td>
       <td>${c.primeiro_ano ? `<span class="badge" style="background:#D8E4E4;color:#6B8585;border:1px solid #C8D4D4" title="Ainda não completou 12 meses de contrato até o aniversário">Menos de 1 ano</span>` : badgeStatus(c.status)}${c.status === 'ATRASADO' ? `
         <div style="margin-top:5px"><button class="btn-link-ja" onclick="confirmarJaReajustado(${c.num_linha})" title="Já foi reajustado (ex.: direto na planilha) — tira daqui sem alterar nada">Já foi reajustado</button></div>` : ''}</td>
-      <td>${pct(c.acumulado_pct)}${aviso12}${metodoHtml}${janelasHtml}${aguardandoHtml}${confereHtml}</td>
+      <td>${pct(c.acumulado_pct)}${aviso12}${metodoHtml}${confereHtml}</td>
       <td class="td-novo">${novoValorWrap}</td>
       <td class="td-dif" style="white-space:nowrap">${difValor}</td>
     </tr>`;

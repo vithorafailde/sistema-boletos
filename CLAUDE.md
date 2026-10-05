@@ -74,18 +74,14 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 
 ## Sistema de Reajustes — Regras que NÃO podem mudar
 
-### Janela de cálculo: 12 variações; no IGPM vale a MAIOR de DUAS janelas (cláusula do contrato)
-- **Janela "entrada"** (vale para TODOS os índices — IPCA, INPC, IGPM): começa no mês do aniversário/entrada → aniversário 24/09/2026 = **set/2025 a ago/2026** (12 variações; o mês do aniversário atual não entra)
-- **Janela "seguinte"** (**SÓ PARA O IGPM** — pedido explícito do usuário, "está no contrato"): começa no mês POSTERIOR → aniversário 24/09/2026 = **out/2025 a set/2026** (12 variações; o próprio mês do aniversário entra)
-- **IGPM aplica o MAIOR das duas janelas.** **IPCA/INPC usam só a "entrada"** (não existe janela "seguinte" pra eles).
-- **Contratos "IPCA ou IGPM"** (`MAIOR_IPCA_IGPM`): candidatos = IPCA(entrada), IGPM(entrada), IGPM(seguinte) — vale o maior de todos; `indice_aplicado` diz qual índice venceu. Como a coluna K é lida: texto com IPCA **e** IGPM (ex: "IPCA/IGPM", "maior IPCA IGPM") → `normalizar_indice` devolve `MAIOR_IPCA_IGPM`.
-- Implementação: `calcular_reajuste()` (app.py) — usa `calcular_acumulado_12m()` / `calcular_por_numero_indice()` com o aniversário deslocado +1 mês pra janela "seguinte" (`_deslocar_mes`). Só compara janelas **completas** (12 meses publicados) quando existem.
-- **Janela incompleta** (só ocorre na "seguinte" do IGPM, se o IGPM do mês do aniversário ainda não saiu): valor provisório e a linha mostra **"Aguardando índice de ..."** (`aguardando_indice`). Só ESTE_MES/ATRASADO. Não bloqueia aplicar, mas conferir antes.
-- Na tabela, contratos de IGPM mostram os dois percentuais ("Mês de entrada: X% / Mês seguinte: Y% — vale o maior") com o que valeu em negrito (`acum_entrada`, `acum_seguinte`, `janela_aplicada`); IPCA/INPC mostram só o percentual
-- **Histórico (não confundir):** até out/2026 o sistema usou 13 variações (jul a jul), depois 12 (jul a jun) pra todos; depois "maior de duas janelas" pra todos os índices — o usuário limitou a segunda janela ao IGPM. **Não estender pro IPCA/INPC sem pedido explícito.**
-- Aviso "Cálculo Exato" olha o último mês da janela que valeu (`ultimo_key`).
-- Como a janela "entrada" não inclui o mês do aniversário, **não existe estimativa de IPCA não publicado** (bloco "4a" removido) — nenhum dado é inventado.
-- Se algum contrato de IGPM NÃO tiver essa cláusula, isso precisa virar regra por contrato (coluna na planilha) — hoje a regra é global para o IGPM.
+### Janela de cálculo: UMA janela de 12 variações — do mês de entrada até o 12º mês
+- **Regra do usuário (decisão final de out/2026): "o mês que entrou até o outro ano para dar 12"** → entrou/aniversário em julho → **julho/2025 a junho/2026**; aniversário 24/09/2026 → **set/2025 a ago/2026**. O mês do aniversário atual **não entra**. Vale para **todos** os índices (IPCA, INPC, IGPM).
+- **NÃO existe segunda janela / comparação "mês seguinte"** — foi implementada (maior entre entrada e mês seguinte, só IGPM) e o usuário mandou **apagar**. Não reintroduzir sem pedido explícito.
+- **Contratos "IPCA ou IGPM"** (`MAIOR_IPCA_IGPM`): calcula IPCA e IGPM **na mesma janela** e usa o maior (`indice_aplicado` diz qual). Coluna K lida por `normalizar_indice`: texto com IPCA **e** IGPM (qualquer ordem/caixa: "IGPM/ipca", "IPCA/IGPM acumulado") → `MAIOR_IPCA_IGPM`. "acumulado" na célula é só texto — o cálculo é sempre o acumulado das 12 variações.
+- Implementação: `calcular_reajuste()` (app.py) → `calcular_acumulado_12m()` (`range(12, 0, -1)`, série mensal) ou `calcular_por_numero_indice()` (IPCA/INPC em ESTE_MES/ATRASADO: Index(mês anterior ao aniv, ano atual) / Index(mesmo mês, ano anterior) − 1). Ambas dão as mesmas 12 variações. `meses_base = 12` = janela completa.
+- Aviso "Cálculo Exato" olha o último mês da janela (mês anterior ao aniversário, `ultimo_key`).
+- Como o mês do aniversário não entra, **não existe estimativa de IPCA não publicado** (bloco "4a" removido) — nenhum dado é inventado.
+- **Histórico (não confundir):** até out/2026 usou-se 13 variações (jul a jul), depois 12 (jul a jun), depois "maior de duas janelas" — esta última foi removida. Hoje: **uma janela de 12, mês de entrada → 12º mês.** **Não voltar pra 13 nem pra duas janelas.**
 
 ### Fonte dos índices — duas estratégias por status
 
@@ -100,7 +96,7 @@ A mesma planilha é usada pelos três sistemas (boletos, reajustes e DIMOB).
 - INPC: número-índice BACEN série **1617** via `calcular_por_numero_indice`
 - `calcular_por_numero_indice` usa denominador = mês ANTERIOR ao aniversário do ano anterior
   - Ex.: aniversário abr/2026 → Index(2026-03) / Index(2025-03) − 1 (12 variações, abr/2025 a mar/2026)
-  - Isso é a janela "entrada"; no IGPM o sistema calcula também a "seguinte" e usa a maior. Ver a seção "Janela de cálculo" acima — decisão do usuário
+  - Essa é a janela única em vigor (mês de entrada → 12º mês). Ver a seção "Janela de cálculo" acima — decisão do usuário
 - Retorna `meses_base = 12` quando dados completos
 
 **Contratos FUTURO** → variação mensal composta (dados parciais):
@@ -353,7 +349,7 @@ repasse = aluguel
 **Problema:** A lista `MESES_PT` em `salvar_extras` tinha "março" E "marco", totalizando 13 elementos. Isso fazia todos os meses a partir de abril serem gravados com número errado (+1) no `dimob_historico.json`.  
 **Fix:** Substituída por dict `{"jan":1,"fev":2,...,"dez":12}` usando os 3 primeiros caracteres do mês.
 
-### 5. IPCA divergindo do BACEN Cidadão  *(HISTÓRICO — superado: em out/2026 a regra virou "12 variações; no IGPM o maior de duas janelas"; ver "Janela de cálculo")*
+### 5. IPCA divergindo do BACEN Cidadão  *(HISTÓRICO — superado: em out/2026 a regra final é UMA janela de 12 variações, mês de entrada → 12º mês; ver "Janela de cálculo")*
 **Problema:** `calcular_por_numero_indice` usava `Index(aniv_atual) / Index(aniv_ano_anterior) − 1` = 12 variações mensais, enquanto o BACEN Cidadão inclui o próprio mês de aniversário = 13 variações.  
 **Fix:** Denominador alterado para o mês ANTERIOR ao aniversário do ano anterior — `Index(abr/2026) / Index(mar/2025) − 1` — igual ao IGPM (produto 13m). **Não reverter.**
 
@@ -514,7 +510,7 @@ Depois de processado, cada PDF de comprovante é apagado do servidor (`pdf_path.
 
 - Aparece **só em contratos `ESTE_MES`**, na coluna do percentual acumulado (abaixo do valor calculado)
 - Backend (`api_calcular_reajustes`) calcula `c['confere_calculo_exato']` (bool) e `c['confere_motivo']` (texto) por contrato
-- **Gatilho único:** a variação mensal do **último mês da janela que valeu** ("entrada": mês anterior ao aniversário; "seguinte": o próprio mês do aniversário) veio negativa na série BACEN — usa `historicos_mensal[idx_efetivo]` na chave `ultimo_key`. Vale para qualquer índice (IPCA, INPC ou IGPM)
+- **Gatilho único:** a variação mensal do **último mês da janela** (o mês anterior ao aniversário: entrou em julho → junho) veio negativa na série BACEN — usa `historicos_mensal[idx_efetivo]` na chave `ultimo_key`. Vale para qualquer índice (IPCA, INPC ou IGPM)
 - **NÃO existe gatilho por "índice ser IGPM"** — foi cogitado e descartado explicitamente; IGPM só dispara o aviso se o último mês vier negativo, igual aos outros índices
 - `confere_motivo` é só texto informativo (ex.: "Variação de Junho/2026 negativa") — não é um link, é texto puro
 - Sem emoji (segue a regra geral de não usar emojis na interface)
@@ -595,7 +591,7 @@ Todos os botões de salvar têm `confirm()` antes de executar:
 - Botão "- 1 Parcela IPTU" — removido a pedido
 - Verificação de vigência mínima **em dias** (ex: 365 dias) — a regra em vigor conta **meses completos** (ver "1º ano conta em MESES COMPLETOS" na seção de Reajustes)
 - Fonte alternativa de dados (IPEA, FGV) para qualquer índice
-- Janela única de 12 ou 13 variações (a regra em vigor é 12 variações, e no **IGPM** o maior de duas janelas — ver seção "Janela de cálculo")
+- Janela única de 12 ou 13 variações (a regra em vigor é UMA janela de 12 variações — ver seção "Janela de cálculo")
 - Coluna "VENCIDO X dias" ou qualquer conceito de atraso
 - Alterar a coluna H (data de aniversário) ao aplicar reajuste
 - SMTP direto no Railway (portas 465/587 bloqueadas) — usar sempre Resend via HTTPS
