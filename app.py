@@ -408,6 +408,62 @@ def calcular_por_numero_indice(hist_indice, data_aniversario):
     return round((val_fim / val_ini - 1) * 100, 4), 12
 
 
+def _deslocar_mes(d, n):
+    """Primeiro dia do mês n meses depois de d (n pode ser 0)."""
+    t = d.year * 12 + (d.month - 1) + n
+    return date(t // 12, t % 12 + 1, 1)
+
+
+def calcular_reajuste(status, idx_norm, data_rej, hist_mensal, hist_indice):
+    """Calcula o reajuste. Janelas de 12 variações:
+      - 'entrada'  : do mês do aniversário do ano anterior até o mês anterior ao aniversário
+                     (entrou em set/2025 → set/2025 a ago/2026) — vale pra TODOS os índices
+      - 'seguinte' : começando no mês POSTERIOR (out/2025 a set/2026) — SÓ PRO IGPM
+    No IGPM aplica a MAIOR das duas janelas (cláusula contratual, confirmada pelo usuário em out/2026).
+    Para MAIOR_IPCA_IGPM: candidatos = IPCA(entrada), IGPM(entrada), IGPM(seguinte) — vale o maior.
+    Só considera janelas COMPLETAS (12 meses publicados) quando houver; senão usa a maior das parciais.
+    Retorna dict com acum, meses, indice_aplicado, janela, acum_entrada, acum_seguinte,
+    aguardando (bool: alguma janela ainda sem todos os meses publicados), ultimo_key/ultimo_label.
+    """
+    indices = ['IPCA', 'IGPM'] if idx_norm == 'MAIOR_IPCA_IGPM' else [idx_norm]
+    usa_num_indice = status in ('ESTE_MES', 'ATRASADO')
+    cands = []
+    for nome in indices:
+        # A janela do "mês seguinte" vale SÓ pro IGPM (pedido explícito). IPCA/INPC usam só a "entrada".
+        janelas = (('entrada', 0), ('seguinte', 1)) if nome == 'IGPM' else (('entrada', 0),)
+        for janela, desloc in janelas:
+            ref = _deslocar_mes(data_rej, desloc)
+            pct, meses = None, 0
+            if usa_num_indice and nome != 'IGPM' and nome in hist_indice:
+                pct, meses = calcular_por_numero_indice(hist_indice[nome], ref)
+            if pct is None:
+                pct, meses = calcular_acumulado_12m(hist_mensal.get(nome, {}), ref)
+            if pct is None:
+                continue
+            m_ult = ref.month - 1 if ref.month > 1 else 12
+            a_ult = ref.year if ref.month > 1 else ref.year - 1
+            cands.append({'pct': pct, 'meses': meses, 'indice': nome, 'janela': janela,
+                          'ultimo_key': f"{a_ult}-{m_ult:02d}", 'ultimo_label': f"{MESES_NOMES[m_ult - 1]}/{a_ult}"})
+    if not cands:
+        return {'acum': None, 'meses': 0, 'indice_aplicado': None, 'janela': None,
+                'acum_entrada': None, 'acum_seguinte': None, 'aguardando': False,
+                'ultimo_key': None, 'ultimo_label': None, 'aguardando_label': None}
+    completas = [x for x in cands if x['meses'] >= 12]
+    venc = max(completas or cands, key=lambda x: x['pct'])
+    do_indice = {x['janela']: x for x in cands if x['indice'] == venc['indice']}
+    incompleta = [x for x in cands if x['meses'] < 12 and x['indice'] == venc['indice']]
+    return {
+        'acum': venc['pct'], 'meses': venc['meses'],
+        'indice_aplicado': venc['indice'] if idx_norm == 'MAIOR_IPCA_IGPM' else None,
+        'janela': venc['janela'],
+        'acum_entrada':  do_indice['entrada']['pct']  if 'entrada'  in do_indice else None,
+        'acum_seguinte': do_indice['seguinte']['pct'] if 'seguinte' in do_indice else None,
+        'aguardando': usa_num_indice and bool(incompleta),
+        'aguardando_label': incompleta[0]['ultimo_label'] if (usa_num_indice and incompleta) else None,
+        'ultimo_key': venc['ultimo_key'], 'ultimo_label': venc['ultimo_label'],
+    }
+
+
 def calcular_acumulado_12m(historico, data_aniversario):
     """Calcula o índice acumulado de 12 meses: do MÊS DO ANIVERSÁRIO do ano anterior até o mês
     ANTERIOR ao aniversário atual (entrou em julho → considera julho até junho).
@@ -2653,48 +2709,20 @@ def api_calcular_reajustes():
             continue
 
         metodo = 'mensal'
-        indice_aplicado = None  # qual índice foi efetivamente usado (para MAIOR_IPCA_IGPM)
         try:
             data_rej = date.fromisoformat(c['data_reajuste_iso'])
-            idx = c['indice_norm']
-
-            def _calcular_um(nome_idx):
-                """Calcula acumulado para um índice específico."""
-                if c['status'] in ('ESTE_MES', 'ATRASADO'):
-                    if nome_idx == 'IGPM':
-                        return calcular_acumulado_12m(historicos_mensal.get('IGPM', {}), data_rej)
-                    elif nome_idx in historicos_indice:
-                        r, m = calcular_por_numero_indice(historicos_indice[nome_idx], data_rej)
-                        if r is None:
-                            return calcular_acumulado_12m(historicos_mensal.get(nome_idx, {}), data_rej)
-                        return r, m
-                    else:
-                        return calcular_acumulado_12m(historicos_mensal.get(nome_idx, {}), data_rej)
-                else:
-                    return calcular_acumulado_12m(historicos_mensal.get(nome_idx, {}), data_rej)
-
-            if idx == 'MAIOR_IPCA_IGPM':
-                acum_ipca, meses_ipca = _calcular_um('IPCA')
-                acum_igpm, meses_igpm = _calcular_um('IGPM')
-                # Usa o maior; se um falhar, usa o outro
-                if acum_ipca is not None and acum_igpm is not None:
-                    if acum_ipca >= acum_igpm:
-                        acum, meses, indice_aplicado = acum_ipca, meses_ipca, 'IPCA'
-                    else:
-                        acum, meses, indice_aplicado = acum_igpm, meses_igpm, 'IGPM'
-                elif acum_ipca is not None:
-                    acum, meses, indice_aplicado = acum_ipca, meses_ipca, 'IPCA'
-                elif acum_igpm is not None:
-                    acum, meses, indice_aplicado = acum_igpm, meses_igpm, 'IGPM'
-                else:
-                    acum, meses = None, 0
-            else:
-                acum, meses = _calcular_um(idx)
-
+            r = calcular_reajuste(c['status'], c['indice_norm'], data_rej, historicos_mensal, historicos_indice)
         except Exception:
-            acum, meses = None, 0
+            r = {'acum': None, 'meses': 0, 'indice_aplicado': None, 'janela': None, 'acum_entrada': None,
+                 'acum_seguinte': None, 'aguardando': False, 'aguardando_label': None, 'ultimo_key': None, 'ultimo_label': None}
+        acum, meses, indice_aplicado = r['acum'], r['meses'], r['indice_aplicado']
         c['metodo_calculo'] = metodo
         c['indice_aplicado'] = indice_aplicado  # None para índices simples
+        # As duas janelas (mês de entrada x mês seguinte) e qual valeu — a MAIOR vale pro reajuste
+        c['janela_aplicada']  = r['janela']
+        c['acum_entrada']     = r['acum_entrada']
+        c['acum_seguinte']    = r['acum_seguinte']
+        c['aguardando_indice'] = r['aguardando_label']   # ex.: "Setembro/2026" — falta publicar; valor pode subir
 
         c['acumulado_pct'] = acum
         c['meses_base']    = meses
@@ -2710,22 +2738,19 @@ def api_calcular_reajustes():
         c['aplicavel'] = (c['status'] in ('ESTE_MES', 'RENOVAR', 'ATRASADO')) and c['novo_aluguel'] is not None
 
         # ── Aviso: sugerir conferência no site Cálculo Exato ──────────────
-        # Gatilho único: a variação do último mês da janela (o mês ANTERIOR ao aniversário:
-        # entrou em julho → janela jul..jun, último = junho) veio negativa no BACEN —
+        # Gatilho único: a variação do ÚLTIMO mês da janela que valeu (entrada → mês anterior ao
+        # aniversário; seguinte → o próprio mês do aniversário) veio negativa no BACEN —
         # vale para qualquer índice, inclusive IGPM.
         # Só para ESTE_MES — é onde o valor calculado importa de fato para aplicar.
         c['confere_calculo_exato'] = False
         c['confere_motivo']        = None
-        if c['status'] == 'ESTE_MES' and acum is not None:
+        if c['status'] == 'ESTE_MES' and acum is not None and r['ultimo_key']:
             try:
                 idx_efetivo = indice_aplicado or c['indice_norm']
-                m_ult = data_rej.month - 1 if data_rej.month > 1 else 12
-                a_ult = data_rej.year if data_rej.month > 1 else data_rej.year - 1
-                key_ultimo  = f"{a_ult}-{m_ult:02d}"
-                val_ultimo  = historicos_mensal.get(idx_efetivo, {}).get(key_ultimo)
+                val_ultimo  = historicos_mensal.get(idx_efetivo, {}).get(r['ultimo_key'])
                 if val_ultimo is not None and val_ultimo < 0:
                     c['confere_calculo_exato'] = True
-                    c['confere_motivo'] = f"Variação de {MESES_NOMES[m_ult - 1]}/{a_ult} negativa"
+                    c['confere_motivo'] = f"Variação de {r['ultimo_label']} negativa"
             except Exception:
                 pass
 
