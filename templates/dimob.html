@@ -242,6 +242,10 @@ select.form-input { cursor: pointer; min-width: 100px; }
           Informes por Unidade — <span id="labelAno" style="color:var(--accent)"></span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-outline" onclick="document.getElementById('inAnterior').click()" title="Envie a planilha de ANTES dos reajustes: o sistema compara com a atual e preenche o Alug. anterior dos contratos que mudaram">
+            Importar planilha anterior
+          </button>
+          <input type="file" id="inAnterior" accept=".xlsx,.xls" style="display:none" onchange="importarAnterior(this)">
           <button class="btn btn-primary" id="btnSalvarHist" onclick="salvarHistoricoManual()" style="display:none;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             Salvar Alug. Anteriores
@@ -547,6 +551,37 @@ async function salvarHistoricoManual() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar Alug. Anteriores`;
+  }
+}
+
+// Compara a planilha ANTERIOR (antes dos reajustes) com a atual e preenche o "Alug. anterior" dos contratos que mudaram
+async function importarAnterior(inp) {
+  const f = inp.files[0];
+  inp.value = '';
+  if (!f) return;
+  if (!anoCalculado) { mostrarErro('Clique em Calcular primeiro (com a planilha atual) e depois importe a planilha anterior.'); return; }
+  const MES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const fd = new FormData();
+  fd.append('anterior', f);
+  fd.append('ano', anoCalculado);
+  try {
+    let r = await fetch('/api/dimob_importar_anterior', { method: 'POST', body: fd });
+    let j = await r.json();
+    if (!j.ok) { mostrarErro(j.erro || 'Erro ao comparar as planilhas.'); return; }
+    let aviso = '';
+    if (j.ja_tem_registro) aviso += `\n\n${j.ja_tem_registro} contrato(s) mudaram mas já têm o "Alug. anterior" registrado — não serão alterados.`;
+    if (j.ambiguos && j.ambiguos.length) aviso += `\n\nIgnorados (2 contratos do mesmo locatário no mesmo mês): ${j.ambiguos.join(', ')}`;
+    if (!j.candidatos.length) { alert('Nenhum contrato para preencher: não há aluguel diferente entre as duas planilhas, ou todos já têm o "Alug. anterior" registrado.' + aviso); return; }
+    const linhas = j.candidatos.map(c => `• ${c.locatario}: ${brl(c.aluguel_antigo)} → ${brl(c.aluguel_novo)} (novo vale desde ${MES[c.mes_aplicacao - 1]})`).join('\n');
+    if (!confirm(`Preencher o "Alug. anterior" de ${j.candidatos.length} contrato(s)?\n\n${linhas}${aviso}\n\nMulta, juros e abono já salvos não são alterados.`)) return;
+    fd.append('confirmar', '1');
+    r = await fetch('/api/dimob_importar_anterior', { method: 'POST', body: fd });
+    j = await r.json();
+    if (!j.ok) { mostrarErro(j.erro || 'Erro ao salvar.'); return; }
+    showSalvo();
+    await calcular();
+  } catch (e) {
+    mostrarErro('Falha ao importar: ' + e.message);
   }
 }
 

@@ -859,6 +859,7 @@ def ler_excel_dimob(path):
                 'proprietario':      prop_nome,
                 'endereco':          endereco,
                 'aluguel':           aluguel_div,
+                'aluguel_total':     aluguel,          # valor do contrato inteiro (sem dividir entre proprietários)
                 'percentual_imob':   perc_imob,
                 'mes_reajuste':      mes_rej,
                 'mes_aplicacao':     mes_aplicacao,
@@ -2947,6 +2948,74 @@ def api_dimob_salvar_historico():
 
     salvar_dimob_historico(historico)
     return jsonify({'ok': True, 'salvos': len(contratos)})
+
+
+@app.route('/api/dimob_importar_anterior', methods=['POST'])
+@login_required
+def api_dimob_importar_anterior():
+    """Preenche o "Alug. anterior" do DIMOB comparando a planilha ANTERIOR (antes dos reajustes)
+    com a planilha ATUAL do servidor. Só preenche contratos que ainda NÃO têm aluguel_antigo e
+    não mexe em multa/juros/abono. 1ª chamada = prévia; com confirmar=1 grava."""
+    ano = str(request.form.get('ano') or date.today().year)
+    confirmar = request.form.get('confirmar') == '1'
+    arq = request.files.get('anterior')
+    if not arq or not arq.filename.lower().endswith(('.xlsx', '.xls')):
+        return jsonify({'ok': False, 'erro': 'Envie a planilha ANTERIOR (.xlsx).'})
+    atual_path = _excel_path_contratos()
+    if not atual_path or not Path(atual_path).exists():
+        return jsonify({'ok': False, 'erro': 'Planilha atual não encontrada no servidor. Clique em Calcular (enviando a planilha atual) primeiro.'})
+
+    UPLOAD_DIR.mkdir(exist_ok=True)
+    tmp = UPLOAD_DIR / 'dimob_anterior_tmp.xlsx'
+    arq.save(str(tmp))
+    try:
+        ant = ler_excel_dimob(tmp)
+        atu = ler_excel_dimob(atual_path)
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': f'Erro ao ler as planilhas: {e}'})
+    finally:
+        try: tmp.unlink()
+        except Exception: pass
+
+    def indexar(contratos):
+        """(locatário, mês do aniversário) -> {total, linhas}. Total = aluguel do contrato inteiro."""
+        d = {}
+        for c in contratos:
+            k = (norm(c['locatario']), c['mes_reajuste'])
+            e = d.setdefault(k, {'locatario': c['locatario'], 'mes_reajuste': c['mes_reajuste'], 'linhas': set(),
+                                 'total': round(c.get('aluguel_total') if c.get('aluguel_total') is not None else c['aluguel'], 2)})
+            e['linhas'].add(c['num_linha'])
+        return d
+
+    A, B = indexar(ant), indexar(atu)
+    hist = ler_dimob_historico()
+    reg_ano = hist.get(ano, {})
+    candidatos, ambiguos, ja_tem = [], [], 0
+    for k, b in B.items():
+        a = A.get(k)
+        if not a or abs(a['total'] - b['total']) <= 0.005 or a['total'] <= 0 or b['total'] <= 0:
+            continue
+        if len(a['linhas']) > 1 or len(b['linhas']) > 1:
+            ambiguos.append(b['locatario'])      # mesmo locatário com 2 contratos no mesmo mês: não dá pra distinguir
+            continue
+        if (reg_ano.get(k[0]) or {}).get('aluguel_antigo'):
+            ja_tem += 1
+            continue
+        candidatos.append({'locatario': b['locatario'], 'aluguel_antigo': a['total'], 'aluguel_novo': b['total'],
+                           'mes_aplicacao': b['mes_reajuste'] % 12 + 1})
+
+    salvos = 0
+    if confirmar and candidatos:
+        hist.setdefault(ano, {})
+        for c in candidatos:
+            reg = hist[ano].setdefault(norm(c['locatario']), {})
+            reg.update({'aluguel_antigo': c['aluguel_antigo'], 'aluguel_novo': c['aluguel_novo'],
+                        'locatario': c['locatario'], 'mes_aplicacao': c['mes_aplicacao'],
+                        'importado_em': date.today().isoformat()})
+            salvos += 1
+        salvar_dimob_historico(hist)
+    candidatos.sort(key=lambda c: (c['mes_aplicacao'], c['locatario']))
+    return jsonify({'ok': True, 'candidatos': candidatos, 'ambiguos': ambiguos, 'ja_tem_registro': ja_tem, 'salvos': salvos})
 
 
 @app.route('/api/dimob_exportar', methods=['POST'])
